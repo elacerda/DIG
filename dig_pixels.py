@@ -3,19 +3,19 @@ import sys
 import time
 import numpy as np
 import matplotlib as mpl
-from scipy import stats as st
+from pytu.plots import plotBPT
 from pytu.objects import runstats
+from pytu.plots import plot_text_ax
+from pytu.lines import Lines
 from matplotlib import pyplot as plt
-from pytu.functions import debug_var
+from pytu.plots import density_contour
 from pytu.functions import ma_mask_xyz
 from CALIFAUtils.scripts import calc_xY
-from matplotlib.ticker import MaxNLocator
-from matplotlib.ticker import NullFormatter
 from CALIFAUtils.plots import DrawHLRCircle
 from CALIFAUtils.plots import plot_gal_img_ax
 from CALIFAUtils.scripts import read_one_cube
-from pytu.plots import plot_text_ax, density_contour
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 
 mpl.rcParams['font.size'] = 14
 mpl.rcParams['axes.labelsize'] = 12
@@ -32,6 +32,8 @@ img_dir = '%s/CALIFA/images/' % os.environ['HOME']
 
 if __name__ == '__main__':
     t_init_prog = time.clock()
+
+    L = Lines()
 
     rbinini = 0.
     rbinfin = 3.
@@ -59,6 +61,14 @@ if __name__ == '__main__':
     x_Y__z, integrated_x_Y = calc_xY(K, 3.2e7)
     EWHa__z = K.EL.EW[K.EL.lines.index('6563')]
 
+    O3Hb__z = f_obs__lz['5007']/f_obs__lz['4861']
+    N2Ha__z = f_obs__lz['6583']/f_obs__lz['6563']
+    x, y = np.ma.log10(N2Ha__z), np.ma.log10(O3Hb__z)
+    sel_S06_HII__z = L.belowlinebpt('S06', x, y)
+    sel_S06_DIG__z = ~sel_S06_HII__z
+    sel_S06_DIG_label = 'DIG regions (above S06)'
+    sel_S06_HII_label = 'HII regions (below S06)'
+
     DIG_EWHa_threshold = 3
     sel_EWHa_DIG__z = (EWHa__z < DIG_EWHa_threshold).filled(False)
     sel_EWHa_HII__z = (EWHa__z >= DIG_EWHa_threshold).filled(False)
@@ -70,41 +80,37 @@ if __name__ == '__main__':
     sel_x_Y_DIG_label = 'DIG regions ($x_Y$ < %.1f)' % DIG_x_Y_threshold
     sel_x_Y_HII_label = 'HII regions ($x_Y$ >= %.1f)' % DIG_x_Y_threshold
 
-    EWHa = EWHa__z.filled(0.0)
-    HaN2 = f_obs__lz['6563'].filled(0.0) / f_obs__lz['6583'].filled(0.0)
-    HaN2 = np.ma.masked_array(HaN2, mask=~(np.isfinite(HaN2)))
-    S2S2 = f_obs__lz['6731'].filled(0.0) / f_obs__lz['6717'].filled(0.0)
-    S2S2 = np.ma.masked_array(S2S2, mask=~(np.isfinite(S2S2)))
-    tau_V_neb__z = np.where((K.EL.tau_V_neb__z < 0).filled(True), 0, K.EL.tau_V_neb__z)
-    u_EWHa = (EWHa - EWHa.mean()) / EWHa.std()
-    print u_EWHa.max(), u_EWHa.min()
-    u_x_Y = (x_Y__z - x_Y__z.mean()) / x_Y__z.std()
-    print u_x_Y.max(), u_x_Y.min()
-    u_HaN2 = (HaN2 - HaN2.mean()) / HaN2.std()
-    print u_HaN2.max(), u_HaN2.min()
-    u_tauVneb = (tau_V_neb__z - tau_V_neb__z.mean()) / tau_V_neb__z.std()
-    print u_tauVneb.max(), u_tauVneb.min()
-    u_S2S2 = (S2S2 - S2S2.mean()) / S2S2.std()
-    print u_S2S2.max(), u_S2S2.min()
+    sel_DIG__z = sel_S06_DIG__z
+    sel_HII__z = sel_S06_HII__z
+    sel_DIG_label = sel_S06_DIG_label
+    sel_HII_label = sel_S06_HII_label
 
-    DIG_etasum_threshold = 0
-    # eta = x_Y__z * HaN2 * K.EL.EW[K.EL.lines.index('6563')] * np.where((K.EL.tau_V_neb__z < 0).filled(True), 0, K.EL.tau_V_neb__z)
-    etasum = u_x_Y + u_EWHa + u_HaN2 + u_tauVneb + u_S2S2
-    sel_etasum_DIG__z = (etasum < DIG_etasum_threshold).filled(False)
-    sel_etasum_HII__z = (etasum >= DIG_etasum_threshold).filled(False)
-    sel_etasum_DIG_label = 'DIG regions ($\eta$ < %.1f)' % DIG_etasum_threshold
-    sel_etasum_HII_label = 'HII regions ($\eta$ >= %.1f)' % DIG_etasum_threshold
-
-    sel_DIG__z = sel_etasum_DIG__z
-    sel_HII__z = sel_etasum_HII__z
-    sel_DIG_label = sel_etasum_DIG_label
-    sel_HII_label = sel_etasum_HII_label
+    # califaID_threshold = {
+    #     'K0009': -20.5,
+    #     'K0100': -19.6,
+    #     'K0154': -20.5,
+    #     'K0155': -20.8,
+    #     'K0476': -20.4,
+    #     'K0548': -20.5,
+    #     'K0577': -21.3,
+    #     'K0610': -21.6,
+    #     'K0680': -19.6,
+    #     'K0740': -21,
+    #     'K0758': -20.4,
+    #     'K0791': -20.8,
+    #     'K0822': -21.6,
+    #     'K0876': -21,
+    #     'K0904': -20.4,
+    #     'K0909': -20.4,
+    #     'K0915': -20,
+    #     'K0939': -21,
+    # }
 
     f_obs_HII__lyx = {}
     f_obs_DIG__lyx = {}
     for k, v in f_obs__lz.iteritems():
-        f_obs_HII__lyx[k] = K.zoneToYX(np.ma.masked_array(v, mask=~sel_HII__z), surface_density=False)
-        f_obs_DIG__lyx[k] = K.zoneToYX(np.ma.masked_array(v, mask=~sel_DIG__z), surface_density=False)
+        f_obs_HII__lyx[k] = K.zoneToYX(np.ma.masked_array(v/K.zoneArea_pix, mask=~sel_HII__z), extensive=False, surface_density=False)
+        f_obs_DIG__lyx[k] = K.zoneToYX(np.ma.masked_array(v/K.zoneArea_pix, mask=~sel_DIG__z), extensive=False, surface_density=False)
     f_obs_HII__lr = {}
     f_obs_HII_npts__lr = {}
     for k, v in f_obs_HII__lyx.iteritems():
@@ -119,25 +125,26 @@ if __name__ == '__main__':
     N_cols = 3
     N_rows = 2
     f, axArr = plt.subplots(N_rows, N_cols, dpi=100, figsize=(15, 10))
-    cmap = plt.cm.get_cmap('rainbow', 6)
+    cmap = plt.cm.get_cmap('jet_r', 6)
     ((ax1, ax2, ax3), (ax4, ax5, ax6)) = axArr
     # AXIS 1
     img_file = '%s%s.jpg' % (img_dir, califaID)
     plot_gal_img_ax(ax1, img_file, califaID, 0.02, 0.98, 16, K, bins=[0.5, 1, 1.5, 2, 2.5, 3])
     # AXIS 2
-    im = ax2.imshow(K.zoneToYX(np.ma.masked_array(EWHa__z, mask=~sel_DIG__z), extensive=False), vmax=3, **dflt_kw_imshow)
+    range = [-0.5, 3]
+    im = ax2.imshow(np.ma.log10(K.zoneToYX(np.ma.masked_array(EWHa__z, mask=~sel_DIG__z), extensive=False)), vmin=range[0], vmax=range[1], **dflt_kw_imshow)
     the_divider = make_axes_locatable(ax2)
     color_axis = the_divider.append_axes('right', size='5%', pad=0)
     cb = plt.colorbar(im, cax=color_axis)
-    cb.set_label(r'EW(H$\alpha$)')
+    cb.set_label(r'$\log$ W${}_{H\alpha}$')
     DrawHLRCircle(ax2, K, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
     ax2.set_title(sel_DIG_label)
     # AXIS 3
-    im = ax3.imshow(K.zoneToYX(np.ma.masked_array(EWHa__z, mask=~sel_HII__z), extensive=False), vmin=3, vmax=20, **dflt_kw_imshow)
+    im = ax3.imshow(np.ma.log10(K.zoneToYX(np.ma.masked_array(EWHa__z, mask=~sel_HII__z), extensive=False)), vmin=range[0], vmax=range[1], **dflt_kw_imshow)
     the_divider = make_axes_locatable(ax3)
     color_axis = the_divider.append_axes('right', size='5%', pad=0)
     cb = plt.colorbar(im, cax=color_axis)
-    cb.set_label(r'EW(H$\alpha$)')
+    cb.set_label(r'$\log$ W${}_{H\alpha}$')
     DrawHLRCircle(ax3, K, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
     ax3.set_title(sel_HII_label)
     # AXIS 4 & 5
@@ -165,9 +172,9 @@ if __name__ == '__main__':
     ax5.set_ylabel(r'$\sum_{z \to R_i}$F${}_z^{DIG}/\sum_{z \to R_i}$F${}_z^{DIG\ +\ HII}$')
     ax5.set_xlim(0, 3)
     # AXIS 6
-    c = {'5007': 'b', '6583': 'r', '6717': 'g'}
-    dividend_lines_quocient = ['5007', '6583', '6717']
-    divisor_lines_quocient = ['4861', '6563', '6731']
+    c = {'5007': 'b', '6583': 'r', '6717': 'g', '6563': 'k'}
+    dividend_lines_quocient = ['5007', '6583', '6717', '6563']
+    divisor_lines_quocient = ['4861', '6563', '6731', '4861']
     for l1, l2 in zip(dividend_lines_quocient, divisor_lines_quocient):
         if l1 and l2 in lines:
             ax6.plot(R_bin_center__r, f_obs_DIG__lr[l1]/f_obs_DIG__lr[l2], '%c-' % c[l1], label='%s/%s DIG' % (l1, l2))
@@ -176,8 +183,8 @@ if __name__ == '__main__':
     ax6.set_xlabel('R [HLR]')
     ax6.set_ylabel(r'$\sum_{z \in R_i}$F${}_z^{\lambda_1}/$F${}_z^{\lambda_2}$')
     ymin, ymax = ax6.get_ylim()
-    if ymax > 4:
-        ymax = 4
+    if ymax > 6:
+        ymax = 6
     ax6.set_ylim(ymin, ymax)
     ax6.set_xlim(0, 3)
     ax4.grid()
@@ -190,29 +197,97 @@ if __name__ == '__main__':
     avaible_lines_to_plot = set(K.EL.lines)
     lines_to_plot = sorted(avaible_lines_to_plot.intersection(desired_lines_to_plot))
     for l in lines_to_plot:
-        N_cols = 3
-        N_rows = 1
-        f, axArr = plt.subplots(N_rows, N_cols, dpi=100, figsize=(15, 5))
-        ax1, ax2, ax3 = axArr
+        N_cols = 2
+        N_rows = 2
+        f, axArr = plt.subplots(N_rows, N_cols, dpi=100, figsize=(10, 10))
+        ((ax1, ax2), (ax3, ax4)) = axArr
         # AXIS 1
         img_file = '%s%s.jpg' % (img_dir, califaID)
-        plot_gal_img_ax(ax1, img_file, califaID, 0.02, 0.98, 16, K, bins=R_bin__r[1:])
+        plot_gal_img_ax(ax1, img_file, califaID, 0.02, 0.98, 16, K, bins=[0.5, 1, 1.5, 2, 2.5, 3])
         # AXIS 2
-        im = ax2.imshow(np.ma.log10(f_obs_DIG__lyx[l]), **dflt_kw_imshow)
+        SB_obs_line__yx = K.zoneToYX(f_obs__lz[l]/K.zoneArea_pix, extensive=False, surface_density=False)
+        im = ax2.imshow(np.ma.log10(SB_obs_line__yx), **dflt_kw_imshow)
         the_divider = make_axes_locatable(ax2)
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
-        cb.set_label(r'$\log$ F${}_{obs}$ [erg/s/cm${}^2/\AA$]')
-        DrawHLRCircle(ax2, K, color='k', bins=R_bin__r[1:])
-        ax2.set_title(sel_DIG_label)
+        cb.set_label(r'$\log$ SB${}_{obs}$ [erg/s/cm${}^2/\AA/$arcsec${}^2$]')
+        DrawHLRCircle(ax2, K, color='k', bins=[0.5, 1, 1.5, 2, 2.5, 3])
+        ax2.set_title('Observed SB')
         # AXIS 3
-        im = ax3.imshow(np.ma.log10(f_obs_HII__lyx[l]), **dflt_kw_imshow)
+        SB_obs_line_DIG__yx = K.zoneToYX(np.ma.masked_array(f_obs__lz[l]/K.zoneArea_pix, mask=~sel_DIG__z), extensive=False, surface_density=False)
+        im = ax3.imshow(np.ma.log10(SB_obs_line_DIG__yx), **dflt_kw_imshow)
         the_divider = make_axes_locatable(ax3)
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
-        cb.set_label(r'$\log$ F${}_{obs}$ [erg/s/cm${}^2/\AA$]')
-        DrawHLRCircle(ax3, K, color='k', bins=R_bin__r[1:])
-        ax3.set_title(sel_HII_label)
+        cb.set_label(r'$\log$ SB${}_{obs}$ [erg/s/cm${}^2/\AA/$arcsec${}^2$]')
+        DrawHLRCircle(ax3, K, color='k', bins=[0.5, 1, 1.5, 2, 2.5, 3])
+        ax3.set_title(sel_DIG_label)
+        # AXIS 4
+        SB_obs_line_HII__yx = K.zoneToYX(np.ma.masked_array(f_obs__lz[l]/K.zoneArea_pix, mask=~sel_HII__z), extensive=False, surface_density=False)
+        im = ax4.imshow(np.ma.log10(SB_obs_line_HII__yx), **dflt_kw_imshow)
+        the_divider = make_axes_locatable(ax4)
+        color_axis = the_divider.append_axes('right', size='5%', pad=0)
+        cb = plt.colorbar(im, cax=color_axis)
+        cb.set_label(r'$\log$ SB${}_{obs}$ [erg/s/cm${}^2/\AA/$arcsec${}^2$]')
+        DrawHLRCircle(ax4, K, color='k', bins=[0.5, 1, 1.5, 2, 2.5, 3])
+        ax4.set_title(sel_HII_label)
         f.suptitle('%s' % l, fontsize=20)
         f.tight_layout(rect=[0, 0.03, 1, 0.95])
         f.savefig('%s-%s.png' % (califaID, l))
+
+    f, (ax1, ax2, ax3) = plt.subplots(1, 3, dpi=100, figsize=(15, 5))
+    HaHb = f_obs__lz['6563']/f_obs__lz['4861']
+    N2Ha = f_obs__lz['6583']/f_obs__lz['6563']
+    O3Hb = f_obs__lz['5007']/f_obs__lz['4861']
+    S2S2 = f_obs__lz['6731']/f_obs__lz['6717']
+    xm, ym = ma_mask_xyz(x=HaHb, y=S2S2)
+    rsxy = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
+    ax1.scatter(xm, ym, s=30, edgecolor='none', c='b', alpha=0.6)
+    xlim = [0, 5]
+    ylim = [0, 3]
+    density_contour(xm.compressed(), ym.compressed(), 20, 20, ax1, range=[xlim, ylim], levels_confidence=[0.10, 0.65, 0.95, 0.99], colors='k')
+    ax1.plot(rsxy.xMedian, rsxy.yMedian, 'ro-', lw=3)
+    N = xm.count()
+    c = ''
+    if (xm.compressed() < xlim[0]).any():
+        c += 'x-'
+    if (xm.compressed() > xlim[1]).any():
+        c += 'x+'
+    if (ym.compressed() < ylim[0]).any():
+        c += 'y-'
+    if (ym.compressed() > ylim[1]).any():
+        c += 'y+'
+    plot_text_ax(ax1, '%d %s' % (N, c), 0.01, 0.99, 20, 'top', 'left', 'w')
+    ax1.set_xlabel(r'Ha/Hb')
+    ax1.set_ylabel(r'6731/6717')
+    ax1.set_xlim(xlim)
+    ax1.set_ylim(ylim)
+
+    xm, ym = ma_mask_xyz(x=N2Ha, y=S2S2)
+    rsxy = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
+    ax2.scatter(xm, ym, s=30, edgecolor='none', c='b', alpha=0.6)
+    xlim = [0, 3]
+    ylim = [0, 3]
+    density_contour(xm.compressed(), ym.compressed(), 20, 20, ax2, range=[xlim, ylim], levels_confidence=[0.10, 0.65, 0.95, 0.99], colors='k')
+    ax2.plot(rsxy.xMedian, rsxy.yMedian, 'ro-', lw=3)
+    N = xm.count()
+    c = ''
+    if (xm.compressed() < xlim[0]).any():
+        c += 'x-'
+    if (xm.compressed() > xlim[1]).any():
+        c += 'x+'
+    if (ym.compressed() < ylim[0]).any():
+        c += 'y-'
+    if (ym.compressed() > ylim[1]).any():
+        c += 'y+'
+    plot_text_ax(ax2, '%d %s' % (N, c), 0.01, 0.99, 20, 'top', 'left', 'w')
+    ax2.set_xlabel(r'N2/Ha')
+    ax2.set_ylabel(r'6731/6717')
+    ax2.set_xlim(xlim)
+    ax2.set_ylim(ylim)
+
+    xm, ym = ma_mask_xyz(x=np.ma.log10(N2Ha), y=np.ma.log10(O3Hb))
+    distance = np.ma.masked_array(K.zoneDistance_HLR, mask=xm.mask)
+    plotBPT(ax3, xm.compressed(), ym.compressed(), z=distance.compressed())
+    f.tight_layout(rect=[0, 0.03, 1, 0.95])
+    f.savefig('%s-lratiosBPT.png' % califaID)
