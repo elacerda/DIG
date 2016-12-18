@@ -18,6 +18,7 @@ logWHa_range = [0, 2.5]
 x_Y_range = [0, 0.6]
 DtauV_range = [-1, 3]
 # age to calc xY
+minSNR = 3
 tY = 32e6
 config = -2
 EL = True
@@ -86,8 +87,6 @@ if __name__ == '__main__':
     for k in keys:
         ALL.new1d_masked(k)  # this way you can use ALL.key (example ALL.tau_V_neb)
 
-    minSNR = 3
-
     for i_gal, K in loop_cubes(g, EL=EL, config=config, elliptical=elliptical):
         if K is None:
             print 'califaID:', g[i_gal], ' trying another qVersion...'
@@ -150,15 +149,15 @@ if __name__ == '__main__':
     xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_DIG)
     rs = runstats(xm.compressed(), ym.compressed(), xbin=xbin, **dflt_kw_runstats)
     ax.plot(rs.xS, rs.yS, 'k--', lw=3)
-    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c='r', markersize=10)
+    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(0), markersize=10)
     xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_COMP)
     rs = runstats(xm.compressed(), ym.compressed(), xbin=xbin, **dflt_kw_runstats)
     ax.plot(rs.xS, rs.yS, 'k--', lw=3)
-    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c='g', markersize=10)
+    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(1), markersize=10)
     xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_HII)
     rs = runstats(xm.compressed(), ym.compressed(), xbin=xbin, **dflt_kw_runstats)
     ax.plot(rs.xS, rs.yS, 'k--', lw=3)
-    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c='b', markersize=10)
+    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
     ax.set_xlim(x_Y_range)
     ax.set_ylim(DtauV_range)
     ax.set_xlabel(r'x${}_Y$ [frac.]')
@@ -185,15 +184,15 @@ if __name__ == '__main__':
     xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_DIG)
     rs = runstats(xm.compressed(), ym.compressed(), xbin=xbin, **dflt_kw_runstats)
     ax.plot(rs.xS, rs.yS, 'k--', lw=2)
-    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c='r', markersize=10)
+    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(0), markersize=10)
     xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_COMP)
     rs = runstats(xm.compressed(), ym.compressed(), xbin=xbin, **dflt_kw_runstats)
     ax.plot(rs.xS, rs.yS, 'k--', lw=2)
-    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c='g', markersize=10)
+    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(1), markersize=10)
     xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_HII)
     rs = runstats(xm.compressed(), ym.compressed(), xbin=xbin, **dflt_kw_runstats)
     ax.plot(rs.xS, rs.yS, 'k--', lw=2)
-    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c='b', markersize=10)
+    ax.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
     ax.set_xlim(x_Y_range)
     ax.set_ylim(DtauV_range)
     ax.set_xlabel(r'x${}_Y$ [frac.]')

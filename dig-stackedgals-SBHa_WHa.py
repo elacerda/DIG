@@ -12,6 +12,10 @@ from pytu.plots import plot_histo_ax
 
 logSBHa_range = [3.5, 7]
 logWHa_range = [0, 2.5]
+DIG_WHa_threshold = 10
+HII_WHa_threshold = 20
+HII_Zhang_threshold = 1e39/L_sun
+DIG_Zhang_threshold = 10**38.5/L_sun
 
 
 mpl.rcParams['font.size'] = 20
@@ -59,7 +63,7 @@ def plot_scatter_histo(x, y, xlim, ylim, xbins=30, ybins=30, xlabel='', ylabel='
     if histo:
         axHistx.hist(x, bins=xbins, range=xlim, color=c, histtype='barstacked')
         axHisty.hist(y, bins=ybins, range=ylim, orientation='horizontal', color=c, histtype='barstacked')
-    plt.setp(axHisty.xaxis.get_majorticklabels(), rotation=90+180)
+    plt.setp(axHisty.xaxis.get_majorticklabels(), rotation=270)
     axHistx.set_xlim(axScatter.get_xlim())
     axHisty.set_ylim(axScatter.get_ylim())
     return axScatter, axHistx, axHisty
@@ -93,63 +97,65 @@ if __name__ == '__main__':
         ALL.append1d_masked(k='WHa', val=WHa__z, mask_val=SBHa_mask__z)
     # stack all lists
     ALL.stack()
-    x = np.ma.log10(ALL.SBHa)
-    y = np.ma.log10(ALL.WHa)
+    x = np.ma.log10(ALL.WHa)
+    y = np.ma.log10(ALL.SBHa)
 
-    DIG_WHa_threshold = 10
-    HII_WHa_threshold = 20
     sel_WHa_DIG = (ALL.WHa < DIG_WHa_threshold).filled(False)
     sel_WHa_COMP = np.bitwise_and((ALL.WHa >= DIG_WHa_threshold).filled(False), (ALL.WHa < HII_WHa_threshold).filled(False))
     sel_WHa_HII = (ALL.WHa >= HII_WHa_threshold).filled(False)
     f = plt.figure(figsize=(8, 8))
     x_ds = [x[sel_WHa_DIG], x[sel_WHa_COMP], x[sel_WHa_HII]]
     y_ds = [y[sel_WHa_DIG], y[sel_WHa_COMP], y[sel_WHa_HII]]
-    axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logSBHa_range, logWHa_range, 30, 30,
+    axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logSBHa_range, 30, 30,
                                          figure=f, c=['r', 'g', 'b'], scatter=False,
-                                         xlabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
-                                         ylabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
-    axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logSBHa_range, logWHa_range, 30, 30,
+                                         ylabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
+                                         xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logSBHa_range, 30, 30,
                                          axScatter=axS, axHistx=axH1, axHisty=axH2, c=['r', 'g', 'b'], histo=False,
-                                         xlabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
-                                         ylabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
-    xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_DIG)
-    rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-    axS.plot(rs.xS, rs.yS, 'r', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
-    xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_COMP)
-    rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-    axS.plot(rs.xS, rs.yS, 'g', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
-    xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_HII)
-    rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-    axS.plot(rs.xS, rs.yS, 'b', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+                                         ylabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
+                                         xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    if sel_WHa_DIG.astype('int').sum() > 0:
+        xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_DIG)
+        rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
+        axS.plot(rs.xS, rs.yS, 'r', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+    if sel_WHa_COMP.astype('int').sum() > 0:
+        xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_COMP)
+        rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
+        axS.plot(rs.xS, rs.yS, 'g', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+    if sel_WHa_HII.astype('int').sum() > 0:
+        xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_HII)
+        rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
+        axS.plot(rs.xS, rs.yS, 'b', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
     axS.grid()
-    f.savefig('dig-stackedgals-SBHa_WHa-classifWHa.png')
+    f.savefig('dig-stackedgals-WHa_SBHa-classifWHa.png')
     plt.close(f)
 
-    HII_Zhang_threshold = 1e39/L_sun
-    DIG_Zhang_threshold = 10**38.5/L_sun
     sel_Zhang_DIG = (ALL.SBHa < DIG_Zhang_threshold).filled(False)
     sel_Zhang_COMP = np.bitwise_and((ALL.SBHa >= DIG_Zhang_threshold).filled(False), (ALL.SBHa < HII_Zhang_threshold).filled(False))
     sel_Zhang_HII = (ALL.SBHa >= HII_Zhang_threshold).filled(False)
     f = plt.figure(figsize=(8, 8))
     x_ds = [x[sel_Zhang_DIG], x[sel_Zhang_COMP], x[sel_Zhang_HII]]
     y_ds = [y[sel_Zhang_DIG], y[sel_Zhang_COMP], y[sel_Zhang_HII]]
-    axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logSBHa_range, logWHa_range, 30, 30,
+    axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logSBHa_range, 30, 30,
                                          figure=f, c=['r', 'g', 'b'], scatter=False,
-                                         xlabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
-                                         ylabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
-    axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logSBHa_range, logWHa_range, 30, 30,
+                                         ylabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
+                                         xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logSBHa_range, 30, 30,
                                          axScatter=axS, axHistx=axH1, axHisty=axH2, c=['r', 'g', 'b'], histo=False,
-                                         xlabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
-                                         ylabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
-    xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_DIG)
-    rs = runstats(ym.compressed(), xm.compressed(), **dflt_kw_runstats)
-    axS.plot(rs.yS, rs.xS, 'r', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
-    xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_COMP)
-    rs = runstats(ym.compressed(), xm.compressed(), **dflt_kw_runstats)
-    axS.plot(rs.yS, rs.xS, 'g', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
-    xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_HII)
-    rs = runstats(ym.compressed(), xm.compressed(), **dflt_kw_runstats)
-    axS.plot(rs.yS, rs.xS, 'b', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+                                         ylabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
+                                         xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    if sel_Zhang_DIG.astype('int').sum() > 0:
+        xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_DIG)
+        rs = runstats(ym.compressed(), xm.compressed(), **dflt_kw_runstats)
+        axS.plot(rs.yS, rs.xS, 'r', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+    if sel_Zhang_COMP.astype('int').sum() > 0:
+        xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_COMP)
+        rs = runstats(ym.compressed(), xm.compressed(), **dflt_kw_runstats)
+        axS.plot(rs.yS, rs.xS, 'g', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+    if sel_Zhang_HII.astype('int').sum() > 0:
+        xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_HII)
+        rs = runstats(ym.compressed(), xm.compressed(), **dflt_kw_runstats)
+        axS.plot(rs.yS, rs.xS, 'b', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
     axS.grid()
-    f.savefig('dig-stackedgals-SBHa_WHa-classifZhang.png')
+    f.savefig('dig-stackedgals-WHa_SBHa-classifZhang.png')
     plt.close(f)

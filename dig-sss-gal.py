@@ -27,7 +27,7 @@ mpl.rcParams['font.serif'] = 'Times New Roman'
 dflt_kw_scatter = dict(cmap='viridis_r', marker='o', s=5, edgecolor='none')
 dflt_kw_runstats = dict(smooth=True, sigma=1.2, debug=True, gs_prc=True, poly1d=True)
 dflt_kw_imshow = dict(origin='lower', interpolation='nearest', aspect='equal', cmap='viridis_r')
-img_dir = '%s/CALIFA/images/' % os.environ['HOME']
+img_dir = '%s/califa/images/' % os.environ['HOME']
 
 
 if __name__ == '__main__':
