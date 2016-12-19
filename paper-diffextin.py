@@ -21,9 +21,14 @@ mpl.rcParams['font.family'] = 'serif'
 mpl.rcParams['font.serif'] = 'Times New Roman'
 
 # config variables
+lineratios_range = {
+    '6563/4861': [0, 1],
+    '6583/6563': [-0.8, 0],
+    '6300/6563': [-2, 0],
+    '6717+6731/6563': [-0.8, 0.2],
+}
 logSBHa_range = [3.5, 7]
 logWHa_range = [0, 2.5]
-logHaHb_range = [0, 1]
 DtauV_range = [-2, 3]
 x_Y_range = [0, 0.6]
 # age to calc xY
@@ -118,9 +123,9 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]]))
         axs[0].scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         axs[0].set_xlim(distance_range)
-        # axs[0].set_ylim(logHaHb_range)
+        axs[0].set_ylim(lineratios_range['/'.join(l_to_plot)])
         axs[0].set_xlabel(r'R [HLR]')
-        axs[0].set_ylabel(r'$\log\ 6563/4861$')
+        axs[0].set_ylabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         axs[0].grid()
         if sel_DIG__yx.astype('int').sum():
             xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
@@ -138,13 +143,13 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
             axs[0].plot(rs.xS, rs.yS, 'k--', lw=2)
             axs[0].plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
         x = np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]])
-        im = axs[1].imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        im = axs[1].imshow(x, vmin=lineratios_range['/'.join(l_to_plot)][0], vmax=lineratios_range['/'.join(l_to_plot)][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(axs[1])
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 2, 6, 10
         l_to_plot = ['6583', '6563']
@@ -153,9 +158,9 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]]))
         axs[0].scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         axs[0].set_xlim(distance_range)
-        # axs[0].set_ylim(logHaHb_range)
+        axs[0].set_ylim(lineratios_range['/'.join(l_to_plot)])
         axs[0].set_xlabel(r'R [HLR]')
-        axs[0].set_ylabel(r'$\log\ 6563/4861$')
+        axs[0].set_ylabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         axs[0].grid()
         if sel_DIG__yx.astype('int').sum():
             xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
@@ -173,13 +178,13 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
             axs[0].plot(rs.xS, rs.yS, 'k--', lw=2)
             axs[0].plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
         x = np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]])
-        im = axs[1].imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        im = axs[1].imshow(x, vmin=lineratios_range['/'.join(l_to_plot)][0], vmax=lineratios_range['/'.join(l_to_plot)][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(axs[1])
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 3, 7, 11
         l_to_plot = ['6300', '6563']
@@ -188,9 +193,9 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]]))
         axs[0].scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         axs[0].set_xlim(distance_range)
-        # axs[0].set_ylim(logHaHb_range)
+        axs[0].set_ylim(lineratios_range['/'.join(l_to_plot)])
         axs[0].set_xlabel(r'R [HLR]')
-        axs[0].set_ylabel(r'$\log\ 6563/4861$')
+        axs[0].set_ylabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         axs[0].grid()
         if sel_DIG__yx.astype('int').sum():
             xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
@@ -208,13 +213,13 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
             axs[0].plot(rs.xS, rs.yS, 'k--', lw=2)
             axs[0].plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
         x = np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]])
-        im = axs[1].imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        im = axs[1].imshow(x, vmin=lineratios_range['/'.join(l_to_plot)][0], vmax=lineratios_range['/'.join(l_to_plot)][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(axs[1])
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 4, 8, 12
         l_to_plot = ['6717+6731', '6563']
@@ -223,9 +228,9 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10((SB__yx['6717']+SB__yx['6731'])/SB__yx[l_to_plot[1]]))
         axs[0].scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         axs[0].set_xlim(distance_range)
-        # axs[0].set_ylim(logHaHb_range)
+        axs[0].set_ylim(lineratios_range['/'.join(l_to_plot)])
         axs[0].set_xlabel(r'R [HLR]')
-        axs[0].set_ylabel(r'$\log\ 6563/4861$')
+        axs[0].set_ylabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         axs[0].grid()
         if sel_DIG__yx.astype('int').sum():
             xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
@@ -242,14 +247,14 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
             rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
             axs[0].plot(rs.xS, rs.yS, 'k--', lw=2)
             axs[0].plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
-        x = np.ma.log10(SB__yx['6717']+SB__yx['6731']/SB__yx[l_to_plot[1]])
-        im = axs[1].imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        x = np.ma.log10((SB__yx['6717']+SB__yx['6731'])/SB__yx[l_to_plot[1]])
+        im = axs[1].imshow(x, vmin=lineratios_range['/'.join(l_to_plot)][0], vmax=lineratios_range['/'.join(l_to_plot)][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(axs[1])
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
 
         f.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -258,10 +263,10 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
 
 
 def maps_lineratios_colorsZhang(ALL, gals=None):
-    # WHa DIG-COMP-HII decomposition
-    sel_Zhang_DIG__yx = (ALL.W6563__yx < DIG_Zhang_threshold).filled(False)
-    sel_Zhang_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_Zhang_threshold).filled(False), (ALL.W6563__yx < HII_Zhang_threshold).filled(False))
-    sel_Zhang_HII__yx = (ALL.W6563__yx >= HII_Zhang_threshold).filled(False)
+    # Zhang DIG-COMP-HII decomposition
+    sel_Zhang_DIG__yx = (ALL.SB6563__yx < DIG_Zhang_threshold).filled(False)
+    sel_Zhang_COMP__yx = np.bitwise_and((ALL.SB6563__yx >= DIG_Zhang_threshold).filled(False), (ALL.SB6563__yx < HII_Zhang_threshold).filled(False))
+    sel_Zhang_HII__yx = (ALL.SB6563__yx >= HII_Zhang_threshold).filled(False)
 
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
@@ -297,7 +302,7 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 4))
         cmap = cmap_discrete()
         ((ax1, ax2, ax3, ax4), (ax5, ax6, ax7, ax8), (ax9, ax10, ax11, ax12)) = axArr
-        f.suptitle(r'%s - %s: %d pixels (%d zones) - classif. W${}_{H\alpha}$' % (califaID, get_NEDName_by_CALIFAID(califaID)[0], N_pixel, N_zone))
+        f.suptitle(r'%s - %s: %d pixels (%d zones) - classif. $\Sigma_{H\alpha}$' % (califaID, get_NEDName_by_CALIFAID(califaID)[0], N_pixel, N_zone))
         # AXIS 1, 5, 9
         l_to_plot = ['6563', '4861']
         axs = [ax1, ax5, ax9]
@@ -305,9 +310,9 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]]))
         axs[0].scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         axs[0].set_xlim(distance_range)
-        axs[0].set_ylim(logHaHb_range)
+        axs[0].set_ylim(lineratios_range['/'.join(l_to_plot)])
         axs[0].set_xlabel(r'R [HLR]')
-        axs[0].set_ylabel(r'$\log\ 6563/4861$')
+        axs[0].set_ylabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         axs[0].grid()
         if sel_DIG__yx.astype('int').sum():
             xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
@@ -325,13 +330,13 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
             axs[0].plot(rs.xS, rs.yS, 'k--', lw=2)
             axs[0].plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
         x = np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]])
-        im = axs[1].imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        im = axs[1].imshow(x, vmin=lineratios_range['/'.join(l_to_plot)][0], vmax=lineratios_range['/'.join(l_to_plot)][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(axs[1])
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 2, 6, 10
         l_to_plot = ['6583', '6563']
@@ -340,9 +345,9 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]]))
         axs[0].scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         axs[0].set_xlim(distance_range)
-        axs[0].set_ylim(logHaHb_range)
+        axs[0].set_ylim(lineratios_range['/'.join(l_to_plot)])
         axs[0].set_xlabel(r'R [HLR]')
-        axs[0].set_ylabel(r'$\log\ 6563/4861$')
+        axs[0].set_ylabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         axs[0].grid()
         if sel_DIG__yx.astype('int').sum():
             xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
@@ -360,13 +365,13 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
             axs[0].plot(rs.xS, rs.yS, 'k--', lw=2)
             axs[0].plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
         x = np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]])
-        im = axs[1].imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        im = axs[1].imshow(x, vmin=lineratios_range['/'.join(l_to_plot)][0], vmax=lineratios_range['/'.join(l_to_plot)][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(axs[1])
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 3, 7, 11
         l_to_plot = ['6300', '6563']
@@ -375,9 +380,9 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]]))
         axs[0].scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         axs[0].set_xlim(distance_range)
-        axs[0].set_ylim(logHaHb_range)
+        axs[0].set_ylim(lineratios_range['/'.join(l_to_plot)])
         axs[0].set_xlabel(r'R [HLR]')
-        axs[0].set_ylabel(r'$\log\ 6563/4861$')
+        axs[0].set_ylabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         axs[0].grid()
         if sel_DIG__yx.astype('int').sum():
             xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
@@ -395,13 +400,13 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
             axs[0].plot(rs.xS, rs.yS, 'k--', lw=2)
             axs[0].plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
         x = np.ma.log10(SB__yx[l_to_plot[0]]/SB__yx[l_to_plot[1]])
-        im = axs[1].imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        im = axs[1].imshow(x, vmin=lineratios_range['/'.join(l_to_plot)][0], vmax=lineratios_range['/'.join(l_to_plot)][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(axs[1])
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 4, 8, 12
         l_to_plot = ['6717+6731', '6563']
@@ -410,9 +415,9 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10((SB__yx['6717']+SB__yx['6731'])/SB__yx[l_to_plot[1]]))
         axs[0].scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         axs[0].set_xlim(distance_range)
-        axs[0].set_ylim(logHaHb_range)
+        axs[0].set_ylim(lineratios_range['/'.join(l_to_plot)])
         axs[0].set_xlabel(r'R [HLR]')
-        axs[0].set_ylabel(r'$\log\ 6563/4861$')
+        axs[0].set_ylabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         axs[0].grid()
         if sel_DIG__yx.astype('int').sum():
             xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
@@ -429,14 +434,14 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
             rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
             axs[0].plot(rs.xS, rs.yS, 'k--', lw=2)
             axs[0].plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
-        x = np.ma.log10(SB__yx['6717']+SB__yx['6731']/SB__yx[l_to_plot[1]])
-        im = axs[1].imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        x = np.ma.log10((SB__yx['6717']+SB__yx['6731'])/SB__yx[l_to_plot[1]])
+        im = axs[1].imshow(x, vmin=lineratios_range['/'.join(l_to_plot)][0], vmax=lineratios_range['/'.join(l_to_plot)][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(axs[1])
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
 
         f.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -557,7 +562,7 @@ def maps_colorsWHa(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10(SB6563__yx/SB4861__yx))
         ax6.scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         ax6.set_xlim(distance_range)
-        ax6.set_ylim(logHaHb_range)
+        ax6.set_ylim(lineratios_range['6563/4861'])
         ax6.set_xlabel(r'R [HLR]')
         ax6.set_ylabel(r'$\log\ 6563/4861$')
         ax6.grid()
@@ -598,13 +603,13 @@ def maps_colorsWHa(ALL, gals=None):
         ax11.set_xlabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
 
         x = np.ma.log10(SB6563__yx/SB4861__yx)
-        im = ax9.imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        im = ax9.imshow(x, vmin=lineratios_range['6563/4861'][0], vmax=lineratios_range['6563/4861'][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(ax9)
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ 6563/4861$')
         DrawHLRCircle(ax9, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(ax12, x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(ax12, x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['6563/4861']))
         ax12.set_xlabel(r'$\log\ 6563/4861$')
 
         f.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -725,7 +730,7 @@ def maps_colorsZhang(ALL, gals=None):
         y = np.ma.ravel(np.ma.log10(SB6563__yx/SB4861__yx))
         ax6.scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         ax6.set_xlim(distance_range)
-        ax6.set_ylim(logHaHb_range)
+        ax6.set_ylim(lineratios_range['6563/4861'])
         ax6.set_xlabel(r'R [HLR]')
         ax6.set_ylabel(r'$\log\ 6563/4861$')
         ax6.grid()
@@ -766,13 +771,13 @@ def maps_colorsZhang(ALL, gals=None):
         ax11.set_xlabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
 
         x = np.ma.log10(SB6563__yx/SB4861__yx)
-        im = ax9.imshow(x, vmin=logHaHb_range[0], vmax=logHaHb_range[1], cmap='viridis', **dflt_kw_imshow)
+        im = ax9.imshow(x, vmin=lineratios_range['6563/4861'][0], vmax=lineratios_range['6563/4861'][1], cmap='viridis', **dflt_kw_imshow)
         the_divider = make_axes_locatable(ax9)
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ 6563/4861$')
         DrawHLRCircle(ax9, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(ax12, x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=logHaHb_range))
+        plot_histo_ax(ax12, x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['6563/4861']))
         ax12.set_xlabel(r'$\log\ 6563/4861$')
 
         f.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -831,7 +836,7 @@ def histograms_HaHb_Dt(ALL, gals=None):
         f, axArr = plt.subplots(N_rows, N_cols, dpi=100, figsize=(15, 10))
         ((ax1, ax2), (ax3, ax4)) = axArr
         x = np.ma.log10(SB6563__gz/SB4861__gz)
-        range = logHaHb_range
+        range = lineratios_range['6563/4861']
         xDs = [x[sel_WHa_DIG__gz].compressed(),  x[sel_WHa_COMP__gz].compressed(),  x[sel_WHa_HII__gz].compressed()]
         ax1.set_title('zones')
         plot_histo_ax(ax1, x.compressed(), histo=False, y_v_space=0.06, ha='left', pos_x=0.02, c='k', first=True)
@@ -846,7 +851,7 @@ def histograms_HaHb_Dt(ALL, gals=None):
         ax2.set_xlabel(r'$\mathcal{D}_\tau\ =\ \tau_V^{neb}\ -\ \tau_V^\star$')
         x = np.ma.log10(SB6563__gyx/SB4861__gyx)
         xDs = [x[sel_WHa_DIG__gyx].compressed(),  x[sel_WHa_COMP__gyx].compressed(),  x[sel_WHa_HII__gyx].compressed()]
-        range = logHaHb_range
+        range = lineratios_range['6563/4861']
         ax3.set_title('pixels')
         plot_histo_ax(ax3, x.compressed(), histo=False, y_v_space=0.06, ha='left', pos_x=0.02, c='k', first=True)
         plot_histo_ax(ax3, xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=range))
@@ -866,7 +871,7 @@ def histograms_HaHb_Dt(ALL, gals=None):
         f, axArr = plt.subplots(N_rows, N_cols, dpi=100, figsize=(15, 10))
         ((ax1, ax2), (ax3, ax4)) = axArr
         x = np.ma.log10(SB6563__gz/SB4861__gz)
-        range = logHaHb_range
+        range = lineratios_range['6563/4861']
         xDs = [x[sel_Zhang_DIG__gz].compressed(),  x[sel_Zhang_COMP__gz].compressed(),  x[sel_Zhang_HII__gz].compressed()]
         ax1.set_title('zones')
         plot_histo_ax(ax1, x.compressed(), histo=False, y_v_space=0.06, ha='left', pos_x=0.02, c='k', first=True)
@@ -881,7 +886,7 @@ def histograms_HaHb_Dt(ALL, gals=None):
         ax2.set_xlabel(r'$\mathcal{D}_\tau\ =\ \tau_V^{neb}\ -\ \tau_V^\star$')
         x = np.ma.log10(SB6563__gyx/SB4861__gyx)
         xDs = [x[sel_Zhang_DIG__gyx].compressed(),  x[sel_Zhang_COMP__gyx].compressed(),  x[sel_Zhang_HII__gyx].compressed()]
-        range = logHaHb_range
+        range = lineratios_range['6563/4861']
         ax3.set_title('pixels')
         plot_histo_ax(ax3, x.compressed(), histo=False, y_v_space=0.06, ha='left', pos_x=0.02, c='k', first=True)
         plot_histo_ax(ax3, xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=range))
