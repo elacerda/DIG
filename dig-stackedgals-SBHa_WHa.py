@@ -34,40 +34,6 @@ def cmap_discrete(colors=[(1, 0, 0), (0, 1, 0), (0, 0, 1)], n_bins=3, cmap_name=
     return cm
 
 
-def plot_scatter_histo(x, y, xlim, ylim, xbins=30, ybins=30, xlabel='', ylabel='',
-                       c=None, cmap=None, figure=None, axScatter=None, axHistx=None, axHisty=None,
-                       scatter=True, histo=True):
-    from matplotlib.ticker import NullFormatter
-    nullfmt = NullFormatter()  # no labels
-    if axScatter is None:
-        f = figure
-        left, width = 0.1, 0.65
-        bottom, height = 0.1, 0.65
-        bottom_h = left_h = left + width + 0.02
-        rect_scatter = [left, bottom, width, height]
-        rect_histx = [left, bottom_h, width, 0.2]
-        rect_histy = [left_h, bottom, 0.2, height]
-        axScatter = f.add_axes(rect_scatter)
-        axHistx = f.add_axes(rect_histx)
-        axHisty = f.add_axes(rect_histy)
-        axHistx.xaxis.set_major_formatter(nullfmt)  # no labels
-        axHisty.yaxis.set_major_formatter(nullfmt)  # no labels
-    if scatter:
-        if isinstance(x, list):
-            for X, Y, C in zip(x, y, c):
-                axScatter.scatter(X, Y, c=C, cmap=cmap, **dflt_kw_scatter)
-    axScatter.set_xlim(xlim)
-    axScatter.set_ylim(ylim)
-    axScatter.set_xlabel(xlabel)
-    axScatter.set_ylabel(ylabel)
-    if histo:
-        axHistx.hist(x, bins=xbins, range=xlim, color=c, histtype='barstacked')
-        axHisty.hist(y, bins=ybins, range=ylim, orientation='horizontal', color=c, histtype='barstacked')
-    plt.setp(axHisty.xaxis.get_majorticklabels(), rotation=270)
-    axHistx.set_xlim(axScatter.get_xlim())
-    axHisty.set_ylim(axScatter.get_ylim())
-    return axScatter, axHistx, axHisty
-
 if __name__ == '__main__':
     gals_file = sys.argv[1]
 

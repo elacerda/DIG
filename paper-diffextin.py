@@ -8,8 +8,8 @@ from pystarlight.util.constants import L_sun
 from CALIFAUtils.scripts import get_NEDName_by_CALIFAID
 from CALIFAUtils.objects import stack_gals, CALIFAPaths
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from pytu.plots import cmap_discrete, plot_histo_ax, plot_text_ax
 from CALIFAUtils.plots import DrawHLRCircleInSDSSImage, DrawHLRCircle
+from pytu.plots import cmap_discrete, plot_histo_ax, plot_text_ax, plot_scatter_histo
 
 
 mpl.rcParams['font.size'] = 20
@@ -27,7 +27,7 @@ lineratios_range = {
     '6300/6563': [-2, 0],
     '6717+6731/6563': [-0.8, 0.2],
 }
-logSBHa_range = [3.5, 7]
+logSBHa_range = [4, 7]
 logWHa_range = [0, 2.5]
 DtauV_range = [-2, 3]
 x_Y_range = [0, 0.6]
@@ -67,12 +67,122 @@ def main(argv=None):
         _, ind = np.unique(ALL.califaID__z, return_index=True)
         gals = ALL.califaID__z[sorted(ind)].tolist()
 
+    # # sample histograms of Ha/Hb ... tauNeb - tauStar...
     # histograms_HaHb_Dt(ALL, gals)
-    # HaHb_profile_sample(ALL, gals)
+
+    # Dtau's x xY
+    # Dt_xY_profile_sample(ALL, gals)
+
+    # # SDSS stamp + EWHa + SBHa + HaHb maps + DIG/COMP/HII map
     # maps_colorsWHa(ALL, gals)
     # maps_colorsZhang(ALL, gals)
-    maps_lineratios_colorsWHa(ALL, gals)
-    maps_lineratios_colorsZhang(ALL, gals)
+
+    # # Ha/Hb x R  N2Ha x R O1Ha x R S2Ha x R
+    # maps_lineratios_colorsWHa(ALL, gals)
+    # maps_lineratios_colorsZhang(ALL, gals)
+
+    # # sample histograms of WHa x SBHa
+    WHa_SBHa_sample_histograms(ALL, gals)
+    # # sample histograms of tauHII(R) - tauDIG(R)?
+    # # tauNeb - tauStar
+
+
+def WHa_SBHa_sample_histograms(ALL, gals=None):
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+    sel_gals__gyx = np.zeros((ALL.califaID__yx.shape), dtype='bool')
+
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        where_gals__gyx = np.where(ALL.califaID__yx == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        sel_gals__gyx[where_gals__gyx] = True
+
+    if (sel_gals__gz).any():
+        W6563__gyx = ALL.W6563__yx[sel_gals__gyx]
+
+        SB6563__gyx = ALL.SB6563__yx[sel_gals__gyx]
+
+        # WHa DIG-COMP-HII decomposition
+        sel_WHa_DIG__gyx = (W6563__gyx < DIG_WHa_threshold).filled(False)
+        sel_WHa_COMP__gyx = np.bitwise_and((W6563__gyx >= DIG_WHa_threshold).filled(False), (W6563__gyx < HII_WHa_threshold).filled(False))
+        sel_WHa_HII__gyx = (W6563__gyx >= HII_WHa_threshold).filled(False)
+
+        # SBHa-Zhang DIG-COMP-HII decomposition
+        sel_Zhang_DIG__gyx = (SB6563__gyx < DIG_Zhang_threshold).filled(False)
+        sel_Zhang_COMP__gyx = np.bitwise_and((SB6563__gyx >= DIG_Zhang_threshold).filled(False), (SB6563__gyx < HII_Zhang_threshold).filled(False))
+        sel_Zhang_HII__gyx = (SB6563__gyx >= HII_Zhang_threshold).filled(False)
+
+        x = np.ma.log10(W6563__gyx)
+        y = np.ma.log10(SB6563__gyx)
+        f = plt.figure(figsize=(8, 8))
+        x_ds = [x[sel_WHa_DIG__gyx].compressed(), x[sel_WHa_COMP__gyx].compressed(), x[sel_WHa_HII__gyx].compressed()]
+        y_ds = [y[sel_WHa_DIG__gyx].compressed(), y[sel_WHa_COMP__gyx].compressed(), y[sel_WHa_HII__gyx].compressed()]
+        axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logSBHa_range, 30, 30,
+                                             figure=f, c=['r', 'g', 'b'], scatter=False, s=1,
+                                             ylabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
+                                             xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logSBHa_range, 30, 30,
+                                             axScatter=axS, axHistx=axH1, axHisty=axH2, c=['r', 'g', 'b'], histo=False, s=1,
+                                             ylabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
+                                             xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        xm, ym = ma_mask_xyz(x, y)
+        rs = runstats(xm.compressed(), ym.compressed(), gs_prc=True, **dflt_kw_runstats)
+        for i in xrange(len(rs.xPrcS)):
+            axS.plot(rs.xPrcS[i], rs.yPrcS[i], 'k--', lw=2)
+        if sel_WHa_DIG__gyx.astype('int').sum() > 0:
+            xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_DIG__gyx)
+            rs = runstats(xm.compressed(), ym.compressed(), gs_prc=True, **dflt_kw_runstats)
+            axS.plot(rs.xS, rs.yS, 'r', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+        if sel_WHa_COMP__gyx.astype('int').sum() > 0:
+            xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_COMP__gyx)
+            rs = runstats(xm.compressed(), ym.compressed(), gs_prc=True, **dflt_kw_runstats)
+            axS.plot(rs.xS, rs.yS, 'g', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+        if sel_WHa_HII__gyx.astype('int').sum() > 0:
+            xm, ym = ma_mask_xyz(x, y, mask=~sel_WHa_HII__gyx)
+            rs = runstats(xm.compressed(), ym.compressed(), gs_prc=True, **dflt_kw_runstats)
+            axS.plot(rs.xS, rs.yS, 'b', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+        axS.grid()
+        f.savefig('dig-sample-WHa_SBHa-classifWHa.png')
+        plt.close(f)
+
+        x = np.ma.log10(W6563__gyx)
+        y = np.ma.log10(SB6563__gyx)
+        f = plt.figure(figsize=(8, 8))
+        x_ds = [x[sel_Zhang_DIG__gyx].compressed(), x[sel_Zhang_COMP__gyx].compressed(), x[sel_Zhang_HII__gyx].compressed()]
+        y_ds = [y[sel_Zhang_DIG__gyx].compressed(), y[sel_Zhang_COMP__gyx].compressed(), y[sel_Zhang_HII__gyx].compressed()]
+        axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logSBHa_range, 30, 30,
+                                             figure=f, c=['r', 'g', 'b'], scatter=False, s=1,
+                                             ylabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
+                                             xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logSBHa_range, 30, 30,
+                                             axScatter=axS, axHistx=axH1, axHisty=axH2, c=['r', 'g', 'b'], histo=False, s=1,
+                                             ylabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
+                                             xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        xm, ym = ma_mask_xyz(x, y)
+        rs = runstats(ym.compressed(), xm.compressed(), gs_prc=True, **dflt_kw_runstats)
+        for i in xrange(len(rs.xPrcS)):
+            axS.plot(rs.yPrcS[i], rs.xPrcS[i], 'k--', lw=2)
+        if sel_Zhang_DIG__gyx.astype('int').sum() > 0:
+            xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_DIG__gyx)
+            rs = runstats(ym.compressed(), xm.compressed(), gs_prc=True, **dflt_kw_runstats)
+            axS.plot(rs.yS, rs.xS, 'r', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+        if sel_Zhang_COMP__gyx.astype('int').sum() > 0:
+            xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_COMP__gyx)
+            rs = runstats(ym.compressed(), xm.compressed(), gs_prc=True, **dflt_kw_runstats)
+            axS.plot(rs.yS, rs.xS, 'g', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+        if sel_Zhang_HII__gyx.astype('int').sum() > 0:
+            xm, ym = ma_mask_xyz(x, y, mask=~sel_Zhang_HII__gyx)
+            rs = runstats(ym.compressed(), xm.compressed(), gs_prc=True, **dflt_kw_runstats)
+            axS.plot(rs.yS, rs.xS, 'b', marker='*', markeredgewidth=1, markeredgecolor='k', markersize=10, lw=1)
+        axS.grid()
+        f.savefig('dig-sample-WHa_SBHa-classifZhang.png')
+        plt.close(f)
 
 
 def maps_lineratios_colorsWHa(ALL, gals=None):
@@ -902,7 +1012,7 @@ def histograms_HaHb_Dt(ALL, gals=None):
         f.savefig('dig-sample-histo-logHaHb_Dt_classifZhang.png')
 
 
-def HaHb_profile_sample(ALL, gals=None):
+def Dt_xY_profile_sample(ALL, gals=None):
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
         gals = ALL.califaID__z[sorted(ind)]
