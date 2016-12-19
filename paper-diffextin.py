@@ -83,6 +83,7 @@ def main(argv=None):
 
     # # sample histograms of WHa x SBHa
     WHa_SBHa_sample_histograms(ALL, gals)
+
     # # sample histograms of tauHII(R) - tauDIG(R)?
     # # tauNeb - tauStar
 
@@ -133,6 +134,7 @@ def WHa_SBHa_sample_histograms(ALL, gals=None):
                                              xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
         xm, ym = ma_mask_xyz(x, y)
         rs = runstats(xm.compressed(), ym.compressed(), gs_prc=True, **dflt_kw_runstats)
+        axS.plot(rs.xS, rs.yS, 'k-', lw=2)
         for i in xrange(len(rs.xPrcS)):
             axS.plot(rs.xPrcS[i], rs.yPrcS[i], 'k--', lw=2)
         if sel_WHa_DIG__gyx.astype('int').sum() > 0:
@@ -166,6 +168,7 @@ def WHa_SBHa_sample_histograms(ALL, gals=None):
                                              xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]')
         xm, ym = ma_mask_xyz(x, y)
         rs = runstats(ym.compressed(), xm.compressed(), gs_prc=True, **dflt_kw_runstats)
+        axS.plot(rs.yS, rs.xS, 'k-', lw=2)
         for i in xrange(len(rs.xPrcS)):
             axS.plot(rs.yPrcS[i], rs.xPrcS[i], 'k--', lw=2)
         if sel_Zhang_DIG__gyx.astype('int').sum() > 0:
