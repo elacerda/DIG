@@ -23,10 +23,13 @@ mpl.rcParams['font.serif'] = 'Times New Roman'
 # config variables
 lineratios_range = {
     '6563/4861': [0, 1],
-    '6583/6563': [-0.8, 0],
+    '6583/6563': [-0.7, 0.1],
     '6300/6563': [-2, 0],
     '6717+6731/6563': [-0.8, 0.2],
 }
+distance_range = [0, 3]
+tauVneb_range = [0, 5]
+tauVneb_neg_range = [-1, 5]
 logSBHa_range = [4, 7]
 logWHa_range = [0, 2.5]
 DtauV_range = [-2, 3]
@@ -78,14 +81,175 @@ def main(argv=None):
     # maps_colorsZhang(ALL, gals)
 
     # # Ha/Hb x R  N2Ha x R O1Ha x R S2Ha x R
-    # maps_lineratios_colorsWHa(ALL, gals)
-    # maps_lineratios_colorsZhang(ALL, gals)
+    maps_lineratios_colorsWHa(ALL, gals)
+    maps_lineratios_colorsZhang(ALL, gals)
 
     # # sample histograms of WHa x SBHa
-    WHa_SBHa_sample_histograms(ALL, gals)
+    # WHa_SBHa_sample_histograms(ALL, gals)
 
     # # sample histograms of tauHII(R) - tauDIG(R)?
+    histograms_tauHII_tauDIG(ALL, gals)
+
     # # tauNeb - tauStar
+
+def histograms_tauHII_tauDIG(ALL, gals=None):
+    from pycasso.util import radialProfile
+    from pystarlight.util.redenninglaws import calc_redlaw
+
+    q = calc_redlaw(l=[4861, 6563], R_V=3.1, redlaw='CCM')
+
+    # WHa DIG-COMP-HII decomposition
+    sel_WHa_DIG__yx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__yx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
+
+    # Zhang DIG-COMP-HII decomposition
+    sel_Zhang_DIG__yx = (ALL.SB6563__yx < DIG_Zhang_threshold).filled(False)
+    sel_Zhang_COMP__yx = np.bitwise_and((ALL.SB6563__yx >= DIG_Zhang_threshold).filled(False), (ALL.SB6563__yx < HII_Zhang_threshold).filled(False))
+    sel_Zhang_HII__yx = (ALL.SB6563__yx >= HII_Zhang_threshold).filled(False)
+
+    N_gals = len(gals)
+
+    tau_V_neb_DIG = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_DIG_npts = np.ma.masked_all((N_gals, N_R_bins))
+
+    tau_V_neb_HII = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_HII_npts = np.ma.masked_all((N_gals, N_R_bins))
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+    for i_g, califaID in enumerate(gals):
+        if califaID not in ALL.califaID__z:
+            print 'Fig_1: %s not in sample pickle' % califaID
+            continue
+
+        HLR_pix = ALL.get_gal_prop_unique(califaID, ALL.HLR_pix)
+        pa = ALL.get_gal_prop_unique(califaID, ALL.pa)
+        ba = ALL.get_gal_prop_unique(califaID, ALL.ba)
+        x0 = ALL.get_gal_prop_unique(califaID, ALL.x0)
+        y0 = ALL.get_gal_prop_unique(califaID, ALL.y0)
+
+        N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
+        N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
+        N_pixel = N_x * N_y
+        N_zone = ALL.get_gal_prop_unique(califaID, ALL.N_zone)
+        tau_V_neb__yx = ALL.get_gal_prop(califaID, ALL.tau_V_neb__yx).reshape(N_y, N_x)
+        pixelDistance__yx = ALL.get_gal_prop(califaID, ALL.pixelDistance__yx).reshape(N_y, N_x)
+        pixelDistance_HLR__yx = pixelDistance__yx / HLR_pix
+        f__yx = {'%s' % L: ALL.get_gal_prop(califaID, 'f%s__yx' % L).reshape(N_y, N_x) for L in lines}
+
+        N_cols = 3
+        N_rows = 2
+        f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 5))
+        cmap = cmap_discrete()
+        ((ax1, ax2, ax3), (ax4, ax5, ax6)) = axArr  # , (ax7, ax8, ax9), (ax10, ax11, ax12)
+        f.suptitle(r'%s - %s: %d pixels (%d zones) - classif. W${}_{H\alpha}$' % (califaID, get_NEDName_by_CALIFAID(califaID)[0], N_pixel, N_zone))
+        # AXIS 1, 2, 3
+        sel_DIG__yx = ALL.get_gal_prop(califaID, sel_WHa_DIG__yx).reshape(N_y, N_x)
+        sel_COMP__yx = ALL.get_gal_prop(califaID, sel_WHa_COMP__yx).reshape(N_y, N_x)
+        sel_HII__yx = ALL.get_gal_prop(califaID, sel_WHa_HII__yx).reshape(N_y, N_x)
+        sum_f4861_DIG__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
+        sum_f6563_DIG__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
+        sum_f4861_HII__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
+        sum_f6563_HII__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
+        tau_V_neb_DIG[i_g] = np.ma.log(sum_f6563_DIG__r / sum_f4861_DIG__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_DIG_npts[i_g] = (~np.bitwise_or(~sel_DIG__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        tau_V_neb_HII[i_g] = np.ma.log(sum_f6563_HII__r / sum_f4861_HII__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_HII_npts[i_g] = (~np.bitwise_or(~sel_HII__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        map__yx = np.ma.masked_all((N_y, N_x))
+        map__yx[sel_DIG__yx] = 1
+        map__yx[sel_COMP__yx] = 2
+        map__yx[sel_HII__yx] = 3
+        # AXIS 1
+        galimg = plt.imread(P.get_image_file(califaID))[::-1, :, :]
+        plt.setp(ax1.get_xticklabels(), visible=False)
+        plt.setp(ax1.get_yticklabels(), visible=False)
+        ax1.imshow(galimg, origin='lower', aspect='equal')
+        DrawHLRCircleInSDSSImage(ax1, HLR_pix, pa, ba, lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
+        txt = '%s' % califaID
+        plot_text_ax(ax1, txt, 0.02, 0.98, 16, 'top', 'left', color='w')
+        # AXIS 2
+        im = ax2.imshow(map__yx, cmap=cmap, **dflt_kw_imshow)
+        the_divider = make_axes_locatable(ax2)
+        color_axis = the_divider.append_axes('right', size='5%', pad=0)
+        cb = plt.colorbar(im, cax=color_axis, ticks=[1.+2/6., 2, 3-2/6.])
+        cb.set_ticklabels(['DIG', 'COMP', 'HII'])
+        DrawHLRCircle(ax2, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
+        # AXIS 3
+        x = np.ma.ravel(pixelDistance_HLR__yx)
+        y = np.ma.ravel(tau_V_neb__yx)
+        x__r = R_bin_center__r
+        y_DIG__r = tau_V_neb_DIG[i_g]
+        y_HII__r = tau_V_neb_HII[i_g]
+        ax3.scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
+        ax3.plot(x__r, y_DIG__r, 'r^-', label='DIG')
+        ax3.plot(x__r, y_HII__r, 'b*-', label='HII')
+        ax3.set_xlim(distance_range)
+        ax3.set_ylim(tauVneb_neg_range)
+        ax3.legend(loc='best', fontsize=10)
+        ax3.set_xlabel(r'R [HLR]')
+        ax3.set_ylabel(r'$\tau_V^{neb}$')
+        ax3.grid()
+        # AXIS 4
+        ax4.set_axis_off()
+        # AXIS 5, 6, 7
+        sel_DIG__yx = ALL.get_gal_prop(califaID, sel_Zhang_DIG__yx).reshape(N_y, N_x)
+        sel_COMP__yx = ALL.get_gal_prop(califaID, sel_Zhang_COMP__yx).reshape(N_y, N_x)
+        sel_HII__yx = ALL.get_gal_prop(califaID, sel_Zhang_HII__yx).reshape(N_y, N_x)
+        sum_f4861_DIG__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
+        sum_f6563_DIG__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
+        sum_f4861_HII__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
+        sum_f6563_HII__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
+        tau_V_neb_DIG[i_g] = np.ma.log(sum_f6563_DIG__r / sum_f4861_DIG__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_DIG_npts[i_g] = (~np.bitwise_or(~sel_DIG__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        tau_V_neb_HII[i_g] = np.ma.log(sum_f6563_HII__r / sum_f4861_HII__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_HII_npts[i_g] = (~np.bitwise_or(~sel_HII__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        map__yx = np.ma.masked_all((N_y, N_x))
+        map__yx[sel_DIG__yx] = 1
+        map__yx[sel_COMP__yx] = 2
+        map__yx[sel_HII__yx] = 3
+        # AXIS 5
+        im = ax5.imshow(map__yx, cmap=cmap, **dflt_kw_imshow)
+        the_divider = make_axes_locatable(ax5)
+        color_axis = the_divider.append_axes('right', size='5%', pad=0)
+        cb = plt.colorbar(im, cax=color_axis, ticks=[1.+2/6., 2, 3-2/6.])
+        cb.set_ticklabels(['DIG', 'COMP', 'HII'])
+        DrawHLRCircle(ax5, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
+        # AXIS 5
+        x = np.ma.ravel(pixelDistance_HLR__yx)
+        y = np.ma.ravel(tau_V_neb__yx)
+        x__r = R_bin_center__r
+        y_DIG__r = tau_V_neb_DIG[i_g]
+        y_HII__r = tau_V_neb_HII[i_g]
+        ax6.scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
+        ax6.plot(x__r, y_DIG__r, 'r^-')
+        ax6.plot(x__r, y_HII__r, 'b*-')
+        ax6.set_xlim(distance_range)
+        ax6.set_ylim(tauVneb_neg_range)
+        ax6.legend(loc='best', fontsize=10)
+        ax6.set_xlabel(r'R [HLR]')
+        ax6.set_ylabel(r'$\tau_V^{neb}$')
+        ax6.grid()
+        if sel_DIG__yx.astype('int').sum():
+            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
+            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
+            ax6.plot(rs.xS, rs.yS, '--', color=cmap(0), lw=2)
+            # ax6.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(0), markersize=10)
+        if sel_COMP__yx.astype('int').sum():
+            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_COMP__yx))
+            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
+            ax6.plot(rs.xS, rs.yS, '--', color=cmap(1), lw=2)
+            # ax6.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(1), markersize=10)
+        if sel_HII__yx.astype('int').sum():
+            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_HII__yx))
+            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
+            ax6.plot(rs.xS, rs.yS, '--', color=cmap(2), lw=2)
+            # ax6.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
+
+        f.tight_layout(rect=[0, 0.03, 1, 0.95])
+        f.savefig('%s-tauDIG_tauHII_R.png' % califaID)
+        plt.close(f)
 
 
 def WHa_SBHa_sample_histograms(ALL, gals=None):
@@ -222,7 +386,6 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
         map__yx[sel_COMP__yx] = 2
         map__yx[sel_HII__yx] = 3
 
-        distance_range = [0, 3]
         N_cols = 4
         N_rows = 3
         f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 4))
@@ -262,7 +425,8 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
+        xDs = [x[sel_DIG__yx].compressed(),  x[sel_COMP__yx].compressed(),  x[sel_HII__yx].compressed()]
+        plot_histo_ax(axs[2], xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 2, 6, 10
         l_to_plot = ['6583', '6563']
@@ -297,7 +461,8 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
+        xDs = [x[sel_DIG__yx].compressed(),  x[sel_COMP__yx].compressed(),  x[sel_HII__yx].compressed()]
+        plot_histo_ax(axs[2], xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 3, 7, 11
         l_to_plot = ['6300', '6563']
@@ -332,7 +497,8 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
+        xDs = [x[sel_DIG__yx].compressed(),  x[sel_COMP__yx].compressed(),  x[sel_HII__yx].compressed()]
+        plot_histo_ax(axs[2], xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 4, 8, 12
         l_to_plot = ['6717+6731', '6563']
@@ -367,7 +533,8 @@ def maps_lineratios_colorsWHa(ALL, gals=None):
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
+        xDs = [x[sel_DIG__yx].compressed(),  x[sel_COMP__yx].compressed(),  x[sel_HII__yx].compressed()]
+        plot_histo_ax(axs[2], xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
 
         f.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -409,7 +576,7 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         map__yx[sel_COMP__yx] = 2
         map__yx[sel_HII__yx] = 3
 
-        distance_range = [0, 3]
+
         N_cols = 4
         N_rows = 3
         f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 4))
@@ -449,7 +616,8 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
+        xDs = [x[sel_DIG__yx].compressed(),  x[sel_COMP__yx].compressed(),  x[sel_HII__yx].compressed()]
+        plot_histo_ax(axs[2], xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 2, 6, 10
         l_to_plot = ['6583', '6563']
@@ -484,7 +652,8 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
+        xDs = [x[sel_DIG__yx].compressed(),  x[sel_COMP__yx].compressed(),  x[sel_HII__yx].compressed()]
+        plot_histo_ax(axs[2], xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 3, 7, 11
         l_to_plot = ['6300', '6563']
@@ -519,7 +688,8 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
+        xDs = [x[sel_DIG__yx].compressed(),  x[sel_COMP__yx].compressed(),  x[sel_HII__yx].compressed()]
+        plot_histo_ax(axs[2], xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         # AXIS 4, 8, 12
         l_to_plot = ['6717+6731', '6563']
@@ -554,7 +724,8 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         cb = plt.colorbar(im, cax=color_axis)
         cb.set_label(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
         DrawHLRCircle(axs[1], a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        plot_histo_ax(axs[2], x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=lineratios_range['/'.join(l_to_plot)]))
+        xDs = [x[sel_DIG__yx].compressed(),  x[sel_COMP__yx].compressed(),  x[sel_HII__yx].compressed()]
+        plot_histo_ax(axs[2], xDs, y_v_space=0.06, first=False, c=['r', 'g', 'b'], kwargs_histo=dict(histtype='barstacked', color=['r', 'g', 'b'], normed=False, range=lineratios_range['/'.join(l_to_plot)]))
         axs[2].set_xlabel(r'$\log\ %s/%s$' % (l_to_plot[0], l_to_plot[1]))
 
         f.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -598,7 +769,6 @@ def maps_colorsWHa(ALL, gals=None):
         map__yx[sel_COMP__yx] = 2
         map__yx[sel_HII__yx] = 3
 
-        distance_range = [0, 3]
         N_cols = 3
         N_rows = 4
         f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 4))
@@ -766,7 +936,7 @@ def maps_colorsZhang(ALL, gals=None):
         map__yx[sel_COMP__yx] = 2
         map__yx[sel_HII__yx] = 3
 
-        distance_range = [0, 3]
+
         N_cols = 3
         N_rows = 4
         f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 4))
