@@ -4,7 +4,9 @@ import matplotlib as mpl
 from pytu.objects import runstats
 from matplotlib import pyplot as plt
 from pytu.functions import ma_mask_xyz
+from pycasso.util import radialProfile
 from pystarlight.util.constants import L_sun
+from pystarlight.util.redenninglaws import calc_redlaw
 from CALIFAUtils.scripts import get_NEDName_by_CALIFAID
 from CALIFAUtils.objects import stack_gals, CALIFAPaths
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -20,6 +22,7 @@ mpl.rcParams['ytick.labelsize'] = 14
 mpl.rcParams['font.family'] = 'serif'
 mpl.rcParams['font.serif'] = 'Times New Roman'
 
+q = calc_redlaw([4861, 6563], R_V=3.1, redlaw='CCM')
 # config variables
 lineratios_range = {
     '6563/4861': [0, 1],
@@ -81,22 +84,109 @@ def main(argv=None):
     # maps_colorsZhang(ALL, gals)
 
     # # Ha/Hb x R  N2Ha x R O1Ha x R S2Ha x R
-    maps_lineratios_colorsWHa(ALL, gals)
-    maps_lineratios_colorsZhang(ALL, gals)
+    # maps_lineratios_colorsWHa(ALL, gals)
+    # maps_lineratios_colorsZhang(ALL, gals)
 
     # # sample histograms of WHa x SBHa
     # WHa_SBHa_sample_histograms(ALL, gals)
 
     # # sample histograms of tauHII(R) - tauDIG(R)?
-    histograms_tauHII_tauDIG(ALL, gals)
+    tauHII_tauDIG_gal(ALL, gals)
+    tauHII_tauDIG(ALL, gals)
 
     # # tauNeb - tauStar
 
-def histograms_tauHII_tauDIG(ALL, gals=None):
-    from pycasso.util import radialProfile
-    from pystarlight.util.redenninglaws import calc_redlaw
 
-    q = calc_redlaw(l=[4861, 6563], R_V=3.1, redlaw='CCM')
+def tauHII_tauDIG(ALL, gals=None):
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+    N_gals = len(gals)
+
+    # WHa DIG-COMP-HII decomposition
+    sel_WHa_DIG__yx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__yx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
+
+    # Zhang DIG-COMP-HII decomposition
+    sel_Zhang_DIG__yx = (ALL.SB6563__yx < DIG_Zhang_threshold).filled(False)
+    sel_Zhang_COMP__yx = np.bitwise_and((ALL.SB6563__yx >= DIG_Zhang_threshold).filled(False), (ALL.SB6563__yx < HII_Zhang_threshold).filled(False))
+    sel_Zhang_HII__yx = (ALL.SB6563__yx >= HII_Zhang_threshold).filled(False)
+
+    tau_V_neb_WHa_DIG = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_WHa_DIG_npts = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_WHa_HII = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_WHa_HII_npts = np.ma.masked_all((N_gals, N_R_bins))
+
+    tau_V_neb_Zhang_DIG = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_Zhang_DIG_npts = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_Zhang_HII = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_Zhang_HII_npts = np.ma.masked_all((N_gals, N_R_bins))
+
+    for i_g, califaID in enumerate(gals):
+        if califaID not in ALL.califaID__z:
+            print 'Fig_1: %s not in sample pickle' % califaID
+            continue
+
+        HLR_pix = ALL.get_gal_prop_unique(califaID, ALL.HLR_pix)
+        pa = ALL.get_gal_prop_unique(califaID, ALL.pa)
+        ba = ALL.get_gal_prop_unique(califaID, ALL.ba)
+        x0 = ALL.get_gal_prop_unique(califaID, ALL.x0)
+        y0 = ALL.get_gal_prop_unique(califaID, ALL.y0)
+
+        N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
+        N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
+        f__yx = {'%s' % L: ALL.get_gal_prop(califaID, 'f%s__yx' % L).reshape(N_y, N_x) for L in lines}
+        sel_DIG__yx = ALL.get_gal_prop(califaID, sel_WHa_DIG__yx).reshape(N_y, N_x)
+        sel_HII__yx = ALL.get_gal_prop(califaID, sel_WHa_HII__yx).reshape(N_y, N_x)
+        sum_f4861_DIG__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
+        sum_f6563_DIG__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
+        sum_f4861_HII__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
+        sum_f6563_HII__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
+        aux = np.ma.log(sum_f6563_DIG__r / sum_f4861_DIG__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_WHa_DIG[i_g] = np.where((aux < 0).filled(True), 0, aux)
+        tau_V_neb_WHa_DIG_npts[i_g] = (~np.bitwise_or(~sel_DIG__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        aux = np.ma.log(sum_f6563_HII__r / sum_f4861_HII__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_WHa_HII[i_g] = np.where((aux < 0).filled(True), 0, aux)
+        tau_V_neb_WHa_HII_npts[i_g] = (~np.bitwise_or(~sel_HII__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+
+        sel_DIG__yx = ALL.get_gal_prop(califaID, sel_Zhang_DIG__yx).reshape(N_y, N_x)
+        sel_HII__yx = ALL.get_gal_prop(califaID, sel_Zhang_HII__yx).reshape(N_y, N_x)
+        sum_f4861_DIG__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
+        sum_f6563_DIG__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
+        sum_f4861_HII__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
+        sum_f6563_HII__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
+        aux = np.ma.log(sum_f6563_DIG__r / sum_f4861_DIG__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_Zhang_DIG[i_g] = np.where((aux < 0).filled(True), 0, aux)
+        tau_V_neb_Zhang_DIG_npts[i_g] = (~np.bitwise_or(~sel_DIG__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        aux = np.ma.log(sum_f6563_HII__r / sum_f4861_HII__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_Zhang_HII[i_g] = np.where((aux < 0).filled(True), 0, aux)
+        tau_V_neb_Zhang_HII_npts[i_g] = (~np.bitwise_or(~sel_HII__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+
+    N_cols = 2
+    N_rows = 1
+    f, axArr = plt.subplots(N_rows, N_cols, dpi=100, figsize=(N_cols * 5, N_rows * 5))
+    (ax1, ax2) = axArr
+    y_DIG = tau_V_neb_WHa_DIG
+    y_HII = tau_V_neb_WHa_HII
+    x = y_HII - y_DIG
+    plot_histo_ax(ax1, x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=[-2, 5]))
+    ax1.set_title(r'classif. W${}_{H\alpha}$')
+    ax1.set_xlabel(r'$\tau_V^{neb}(HII)\ -\ \tau_V^{neb}(DIG)$')
+    y_DIG = tau_V_neb_Zhang_DIG
+    y_HII = tau_V_neb_Zhang_HII
+    x = y_HII - y_DIG
+    plot_histo_ax(ax2, x.compressed(), y_v_space=0.06, first=True, c='k', kwargs_histo=dict(color='b', normed=False, range=[-2, 5]))
+    ax2.set_title(r'classif. $\Sigma_{H\alpha}$')
+    ax2.set_xlabel(r'$\tau_V^{neb}(HII)\ -\ \tau_V^{neb}(DIG)$')
+    f.tight_layout()
+    f.savefig('dig-sample-tauDIG_tauHII.png')
+
+
+def tauHII_tauDIG_gal(ALL, gals=None):
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
 
     # WHa DIG-COMP-HII decomposition
     sel_WHa_DIG__yx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
@@ -110,15 +200,16 @@ def histograms_tauHII_tauDIG(ALL, gals=None):
 
     N_gals = len(gals)
 
-    tau_V_neb_DIG = np.ma.masked_all((N_gals, N_R_bins))
-    tau_V_neb_DIG_npts = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_WHa_DIG = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_WHa_DIG_npts = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_WHa_HII = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_WHa_HII_npts = np.ma.masked_all((N_gals, N_R_bins))
 
-    tau_V_neb_HII = np.ma.masked_all((N_gals, N_R_bins))
-    tau_V_neb_HII_npts = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_Zhang_DIG = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_Zhang_DIG_npts = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_Zhang_HII = np.ma.masked_all((N_gals, N_R_bins))
+    tau_V_neb_Zhang_HII_npts = np.ma.masked_all((N_gals, N_R_bins))
 
-    if gals is None:
-        _, ind = np.unique(ALL.califaID__z, return_index=True)
-        gals = ALL.califaID__z[sorted(ind)]
     for i_g, califaID in enumerate(gals):
         if califaID not in ALL.califaID__z:
             print 'Fig_1: %s not in sample pickle' % califaID
@@ -153,10 +244,12 @@ def histograms_tauHII_tauDIG(ALL, gals=None):
         sum_f6563_DIG__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
         sum_f4861_HII__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
         sum_f6563_HII__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
-        tau_V_neb_DIG[i_g] = np.ma.log(sum_f6563_DIG__r / sum_f4861_DIG__r / 2.86) / (q[0] - q[1])
-        tau_V_neb_DIG_npts[i_g] = (~np.bitwise_or(~sel_DIG__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
-        tau_V_neb_HII[i_g] = np.ma.log(sum_f6563_HII__r / sum_f4861_HII__r / 2.86) / (q[0] - q[1])
-        tau_V_neb_HII_npts[i_g] = (~np.bitwise_or(~sel_HII__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        aux = np.ma.log(sum_f6563_DIG__r / sum_f4861_DIG__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_WHa_DIG[i_g] = np.where((aux < 0).filled(True), 0, aux)
+        tau_V_neb_WHa_DIG_npts[i_g] = (~np.bitwise_or(~sel_DIG__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        aux = np.ma.log(sum_f6563_HII__r / sum_f4861_HII__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_WHa_HII[i_g] = np.where((aux < 0).filled(True), 0, aux)
+        tau_V_neb_WHa_HII_npts[i_g] = (~np.bitwise_or(~sel_HII__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
         map__yx = np.ma.masked_all((N_y, N_x))
         map__yx[sel_DIG__yx] = 1
         map__yx[sel_COMP__yx] = 2
@@ -180,8 +273,8 @@ def histograms_tauHII_tauDIG(ALL, gals=None):
         x = np.ma.ravel(pixelDistance_HLR__yx)
         y = np.ma.ravel(tau_V_neb__yx)
         x__r = R_bin_center__r
-        y_DIG__r = tau_V_neb_DIG[i_g]
-        y_HII__r = tau_V_neb_HII[i_g]
+        y_DIG__r = tau_V_neb_WHa_DIG[i_g]
+        y_HII__r = tau_V_neb_WHa_HII[i_g]
         ax3.scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         ax3.plot(x__r, y_DIG__r, 'r^-', label='DIG')
         ax3.plot(x__r, y_HII__r, 'b*-', label='HII')
@@ -201,10 +294,12 @@ def histograms_tauHII_tauDIG(ALL, gals=None):
         sum_f6563_DIG__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_DIG__yx, 'sum')
         sum_f4861_HII__r = radialProfile(f__yx['4861'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
         sum_f6563_HII__r = radialProfile(f__yx['6563'], R_bin__r, x0, y0, pa, ba, HLR_pix, sel_HII__yx, 'sum')
-        tau_V_neb_DIG[i_g] = np.ma.log(sum_f6563_DIG__r / sum_f4861_DIG__r / 2.86) / (q[0] - q[1])
-        tau_V_neb_DIG_npts[i_g] = (~np.bitwise_or(~sel_DIG__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
-        tau_V_neb_HII[i_g] = np.ma.log(sum_f6563_HII__r / sum_f4861_HII__r / 2.86) / (q[0] - q[1])
-        tau_V_neb_HII_npts[i_g] = (~np.bitwise_or(~sel_HII__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        aux = np.ma.log(sum_f6563_DIG__r / sum_f4861_DIG__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_Zhang_DIG[i_g] = np.where((aux < 0).filled(True), 0, aux)
+        tau_V_neb_Zhang_DIG_npts[i_g] = (~np.bitwise_or(~sel_DIG__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
+        aux = np.ma.log(sum_f6563_HII__r / sum_f4861_HII__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_Zhang_HII[i_g] = np.where((aux < 0).filled(True), 0, aux)
+        tau_V_neb_Zhang_HII_npts[i_g] = (~np.bitwise_or(~sel_HII__yx, np.bitwise_or(f__yx['4861'].mask, f__yx['6563'].mask))).astype('int').sum()
         map__yx = np.ma.masked_all((N_y, N_x))
         map__yx[sel_DIG__yx] = 1
         map__yx[sel_COMP__yx] = 2
@@ -220,8 +315,8 @@ def histograms_tauHII_tauDIG(ALL, gals=None):
         x = np.ma.ravel(pixelDistance_HLR__yx)
         y = np.ma.ravel(tau_V_neb__yx)
         x__r = R_bin_center__r
-        y_DIG__r = tau_V_neb_DIG[i_g]
-        y_HII__r = tau_V_neb_HII[i_g]
+        y_DIG__r = tau_V_neb_Zhang_DIG[i_g]
+        y_HII__r = tau_V_neb_Zhang_HII[i_g]
         ax6.scatter(x, y, c=np.ravel(map__yx), cmap=cmap, s=2, **dflt_kw_scatter)
         ax6.plot(x__r, y_DIG__r, 'r^-')
         ax6.plot(x__r, y_HII__r, 'b*-')
@@ -575,7 +670,6 @@ def maps_lineratios_colorsZhang(ALL, gals=None):
         map__yx[sel_DIG__yx] = 1
         map__yx[sel_COMP__yx] = 2
         map__yx[sel_HII__yx] = 3
-
 
         N_cols = 4
         N_rows = 3
