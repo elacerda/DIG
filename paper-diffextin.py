@@ -235,7 +235,7 @@ def tauHII_tauDIG_gal(ALL, gals=None):
         f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 5))
         cmap = cmap_discrete()
         ((ax1, ax2, ax3), (ax4, ax5, ax6)) = axArr  # , (ax7, ax8, ax9), (ax10, ax11, ax12)
-        f.suptitle(r'%s - %s: %d pixels (%d zones) - classif. W${}_{H\alpha}$' % (califaID, get_NEDName_by_CALIFAID(califaID)[0], N_pixel, N_zone))
+        f.suptitle(r'%s - %s: %d pixels (%d zones)' % (califaID, get_NEDName_by_CALIFAID(califaID)[0], N_pixel, N_zone))
         # AXIS 1, 2, 3
         sel_DIG__yx = ALL.get_gal_prop(califaID, sel_WHa_DIG__yx).reshape(N_y, N_x)
         sel_COMP__yx = ALL.get_gal_prop(califaID, sel_WHa_COMP__yx).reshape(N_y, N_x)
@@ -268,6 +268,7 @@ def tauHII_tauDIG_gal(ALL, gals=None):
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis, ticks=[1.+2/6., 2, 3-2/6.])
         cb.set_ticklabels(['DIG', 'COMP', 'HII'])
+        ax2.set_title(r'classif. W${}_{H\alpha}$')
         DrawHLRCircle(ax2, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
         # AXIS 3
         x = np.ma.ravel(pixelDistance_HLR__yx)
@@ -310,6 +311,7 @@ def tauHII_tauDIG_gal(ALL, gals=None):
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis, ticks=[1.+2/6., 2, 3-2/6.])
         cb.set_ticklabels(['DIG', 'COMP', 'HII'])
+        ax5.set_title(r'classif. $\Sigma_{H\alpha}$')
         DrawHLRCircle(ax5, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
         # AXIS 5
         x = np.ma.ravel(pixelDistance_HLR__yx)
