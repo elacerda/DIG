@@ -61,7 +61,7 @@ R_bin_center__r = (R_bin__r[:-1] + R_bin__r[1:]) / 2.0
 N_R_bins = len(R_bin_center__r)
 kw_cube = dict(EL=EL, config=config, elliptical=elliptical)
 dflt_kw_scatter = dict(marker='o', edgecolor='none')
-dflt_kw_runstats = dict(smooth=True, sigma=1.2, frac=0.03, debug=True)  # , tendency=True)
+dflt_kw_runstats = dict(smooth=True, sigma=1.2, frac=0.07, debug=True)  # , tendency=True)
 dflt_kw_imshow = dict(origin='lower', interpolation='nearest', aspect='equal')
 P = CALIFAPaths()
 
@@ -91,7 +91,7 @@ def main(argv=None):
         painel b: log WHa vs R colorido pelas zonas sigma_Ha
         painel c: log sigma_Ha colorido pelas zonas sigma_Ha
     """
-    fig1(ALL, gals)
+    # fig1(ALL, gals)
 
     """
     Fig 2.
@@ -105,6 +105,141 @@ def main(argv=None):
         painel h: O/H (n2o2) vs R[HLR} integrated (so regioes HII e total)
     """
     # fig2(ALL, gals)
+
+    """ TODO """
+    # fig3(ALL, gals)
+
+    """
+    Fig 4.
+        O/H (O3N2)
+        Uma figura resumindo todas as galaxias de califa com emission lines para
+        analisar o efeito do dig e o efeito da abertura no sdss
+        3 bins de CI (concentration index) e 3 bins de b/a (9 paineis)
+        Em cada painel, plotar, para cada galaxia, o valor de log O/H(O3N2)
+        integrated em funcao de R[pixel]/R_50[pixel].
+        Se poderia ate colorir cada curva em funcao, por exemplo, da massa total
+        da galaxia, ou entao em funcao da posicao do oiii/hb vs nii/ha integrado
+        no bpt.
+
+    Fig 5.
+        Igual a Fig 4 mas usando O/H (N2)
+
+    Fig 6.
+        Igual a Fig 4 mas usando O/H (O23)
+
+    Fig 7.
+        Igual a Fig 4 mas usando O/H (N2O2)
+    """
+    figs4567(ALL, gals)
+
+
+def figs4567(ALL, gals=None):
+    N_zones = len(ALL.califaID__z)
+    # p33CI, p66CI = np.percentile(ALL.CI, [33, 66])
+    p33CI, p66CI = 2.6, 3
+    p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+    # p33ba, p66ba = 0.34, 0.67
+    import itertools
+    # CI = np.hstack(list(itertools.chain(list(itertools.repeat(CI, ALL.N_x[i] * ALL.N_y[i])) for i, CI in enumerate(ALL.CI))))
+    # ba = np.hstack(list(itertools.chain(list(itertools.repeat(ba, ALL.N_x[i] * ALL.N_y[i])) for i, ba in enumerate(ALL.ba))))
+    CI = np.hstack(list(itertools.chain(list(itertools.repeat(CI, ALL.N_zone[i])) for i, CI in enumerate(ALL.CI))))
+    ba = np.hstack(list(itertools.chain(list(itertools.repeat(ba, ALL.N_zone[i])) for i, ba in enumerate(ALL.ba))))
+    Mtot = np.hstack(list(itertools.chain(list(itertools.repeat(Mtot, ALL.N_zone[i])) for i, Mtot in enumerate(ALL.Mtot))))
+    CI_ba_sel = [
+        [np.where(np.bitwise_and(CI < p33CI, ba < p33ba)),
+         np.where(np.bitwise_and(CI < p33CI, np.bitwise_and(ba >= p33ba, ba < p66ba))),
+         np.where(np.bitwise_and(CI < p33CI, ba >= p66ba))],
+        [np.where(np.bitwise_and(np.bitwise_and(CI >= p33CI, CI < p66CI), ba < p33ba)),
+         np.where(np.bitwise_and(np.bitwise_and(CI >= p33CI, CI < p66CI), np.bitwise_and(ba >= p33ba, ba < p66ba))),
+         np.where(np.bitwise_and(np.bitwise_and(CI >= p33CI, CI < p66CI), ba >= p66ba))],
+        [np.where(np.bitwise_and(CI >= p66CI, ba < p33ba)),
+         np.where(np.bitwise_and(CI >= p66CI, np.bitwise_and(ba >= p33ba, ba < p66ba))),
+         np.where(np.bitwise_and(CI >= p66CI, ba >= p66ba))]
+    ]
+    labels = [
+        [r'CI < %.2f - ba < %.2f' % (p33CI, p33ba), r'CI < %.2f - %.2f $\leq$ ba < %.2f' % (p33CI, p33ba, p66ba), r'CI < %.2f - ba $\geq$ %.2f' % (p33CI, p66ba)],
+        [r'%.2f $\leq$ CI < %.2f - ba < %.2f' % (p33CI, p66CI, p33ba), r'%.2f $\leq$ CI < %.2f - %.2f $\leq$ ba < %.2f' % (p33CI, p66CI, p33ba, p66ba), r'%.2f $\leq$ CI < %.2f - ba $\geq$ %.2f' % (p33CI, p66CI, p66ba)],
+        [r'CI > %.2f - ba < %.2f' % (p66CI, p33ba), r'CI > %.2f - %.2f $\leq$ ba < %.2f' % (p66CI, p33ba, p66ba), r'CI > %.2f - ba $\geq$ %.2f' % (p66CI, p66ba)],
+    ]
+    # fig 4
+    ALL_O3Hb__z = ALL.SB5007__z/ALL.SB4861__z
+    ALL_N2Ha__z = ALL.SB6583__z/ALL.SB6563__z
+    ALL_OH_O3N2__z = 8.73 - 0.32 * np.ma.log10(ALL_O3Hb__z/ALL_N2Ha__z)
+    print 'FIG 4'
+    figs4567_plots(ALL, ALL_OH_O3N2__z, 'O3N2', CI_ba_sel, labels, Mtot)
+    # fig 5
+    ALL_OH_N2Ha__z = 8.90 + 0.57 * np.ma.log10(ALL_N2Ha__z)
+    print 'FIG 5'
+    figs4567_plots(ALL, ALL_OH_N2Ha__z, 'N2', CI_ba_sel, labels, Mtot)
+    # fig 6
+    ALL_tau_V_neb__z = np.where(np.less(ALL.tau_V_neb__z.filled(-1), 0), 0, ALL.tau_V_neb__z)
+    ALL_logO23__z = logO23(fOII=ALL.f3727__z, fHb=ALL.f4861__z, f5007=ALL.f5007__z, tau_V=ALL_tau_V_neb__z)
+    ALL_logN2O2__z = logN2O2(fNII=ALL.f6583__z, fOII=ALL.f3727__z, tau_V=ALL_tau_V_neb__z)
+    mask = np.zeros((N_zones), dtype='bool')
+    mask = np.bitwise_or(mask, ALL.f3727__z.mask)
+    mask = np.bitwise_or(mask, ALL.f4861__z.mask)
+    mask = np.bitwise_or(mask, ALL.f5007__z.mask)
+    mask = np.bitwise_or(mask, ALL.f6583__z.mask)
+    mask = np.bitwise_or(mask, ALL_logO23__z.mask)
+    mask = np.bitwise_or(mask, ALL_logN2O2__z.mask)
+    ALL_mlogO23__z, ALL_mlogN2O2__z = ma_mask_xyz(ALL_logO23__z, ALL_logN2O2__z, mask=mask)
+    ALL_OH_O23__z = np.ma.masked_all((N_zones))
+    ALL_OH_O23__z[~mask] = OH_O23(logO23_ratio=ALL_mlogO23__z.compressed(), logN2O2_ratio=ALL_mlogN2O2__z.compressed())
+    ALL_OH_O23__z[~np.isfinite(ALL_OH_O23__z)] = np.ma.masked
+    print 'FIG 6'
+    figs4567_plots(ALL, ALL_OH_O23__z, 'O23', CI_ba_sel, labels, Mtot)
+    # fig 7
+    mask = np.zeros((N_zones), dtype='bool')
+    mask = np.bitwise_or(mask, ALL.f3727__z.mask)
+    mask = np.bitwise_or(mask, ALL.f6583__z.mask)
+    mask = np.bitwise_or(mask, ALL_logN2O2__z.mask)
+    ALL_mlogN2O2__z = np.ma.masked_array(ALL_logN2O2__z, mask=mask)
+    ALL_OH_N2O2__z = np.ma.masked_all((N_zones))
+    ALL_OH_N2O2__z[~mask] = OH_N2O2(logN2O2_ratio=ALL_mlogN2O2__z.compressed())
+    ALL_OH_N2O2__z[~np.isfinite(ALL_OH_N2O2__z)] = np.ma.masked
+    print 'FIG 7'
+    figs4567_plots(ALL, ALL_OH_N2O2__z, 'N2O2', CI_ba_sel, labels, Mtot)
+
+
+def figs4567_plots(ALL, y, y_label, CI_ba_sel, labels, c):
+    N_gals = len(ALL.ba)
+    N_zones = len(ALL.califaID__z)
+    N_rows = 3
+    N_cols = 3
+    f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 5))
+    f.suptitle(r'%d galaxies (%d zones) - %s' % (N_gals, N_zones, y_label))
+    for i in range(N_rows):
+        for j in range(N_cols):
+            ax = axArr[i][j]
+            sel = CI_ba_sel[i][j]
+            print i, j, y[sel]
+            label = labels[i][j]
+            ax.set_xlim(distance_range)
+            ax.set_ylim(OH_range)
+            sc = ax.scatter(ALL.zoneDistance_HLR[sel], y[sel], c=np.log10(c[sel]), cmap='viridis_r', s=3, vmax=11.4, vmin=9, **dflt_kw_scatter)
+            # ax.set_aspect('equal', 'box')
+            the_divider = make_axes_locatable(ax)
+            color_axis = the_divider.append_axes('right', size='5%', pad=0)
+            cb = plt.colorbar(sc, cax=color_axis)  # ax=ax, ticks=[0, .5, 1, 1.5, 2, 2.5, 3], pad=0)
+            cb.set_label(r'$\log$ M${}_{gal}^{tot}$ [M${}_\odot$]')
+            xm, ym = ma_mask_xyz(ALL.zoneDistance_HLR[sel], y[sel])
+            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
+            for k in xrange(len(rs.xPrc)):
+                ax.plot(rs.xPrc[k], rs.yPrc[k], 'k--', lw=3)
+            ax.plot(rs.xMedian, rs.yMedian, 'k-', lw=3)
+            ax.set_title(label)
+            # plot_text_ax(ax, '%s' % label, 0.02, 0.98, 18, 'top', 'left', 'k')
+            plot_text_ax(ax, '%d' % xm.count(), 0.02, 0.02, 18, 'bottom', 'left', 'k')
+            if i < N_rows - 1:
+                plt.setp(ax.get_xticklabels(), visible=False)
+            if j:
+                plt.setp(ax.get_yticklabels(), visible=False)
+    axArr[2][1].set_xlabel(r'R [HLR]')
+    axArr[1][0].set_ylabel(r'$12\ +\ \log$ (O/H) - (%s) [Z${}_\odot$]' % y_label)
+    f.tight_layout(rect=[0, 0.03, 1, 0.95])
+    f.subplots_adjust(hspace=0.2, wspace=0.3)
+    f.savefig('%s_R.png' % y_label)
+    plt.close(f)
 
 
 def plot_OH(ax, distance_HLR__yx, OH__yx, OH_label, map__yx, cmap, OH_range, distance_range):

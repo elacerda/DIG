@@ -4,6 +4,7 @@ from CALIFAUtils.scripts import calc_xY
 from CALIFAUtils.objects import stack_gals
 from CALIFAUtils.scripts import loop_cubes
 from pystarlight.util.constants import L_sun
+from pycasso.util import getGenFracRadius
 from CALIFAUtils.scripts import try_q055_instead_q054
 
 
@@ -18,10 +19,12 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
     lines = ['3727', '4363', '4861', '4959', '5007', '6300', '6563', '6583', '6717', '6731']
     keys1d = [
         'zones_map', 'califaID__z', 'califaID__yx', 'pixels_map',
-        'x0', 'y0', 'N_x', 'N_y', 'N_zone', 'ml_ba', 'ba', 'pa', 'HLR_pix', 'HLR_pc',
+        'x0', 'y0', 'N_x', 'N_y', 'N_zone', 'ml_ba', 'ba', 'pa',
+        'HLR_pix', 'HLR_pc',
         'galDistance_Mpc', 'zoneArea_pc2', 'zoneArea_pix',
-        'pixelDistance__yx', 'zoneDistance_pc', 'zoneDistance_HLR', 'zoneDistance_pix',
-        'lines',
+        'pixelDistance__yx', 'pixelDistance_HLR__yx',
+        'zoneDistance_pc', 'zoneDistance_HLR', 'zoneDistance_pix',
+        'lines', 'CI', 'Mtot',
     ]
     keys1d_masked = [
         'tau_V__z', 'tau_V__yx', 'x_Y__z', 'x_Y__yx',
@@ -70,7 +73,7 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d('N_x', K.N_x)
         ALL.append1d('N_y', K.N_y)
         ALL.append1d('N_zone', K.N_zone)
-        ALL.append1d('ml_ba', K.masterListData['ba'])
+        ALL.append1d('ml_ba', eval(K.masterListData['ba']))
         ALL.append1d('ba', K.ba)
         ALL.append1d('pa', K.pa)
         ALL.append1d('HLR_pix', K.HLR_pix)
@@ -79,10 +82,16 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d('zoneArea_pc2', K.zoneArea_pc2)
         ALL.append1d('zoneArea_pix', K.zoneArea_pix)
         ALL.append1d('pixelDistance__yx', np.ravel(K.pixelDistance__yx))
+        ALL.append1d('pixelDistance_HLR__yx', np.ravel(K.pixelDistance__yx / K.HLR_pix))
         ALL.append1d('zoneDistance_pc', K.zoneDistance_HLR)
         ALL.append1d('zoneDistance_HLR', K.zoneDistance_HLR)
         ALL.append1d('zoneDistance_pix', K.zoneDistance_pix)
         ALL.append1d('lines', lines)
+        ALL.append1d('Mtot', K.Mcor_tot.sum())
+        r80 = getGenFracRadius(K.qSignal[K.qMask], K.pixelDistance__yx[K.qMask], None, frac=0.8)
+        r20 = getGenFracRadius(K.qSignal[K.qMask], K.pixelDistance__yx[K.qMask], None, frac=0.2)
+        CI = 5. * np.log10(r80/r20)
+        ALL.append1d('CI', CI)
         tau_V__z = K.tau_V__z
         ALL.append1d_masked(k='tau_V__z', val=tau_V__z, mask_val=np.zeros((K.N_zone), dtype='bool'))
         tau_V__yx = K.A_V__yx / (2.5 * np.log10(np.exp(1.)))
