@@ -91,7 +91,10 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d('N_x', K.N_x)
         ALL.append1d('N_y', K.N_y)
         ALL.append1d('N_zone', K.N_zone)
-        ALL.append1d('ml_ba', eval(K.masterListData['ba']))
+        try:
+            ALL.append1d('ml_ba', eval(K.masterListData['ba']))
+        except KeyError:
+            ALL.append1d('ml_ba', eval(K.masterListData['gc_ba']))
         ALL.append1d('ba', K.ba)
         ALL.append1d('pa', K.pa)
         ALL.append1d('HLR_pix', K.HLR_pix)
