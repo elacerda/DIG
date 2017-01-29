@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from pytu.functions import debug_var
 from CALIFAUtils.scripts import calc_xY
 from CALIFAUtils.objects import stack_gals
 from CALIFAUtils.scripts import loop_cubes
@@ -9,10 +10,11 @@ from CALIFAUtils.scripts import try_q055_instead_q054, calc_SFR, my_morf, get_mo
 
 
 tY = 32e6
-config = -2
+config = -3
 EL = True
 elliptical = True
 kw_cube = dict(EL=EL, config=config, elliptical=elliptical)
+debug=False
 
 
 def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
@@ -24,7 +26,7 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         'galDistance_Mpc', 'zoneArea_pc2', 'zoneArea_pix',
         'pixelDistance__yx', 'pixelDistance_HLR__yx',
         'zoneDistance_pc', 'zoneDistance_HLR', 'zoneDistance_pix',
-        'lines', 'CI', 'Mtot',
+        'lines', 'CI', 'CI_9050', 'Mtot',
         'integrated_x_Y',
         'integrated_tau_V', 'integrated_tau_V_neb', 'integrated_etau_V_neb',
         'integrated_W6563',
@@ -109,10 +111,21 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d('zoneDistance_pix', K.zoneDistance_pix)
         ALL.append1d('lines', lines)
         ALL.append1d('Mtot', K.Mcor_tot.sum())
+        '''
+        CI: Calc. usando a equacao que ta no paper do Conselice
+        - http://iopscience.iop.org/article/10.1086/375001/pdf, pagina 7 -
+        e r80 e r20 calculando usando o lambda de normalizacao do CALIFA, ou seja, da mesma forma que
+        o HLR (r50) e calculado mas utilizando 0.8 e 0.2 como fracao ao inves de 0.5 (half).
+        '''
+        r90 = getGenFracRadius(K.qSignal[K.qMask], K.pixelDistance__yx[K.qMask], None, frac=0.9)
         r80 = getGenFracRadius(K.qSignal[K.qMask], K.pixelDistance__yx[K.qMask], None, frac=0.8)
+        r50 = getGenFracRadius(K.qSignal[K.qMask], K.pixelDistance__yx[K.qMask], None, frac=0.5)
         r20 = getGenFracRadius(K.qSignal[K.qMask], K.pixelDistance__yx[K.qMask], None, frac=0.2)
         CI = 5. * np.log10(r80/r20)
+        CI_9050 = 5. * np.log10(r90/r50)
         ALL.append1d('CI', CI)
+        ALL.append1d('CI_9050', CI_9050)
+        debug_var(debug, CALIFAID=califaID, CI=CI, CI_9050=CI_9050)
         tau_V__z = K.tau_V__z
         ALL.append1d_masked(k='tau_V__z', val=tau_V__z, mask_val=np.zeros((K.N_zone), dtype='bool'))
         tau_V__yx = K.A_V__yx / (2.5 * np.log10(np.exp(1.)))

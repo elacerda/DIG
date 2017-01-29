@@ -4,25 +4,31 @@ import matplotlib as mpl
 from pytu.lines import Lines
 from pytu.objects import runstats
 from matplotlib import pyplot as plt
-from pytu.functions import ma_mask_xyz, debug_var
 from pycasso.util import radialProfile
 from scipy.interpolate import interp1d
 from pystarlight.util.constants import L_sun
+from matplotlib.ticker import AutoMinorLocator
+from pytu.functions import ma_mask_xyz, debug_var
 from pystarlight.util.redenninglaws import calc_redlaw
 from CALIFAUtils.scripts import get_NEDName_by_CALIFAID
 from CALIFAUtils.objects import stack_gals, CALIFAPaths
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from CALIFAUtils.plots import DrawHLRCircleInSDSSImage, DrawHLRCircle
-from pytu.plots import cmap_discrete, plot_text_ax, density_contour
+from pytu.plots import cmap_discrete, plot_text_ax, density_contour, stats_med12sigma, add_subplot_axes
 
 
-mpl.rcParams['font.size'] = 20
-mpl.rcParams['axes.labelsize'] = 16
-mpl.rcParams['axes.titlesize'] = 16
-mpl.rcParams['xtick.labelsize'] = 14
-mpl.rcParams['ytick.labelsize'] = 14
-mpl.rcParams['font.family'] = 'serif'
-mpl.rcParams['font.serif'] = 'Times New Roman'
+# mpl.rcParams['font.size'] = 20
+# mpl.rcParams['axes.labelsize'] = 16
+# mpl.rcParams['axes.titlesize'] = 16
+# mpl.rcParams['xtick.labelsize'] = 14
+# mpl.rcParams['ytick.labelsize'] = 14
+# mpl.rcParams['font.family'] = 'serif'
+# mpl.rcParams['font.serif'] = 'Times New Roman'
+colors_DIG_COMP_HII = ['tomato', 'lightgreen', 'royalblue']
+colors_lines_DIG_COMP_HII = ['darkred', 'olive', 'mediumblue']
+classif_labels = ['DIG', 'COMP', 'HII']
+cmap_R = plt.cm.copper_r
+minorLocator = AutoMinorLocator(5)
 
 debug = False
 # CCM reddening law
@@ -59,11 +65,10 @@ rbinstep = 0.2
 R_bin__r = np.arange(rbinini, rbinfin + rbinstep, rbinstep)
 R_bin_center__r = (R_bin__r[:-1] + R_bin__r[1:]) / 2.0
 N_R_bins = len(R_bin_center__r)
-kw_cube = dict(EL=EL, config=config, elliptical=elliptical)
+kw_cube = dict(EL=EL, config=config, elliptical=elliptical, debug=True)
 dflt_kw_scatter = dict(marker='o', edgecolor='none')
 dflt_kw_runstats = dict(smooth=True, sigma=1.2, frac=0.07, debug=True)  # , tendency=True)
 dflt_kw_imshow = dict(origin='lower', interpolation='nearest', aspect='equal')
-P = CALIFAPaths()
 
 
 def main(argv=None):
@@ -120,17 +125,66 @@ def main(argv=None):
         Se poderia ate colorir cada curva em funcao, por exemplo, da massa total
         da galaxia, ou entao em funcao da posicao do oiii/hb vs nii/ha integrado
         no bpt.
-
+    """
+    # fig4_profile(ALL, gals)
+    # fig4_cumulative_profile(ALL, gals)
+    """
     Fig 5.
         Igual a Fig 4 mas usando O/H (N2)
-
+    """
+    # fig5_profile(ALL, gals)
+    # fig5_cumulative_profile(ALL, gals)
+    """
     Fig 6.
         Igual a Fig 4 mas usando O/H (O23)
-
+    """
+    # fig6_profile(ALL, gals)
+    # fig6_cumulative_profile(ALL, gals)
+    """
     Fig 7.
         Igual a Fig 4 mas usando O/H (N2O2)
     """
-    figs4567(ALL, gals)
+    fig7_profile(ALL, gals)
+    fig7_cumulative_profile(ALL, gals)
+    # figs4567(ALL, gals)
+    # fig4567_new(ALL, gals)
+
+
+def create_segmented_map(ALL, califaID, selDIG, selCOMP, selHII):
+    N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
+    N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
+    sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, califaID, selDIG, selCOMP, selHII)
+    map__yx = np.ma.masked_all((N_y, N_x))
+    map__yx[sel_DIG__yx] = 1
+    map__yx[sel_COMP__yx] = 2
+    map__yx[sel_HII__yx] = 3
+    return map__yx
+
+
+def create_segmented_map_zones(ALL, califaID, selDIG, selCOMP, selHII):
+    N_zone = ALL.get_gal_prop_unique(califaID, ALL.N_zone)
+    sel_DIG__z, sel_COMP__z, sel_HII__z = get_selections_zones(ALL, califaID, selDIG, selCOMP, selHII)
+    map__z = np.ma.masked_all((N_zone))
+    map__z[sel_DIG__z] = 1
+    map__z[sel_COMP__z] = 2
+    map__z[sel_HII__z] = 3
+    return map__z
+
+
+def get_selections(ALL, califaID, selDIG, selCOMP, selHII):
+    N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
+    N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
+    sel_DIG__yx = ALL.get_gal_prop(califaID, selDIG).reshape(N_y, N_x)
+    sel_COMP__yx = ALL.get_gal_prop(califaID, selCOMP).reshape(N_y, N_x)
+    sel_HII__yx = ALL.get_gal_prop(califaID, selHII).reshape(N_y, N_x)
+    return sel_DIG__yx, sel_COMP__yx, sel_HII__yx
+
+
+def get_selections_zones(ALL, califaID, selDIG, selCOMP, selHII):
+    sel_DIG__z = ALL.get_gal_prop(califaID, selDIG)
+    sel_COMP__z = ALL.get_gal_prop(califaID, selCOMP)
+    sel_HII__z = ALL.get_gal_prop(califaID, selHII)
+    return sel_DIG__z, sel_COMP__z, sel_HII__z
 
 
 def plot_OH(ax, distance_HLR__yx, OH__yx, OH_label, map__yx, cmap, OH_range, distance_range):
@@ -259,6 +313,8 @@ def fig1(ALL, gals=None):
         painel b: log WHa vs R colorido pelas zonas sigma_Ha
         painel c: log sigma_Ha colorido pelas zonas sigma_Ha
     """
+    P = CALIFAPaths()
+
     # WHa DIG-COMP-HII decomposition
     sel_WHa_DIG__yx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
     sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
@@ -283,6 +339,7 @@ def fig1(ALL, gals=None):
             print 'Fig_1: %s not in sample pickle' % califaID
             continue
 
+        L = Lines()
         HLR_pix = ALL.get_gal_prop_unique(califaID, ALL.HLR_pix)
         pa = ALL.get_gal_prop_unique(califaID, ALL.pa)
         ba = ALL.get_gal_prop_unique(califaID, ALL.ba)
@@ -294,37 +351,106 @@ def fig1(ALL, gals=None):
         N_zone = ALL.get_gal_prop_unique(califaID, ALL.N_zone)
         pixelDistance__yx = ALL.get_gal_prop(califaID, ALL.pixelDistance__yx).reshape(N_y, N_x)
         pixelDistance_HLR__yx = pixelDistance__yx / HLR_pix
+        zoneDistance_HLR__z = ALL.zoneDistance_HLR
         SB__lyx = {'%s' % L: ALL.get_gal_prop(califaID, 'SB%s__yx' % L).reshape(N_y, N_x) for L in lines}
-        SB__z = {'%s' % L: ALL.get_gal_prop(califaID, 'SB%s__z' % L) for L in lines}
-        f__z = {'%s' % L: ALL.get_gal_prop(califaID, 'f%s__z' % L) for L in lines}
+        SB__lz = {'%s' % L: ALL.get_gal_prop(califaID, 'SB%s__z' % L) for L in lines}
+        f__lz = {'%s' % L: ALL.get_gal_prop(califaID, 'f%s__z' % L) for L in lines}
         W6563__yx = ALL.get_gal_prop(califaID, ALL.W6563__yx).reshape(N_y, N_x)
         W6563__z = ALL.get_gal_prop(califaID, ALL.W6563__z)
+        O3Hb__yx = SB__lyx['5007']/SB__lyx['4861']
+        N2Ha__yx = SB__lyx['6583']/SB__lyx['6563']
+        O3Hb__z = f__lz['5007']/f__lz['4861']
+        N2Ha__z = f__lz['6583']/f__lz['6563']
 
         N_cols = 3
         N_rows = 4
         f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 5))
-        cmap = cmap_discrete()
+        cmap = cmap_discrete(colors_DIG_COMP_HII)
         ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9), (ax10, ax11, ax12)) = axArr
         f.suptitle(r'%s - %s: %d pixels (%d zones)' % (califaID, get_NEDName_by_CALIFAID(califaID)[0], N_pixel, N_zone))
 
         # AXIS 1, 2, 3
         # 1
-        ax1.set_axis_off()
-        # 2
         galimg = plt.imread(P.get_image_file(califaID))[::-1, :, :]
-        plt.setp(ax2.get_xticklabels(), visible=False)
-        plt.setp(ax2.get_yticklabels(), visible=False)
-        ax2.imshow(galimg, origin='lower', aspect='equal')
-        DrawHLRCircleInSDSSImage(ax2, HLR_pix, pa, ba, lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
+        # plt.setp(ax2.get_xticklabels(), visible=False)
+        # plt.setp(ax2.get_yticklabels(), visible=False)
+        ax1.imshow(galimg, origin='lower', aspect='equal')
+        DrawHLRCircleInSDSSImage(ax1, HLR_pix, pa, ba, lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
         txt = '%s' % califaID
-        plot_text_ax(ax2, txt, 0.02, 0.98, 16, 'top', 'left', color='w')
+        plot_text_ax(ax1, txt, 0.02, 0.98, 16, 'top', 'left', color='w')
+
+        # 2
+        map__z = create_segmented_map_zones(ALL, califaID, sel_WHa_DIG__z, sel_WHa_COMP__z, sel_WHa_HII__z)
+        extent = [-1.5, 1, -1.5, 1.5]
+        x, y = np.ma.log10(N2Ha__z), np.ma.log10(O3Hb__z)
+        xm, ym = ma_mask_xyz(x, y)
+        sc = ax2.scatter(xm, ym, c=map__z, vmin=1, vmax=3, cmap=cmap, marker='o', s=5, edgecolor='none')
+        ax2.set_xlim(extent[0:2])
+        ax2.set_ylim(extent[2:4])
+        ax2.set_xlabel(r'$\log\ [NII]/H\alpha$')
+        ax2.set_ylabel(r'$\log\ [OIII]/H\beta$')
+        ax2.set_title(r'classif. W${}_{H\alpha}$')
+        N = xm.count()
+        c = ''
+        if (xm.compressed() < extent[0]).any():
+            c += 'x-'
+        if (xm.compressed() > extent[1]).any():
+            c += 'x+'
+        if (ym.compressed() < extent[2]).any():
+            c += 'y-'
+        if (ym.compressed() > extent[3]).any():
+            c += 'y+'
+        plot_text_ax(ax2, '%d %s' % (N, c), 0.01, 0.99, 20, 'top', 'left', 'k')
+        plot_text_ax(ax2, 'S06', 0.30, 0.02, 20, 'bottom', 'left', 'k')
+        plot_text_ax(ax2, 'K03', 0.53, 0.02, 20, 'bottom', 'left', 'k')
+        plot_text_ax(ax2, 'K01', 0.85, 0.02, 20, 'bottom', 'right', 'k')
+        ax2.plot(L.x['S06'], L.y['S06'], 'k-', label='S06')
+        ax2.plot(L.x['K03'], L.y['K03'], 'k-', label='K03')
+        ax2.plot(L.x['K01'], L.y['K01'], 'k-', label='K01')
+        plot_text_ax(ax2, 'CF10', 0.92, 0.98, 20, 'top', 'right', 'k', rotation=35)  # 44.62)
+        ax2.plot(L.x['CF10'], L.y['CF10'], 'k-', label='CF10')
+        L.fixCF10('S06')
+        cbaxes = add_subplot_axes(ax2, [0.28, 1.06, 0.38, 0.05])
+        cb = plt.colorbar(sc, cax=cbaxes, ticks=[1.+2/6., 2, 3-2/6.], orientation='horizontal')
+        cb.ax.xaxis.labelpad = -29
+        cb.ax.set_xticklabels(classif_labels, fontsize=9)
         # 3
-        ax3.set_axis_off()
+        map__z = create_segmented_map_zones(ALL, califaID, sel_Zhang_DIG__z, sel_Zhang_COMP__z, sel_Zhang_HII__z)
+        extent = [-1.5, 1, -1.5, 1.5]
+        x, y = np.ma.log10(N2Ha__z), np.ma.log10(O3Hb__z)
+        xm, ym = ma_mask_xyz(x, y)
+        sc = ax3.scatter(xm, ym, c=map__z, vmin=1, vmax=3, cmap=cmap, marker='o', s=5, edgecolor='none')
+        ax3.set_xlim(extent[0:2])
+        ax3.set_ylim(extent[2:4])
+        ax3.set_xlabel(r'$\log\ [NII]/H\alpha$')
+        ax3.set_ylabel(r'$\log\ [OIII]/H\beta$')
+        ax3.set_title(r'classif. $ \Sigma_{H\alpha}$')
+        N = xm.count()
+        c = ''
+        if (xm.compressed() < extent[0]).any():
+            c += 'x-'
+        if (xm.compressed() > extent[1]).any():
+            c += 'x+'
+        if (ym.compressed() < extent[2]).any():
+            c += 'y-'
+        if (ym.compressed() > extent[3]).any():
+            c += 'y+'
+        plot_text_ax(ax3, '%d %s' % (N, c), 0.01, 0.99, 20, 'top', 'left', 'k')
+        plot_text_ax(ax3, 'S06', 0.30, 0.02, 20, 'bottom', 'left', 'k')
+        plot_text_ax(ax3, 'K03', 0.53, 0.02, 20, 'bottom', 'left', 'k')
+        plot_text_ax(ax3, 'K01', 0.85, 0.02, 20, 'bottom', 'right', 'k')
+        ax3.plot(L.x['S06'], L.y['S06'], 'k-', label='S06')
+        ax3.plot(L.x['K03'], L.y['K03'], 'k-', label='K03')
+        ax3.plot(L.x['K01'], L.y['K01'], 'k-', label='K01')
+        plot_text_ax(ax3, 'CF10', 0.92, 0.98, 20, 'top', 'right', 'k', rotation=35)  # 44.62)
+        ax3.plot(L.x['CF10'], L.y['CF10'], 'k-', label='CF10')
+        L.fixCF10('S06')
+        cbaxes = add_subplot_axes(ax3, [0.53, 1.06, 0.38, 0.05])
+        cb = plt.colorbar(sc, cax=cbaxes, ticks=[1.+2/6., 2, 3-2/6.], orientation='horizontal')
+        cb.ax.xaxis.labelpad = -29
+        cb.ax.set_xticklabels(classif_labels, fontsize=9)
 
         # AXIS 4, 5, 6
-        L = Lines()
-        O3Hb__yx = SB__lyx['5007']/SB__lyx['4861']
-        N2Ha__yx = SB__lyx['6583']/SB__lyx['6563']
         x, y = np.ma.log10(N2Ha__yx), np.ma.log10(O3Hb__yx)
         sel_below_S06 = L.belowlinebpt('S06', x, y)
         sel_below_K03 = L.belowlinebpt('K03', x, y)
@@ -351,27 +477,19 @@ def fig1(ALL, gals=None):
         sel_DIG__z = ALL.get_gal_prop(califaID, sel_WHa_DIG__z)
         sel_COMP__z = ALL.get_gal_prop(califaID, sel_WHa_COMP__z)
         sel_HII__z = ALL.get_gal_prop(califaID, sel_WHa_HII__z)
-        O3Hb__z = f__z['5007']/f__z['4861']
-        N2Ha__z = f__z['6583']/f__z['6563']
         # 5
         plotBPT(ax5, np.ma.log10(N2Ha__z), np.ma.log10(O3Hb__z), z=np.ma.log10(W6563__z), vmin=logWHa_range[0], vmax=logWHa_range[1], cb_label=r'W${}_{H\alpha}\ [\AA]$', cmap='viridis_r')
         # 6
-        plotBPT(ax6, np.ma.log10(N2Ha__z), np.ma.log10(O3Hb__z), z=np.ma.log10(SB__z['6563']), vmin=logSBHa_range[0], vmax=logSBHa_range[1], cb_label=r'$\Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]', cmap='viridis_r')
+        plotBPT(ax6, np.ma.log10(N2Ha__z), np.ma.log10(O3Hb__z), z=np.ma.log10(SB__lz['6563']), vmin=logSBHa_range[0], vmax=logSBHa_range[1], cb_label=r'$\Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]', cmap='viridis_r')
 
         # AXIS 7, 8 e 9
-        sel_DIG__yx = ALL.get_gal_prop(califaID, sel_WHa_DIG__yx).reshape(N_y, N_x)
-        sel_COMP__yx = ALL.get_gal_prop(califaID, sel_WHa_COMP__yx).reshape(N_y, N_x)
-        sel_HII__yx = ALL.get_gal_prop(califaID, sel_WHa_HII__yx).reshape(N_y, N_x)
-        map__yx = np.ma.masked_all((N_y, N_x))
-        map__yx[sel_DIG__yx] = 1
-        map__yx[sel_COMP__yx] = 2
-        map__yx[sel_HII__yx] = 3
+        map__yx = create_segmented_map(ALL, califaID, sel_WHa_DIG__yx, sel_WHa_COMP__yx, sel_WHa_HII__yx)
         # 7
         im = ax7.imshow(map__yx, cmap=cmap, **dflt_kw_imshow)
         the_divider = make_axes_locatable(ax7)
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis, ticks=[1.+2/6., 2, 3-2/6.])
-        cb.set_ticklabels(['DIG', 'COMP', 'HII'])
+        cb.set_ticklabels(classif_labels)
         ax7.set_title(r'classif. W${}_{H\alpha}$')
         DrawHLRCircle(ax7, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
         # 8
@@ -383,21 +501,26 @@ def fig1(ALL, gals=None):
         ax8.set_xlabel(r'R [HLR]')
         ax8.set_ylabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
         ax8.grid()
-        if sel_DIG__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax8.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax8.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(0), markersize=10)
-        if sel_COMP__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_COMP__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax8.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax8.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(1), markersize=10)
-        if sel_HII__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_HII__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax8.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax8.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
+        sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, califaID, sel_WHa_DIG__yx, sel_WHa_COMP__yx, sel_WHa_HII__yx)
+        min_npts = 10
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
+        yMean_DIG, yPrc_DIG, bin_center_DIG, npts_DIG = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_DIG.any():
+            sel = npts_DIG > min_npts
+            ax8.plot(bin_center_DIG[sel], yPrc_DIG[2][sel], '--', lw=2, c=colors_lines_DIG_COMP_HII[0])
+            ax8.plot(bin_center_DIG[sel], yPrc_DIG[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[0], markersize=10)
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_COMP__yx))
+        yMean_COMP, yPrc_COMP, bin_center_COMP, npts_COMP = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_COMP.any():
+            sel = npts_COMP > min_npts
+            ax8.plot(bin_center_COMP[sel], yPrc_COMP[2][sel], '--', lw=2, c=colors_lines_DIG_COMP_HII[1])
+            ax8.plot(bin_center_COMP[sel], yPrc_COMP[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[1], markersize=10)
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_HII__yx))
+        yMean_HII, yPrc_HII, bin_center_HII, npts_HII = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_HII.any():
+            sel = npts_HII > min_npts
+            ax8.plot(bin_center_HII[sel], yPrc_HII[2][sel], 'k--', lw=2, c=colors_lines_DIG_COMP_HII[2])
+            ax8.plot(bin_center_HII[sel], yPrc_HII[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[2], markersize=10)
         # 9
         x = np.ma.ravel(pixelDistance_HLR__yx)
         y = np.ma.ravel(np.ma.log10(SB__lyx['6563']))
@@ -407,37 +530,36 @@ def fig1(ALL, gals=None):
         ax9.set_xlabel(r'R [HLR]')
         ax9.set_ylabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
         ax9.grid()
-        if sel_DIG__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax9.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax9.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(0), markersize=10)
-        if sel_COMP__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_COMP__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax9.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax9.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(1), markersize=10)
-        if sel_HII__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_HII__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax9.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax9.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
+        sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, califaID, sel_WHa_DIG__yx, sel_WHa_COMP__yx, sel_WHa_HII__yx)
+        min_npts = 10
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
+        yMean_DIG, yPrc_DIG, bin_center_DIG, npts_DIG = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_DIG.any():
+            sel = npts_DIG > min_npts
+            ax9.plot(bin_center_DIG[sel], yPrc_DIG[2][sel], '--', lw=2, c=colors_lines_DIG_COMP_HII[0])
+            ax9.plot(bin_center_DIG[sel], yPrc_DIG[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[0], markersize=10)
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_COMP__yx))
+        yMean_COMP, yPrc_COMP, bin_center_COMP, npts_COMP = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_COMP.any():
+            sel = npts_COMP > min_npts
+            ax9.plot(bin_center_COMP[sel], yPrc_COMP[2][sel], '--', lw=2, c=colors_lines_DIG_COMP_HII[1])
+            ax9.plot(bin_center_COMP[sel], yPrc_COMP[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[1], markersize=10)
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_HII__yx))
+        yMean_HII, yPrc_HII, bin_center_HII, npts_HII = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_HII.any():
+            sel = npts_HII > min_npts
+            ax9.plot(bin_center_HII[sel], yPrc_HII[2][sel], 'k--', lw=2, c=colors_lines_DIG_COMP_HII[2])
+            ax9.plot(bin_center_HII[sel], yPrc_HII[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[2], markersize=10)
 
         # AXIS 10, 11 e 12
-        sel_DIG__yx = ALL.get_gal_prop(califaID, sel_Zhang_DIG__yx).reshape(N_y, N_x)
-        sel_COMP__yx = ALL.get_gal_prop(califaID, sel_Zhang_COMP__yx).reshape(N_y, N_x)
-        sel_HII__yx = ALL.get_gal_prop(califaID, sel_Zhang_HII__yx).reshape(N_y, N_x)
-        map__yx = np.ma.masked_all((N_y, N_x))
-        map__yx[sel_DIG__yx] = 1
-        map__yx[sel_COMP__yx] = 2
-        map__yx[sel_HII__yx] = 3
+        map__yx = create_segmented_map(ALL, califaID, sel_Zhang_DIG__yx, sel_Zhang_COMP__yx, sel_Zhang_HII__yx)
         # 10
         im = ax10.imshow(map__yx, cmap=cmap, **dflt_kw_imshow)
         the_divider = make_axes_locatable(ax10)
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis, ticks=[1.+2/6., 2, 3-2/6.])
-        cb.set_ticklabels(['DIG', 'COMP', 'HII'])
-        ax10.set_title(r'classif. W${}_{H\alpha}$')
+        cb.set_ticklabels(classif_labels)
+        ax10.set_title(r'classif. $ \Sigma_{H\alpha}$')
         DrawHLRCircle(ax10, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
         # 11
         x = np.ravel(pixelDistance_HLR__yx)
@@ -448,21 +570,26 @@ def fig1(ALL, gals=None):
         ax11.set_xlabel(r'R [HLR]')
         ax11.set_ylabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
         ax11.grid()
-        if sel_DIG__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax11.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax11.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(0), markersize=10)
-        if sel_COMP__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_COMP__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax11.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax11.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(1), markersize=10)
-        if sel_HII__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_HII__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax11.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax11.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
+        sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, califaID, sel_WHa_DIG__yx, sel_WHa_COMP__yx, sel_WHa_HII__yx)
+        min_npts = 10
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
+        yMean_DIG, yPrc_DIG, bin_center_DIG, npts_DIG = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_DIG.any():
+            sel = npts_DIG > min_npts
+            ax11.plot(bin_center_DIG[sel], yPrc_DIG[2][sel], '--', lw=2, c=colors_lines_DIG_COMP_HII[0])
+            ax11.plot(bin_center_DIG[sel], yPrc_DIG[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[0], markersize=10)
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_COMP__yx))
+        yMean_COMP, yPrc_COMP, bin_center_COMP, npts_COMP = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_COMP.any():
+            sel = npts_COMP > min_npts
+            ax11.plot(bin_center_COMP[sel], yPrc_COMP[2][sel], '--', lw=2, c=colors_lines_DIG_COMP_HII[1])
+            ax11.plot(bin_center_COMP[sel], yPrc_COMP[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[1], markersize=10)
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_HII__yx))
+        yMean_HII, yPrc_HII, bin_center_HII, npts_HII = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_HII.any():
+            sel = npts_HII > min_npts
+            ax11.plot(bin_center_HII[sel], yPrc_HII[2][sel], 'k--', lw=2, c=colors_lines_DIG_COMP_HII[2])
+            ax11.plot(bin_center_HII[sel], yPrc_HII[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[2], markersize=10)
         # 12
         x = np.ma.ravel(pixelDistance_HLR__yx)
         y = np.ma.ravel(np.ma.log10(SB__lyx['6563']))
@@ -472,21 +599,26 @@ def fig1(ALL, gals=None):
         ax12.set_xlabel(r'R [HLR]')
         ax12.set_ylabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
         ax12.grid()
-        if sel_DIG__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax12.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax12.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(0), markersize=10)
-        if sel_COMP__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_COMP__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax12.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax12.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(1), markersize=10)
-        if sel_HII__yx.astype('int').sum():
-            xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_HII__yx))
-            rs = runstats(xm.compressed(), ym.compressed(), **dflt_kw_runstats)
-            ax12.plot(rs.xS, rs.yS, 'k--', lw=2)
-            ax12.plot(rs.xS, rs.yS, linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=cmap(2), markersize=10)
+        sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, califaID, sel_WHa_DIG__yx, sel_WHa_COMP__yx, sel_WHa_HII__yx)
+        min_npts = 10
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_DIG__yx))
+        yMean_DIG, yPrc_DIG, bin_center_DIG, npts_DIG = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_DIG.any():
+            sel = npts_DIG > min_npts
+            ax12.plot(bin_center_DIG[sel], yPrc_DIG[2][sel], '--', lw=2, c=colors_lines_DIG_COMP_HII[0])
+            ax12.plot(bin_center_DIG[sel], yPrc_DIG[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[0], markersize=10)
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_COMP__yx))
+        yMean_COMP, yPrc_COMP, bin_center_COMP, npts_COMP = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_COMP.any():
+            sel = npts_COMP > min_npts
+            ax12.plot(bin_center_COMP[sel], yPrc_COMP[2][sel], '--', lw=2, c=colors_lines_DIG_COMP_HII[1])
+            ax12.plot(bin_center_COMP[sel], yPrc_COMP[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[1], markersize=10)
+        xm, ym = ma_mask_xyz(x, y, mask=~np.ravel(sel_HII__yx))
+        yMean_HII, yPrc_HII, bin_center_HII, npts_HII = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+        if npts_HII.any():
+            sel = npts_HII > min_npts
+            ax12.plot(bin_center_HII[sel], yPrc_HII[2][sel], 'k--', lw=2, c=colors_lines_DIG_COMP_HII[2])
+            ax12.plot(bin_center_HII[sel], yPrc_HII[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[2], markersize=10)
         f.tight_layout(rect=[0, 0.03, 1, 0.95])
         f.savefig('%s-fig1.png' % califaID)
         plt.close(f)
@@ -817,6 +949,912 @@ def figs4567_plots(ALL, y, y_label, CI_ba_sel, labels, c):
     f.subplots_adjust(hspace=0.2, wspace=0.3)
     f.savefig('%s_R.png' % y_label)
     plt.close(f)
+
+
+
+def fig4_profile(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'O3N2'
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                # f = plt.figure(dpi=300, figsize=(N_cols * 2, N_rows * 2))
+                # from mpl_toolkits.axes_grid1 import Grid
+                # grid = Grid(f, rect=111, nrows_ncols=(N_rows, N_cols), axes_pad=0.0, label_mode='all',)
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                # for i in xrange(N_rows):
+                #     for j in xrange(N_cols):
+                #         # axArr[i, j].axis('off')
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = np.ravel(axArr)[ax_i]
+                    # ax = grid[i]
+                    ax = axArr[row][col]
+                    # ax.axis('off')
+                    ALL_O3Hb__z = ALL.get_gal_prop(g, ALL.f5007__z/ALL.f4861__z)
+                    ALL_N2Ha__z = ALL.get_gal_prop(g, ALL.f6583__z/ALL.f6563__z)
+                    ALL_OH_O3N2__z = 8.73 - 0.32 * np.ma.log10(ALL_O3Hb__z/ALL_N2Ha__z)
+                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
+                    sc = ax.scatter(zoneDistance_HLR, ALL_OH_O3N2__z, s=1, **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(zoneDistance_HLR, ALL_OH_O3N2__z, mask=None)
+                    min_npts = 5
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
+                        ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                plt.close(f)
+                page += 1
+
+
+def fig4_cumulative_profile(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'O3N2'
+
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) cumulative profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = np.ravel(axArr)[ax_i]
+                    ax = axArr[row][col]
+                    Hb__z = ALL.get_gal_prop(g, ALL.f4861__z)
+                    O3__z = ALL.get_gal_prop(g, ALL.f5007__z)
+                    Ha__z = ALL.get_gal_prop(g, ALL.f6563__z)
+                    N2__z = ALL.get_gal_prop(g, ALL.f6583__z)
+                    Hb_cumsum__z = Hb__z.filled(0.).cumsum()
+                    O3_cumsum__z = O3__z.filled(0.).cumsum()
+                    Ha_cumsum__z = Ha__z.filled(0.).cumsum()
+                    N2_cumsum__z = N2__z.filled(0.).cumsum()
+                    OH_O3N2 = 8.73 - 0.32 * np.ma.log10((O3_cumsum__z * Ha_cumsum__z)/(N2_cumsum__z * Hb_cumsum__z))
+                    y = OH_O3N2
+                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
+                    # sc = ax.scatter(zoneDistance_HLR, OH_O3N2, s=1, **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(zoneDistance_HLR, y, mask=None)
+                    min_npts = 5
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
+                        ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_cumulative_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                plt.close(f)
+                page += 1
+
+
+def fig5_profile(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'N2'
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                # f = plt.figure(dpi=300, figsize=(N_cols * 2, N_rows * 2))
+                # from mpl_toolkits.axes_grid1 import Grid
+                # grid = Grid(f, rect=111, nrows_ncols=(N_rows, N_cols), axes_pad=0.0, label_mode='all',)
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                # for i in xrange(N_rows):
+                #     for j in xrange(N_cols):
+                #         # axArr[i, j].axis('off')
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = axArr[row][col]
+                    ALL_N2Ha__z = ALL.get_gal_prop(g, ALL.f6583__z/ALL.f6563__z)
+                    ALL_OH_N2Ha__z = 8.90 + 0.57 * np.ma.log10(ALL_N2Ha__z)
+                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
+                    sc = ax.scatter(zoneDistance_HLR, ALL_OH_N2Ha__z, s=1, **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(zoneDistance_HLR, ALL_OH_N2Ha__z, mask=None)
+                    min_npts = 5
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
+                        ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                plt.close(f)
+                page += 1
+
+
+def fig5_cumulative_profile(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'N2'
+
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) cumulative profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = axArr[row][col]
+                    Ha__z = ALL.get_gal_prop(g, ALL.f6563__z)
+                    N2__z = ALL.get_gal_prop(g, ALL.f6583__z)
+                    Ha_cumsum__z = Ha__z.filled(0.).cumsum()
+                    N2_cumsum__z = N2__z.filled(0.).cumsum()
+                    OH_N2 = 8.90 + 0.57 * np.ma.log10(N2_cumsum__z/Ha_cumsum__z)
+                    y = OH_N2
+                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
+                    # sc = ax.scatter(zoneDistance_HLR, OH_O3N2, s=1, **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(zoneDistance_HLR, y, mask=None)
+                    min_npts = 5
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
+                        ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_cumulative_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                plt.close(f)
+                page += 1
+
+
+def fig6_profile(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'O23'
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                # f = plt.figure(dpi=300, figsize=(N_cols * 2, N_rows * 2))
+                # from mpl_toolkits.axes_grid1 import Grid
+                # grid = Grid(f, rect=111, nrows_ncols=(N_rows, N_cols), axes_pad=0.0, label_mode='all',)
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                # for i in xrange(N_rows):
+                #     for j in xrange(N_cols):
+                #         # axArr[i, j].axis('off')
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = axArr[row][col]
+                    f3727__z = ALL.get_gal_prop(g, ALL.f3727__z)
+                    f4861__z = ALL.get_gal_prop(g, ALL.f4861__z)
+                    f5007__z = ALL.get_gal_prop(g, ALL.f5007__z)
+                    f6563__z = ALL.get_gal_prop(g, ALL.f6563__z)
+                    f6583__z = ALL.get_gal_prop(g, ALL.f6583__z)
+                    N_zones = ALL.get_gal_prop_unique(g, ALL.N_zone)
+                    tau_V_neb = lambda Ha, Hb: (1./(q[0] - q[1])) * np.ma.log(Ha/Hb/2.86)
+                    tau_V_neb__z = tau_V_neb(f6563__z, f4861__z)
+                    tau_V_neb__z = np.where(np.less(tau_V_neb__z, 0), 0, tau_V_neb__z)
+                    logO23__z = logO23(fOII=f3727__z, fHb=f4861__z, f5007=f5007__z, tau_V=tau_V_neb__z)
+                    logN2O2__z = logN2O2(fNII=f6583__z, fOII=f3727__z, tau_V=tau_V_neb__z)
+                    mask = np.zeros((N_zones), dtype='bool')
+                    mask = np.bitwise_or(mask, f3727__z.mask)
+                    mask = np.bitwise_or(mask, f4861__z.mask)
+                    mask = np.bitwise_or(mask, f5007__z.mask)
+                    mask = np.bitwise_or(mask, f6583__z.mask)
+                    mask = np.bitwise_or(mask, logO23__z.mask)
+                    mask = np.bitwise_or(mask, logN2O2__z.mask)
+                    mlogO23__z, mlogN2O2__z = ma_mask_xyz(logO23__z, logN2O2__z, mask=mask)
+                    OH_O23__z = np.ma.masked_all((N_zones))
+                    OH_O23__z[~mask] = OH_O23(logO23_ratio=mlogO23__z.compressed(), logN2O2_ratio=mlogN2O2__z.compressed())
+                    OH_O23__z[~np.isfinite(OH_O23__z)] = np.ma.masked
+                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
+                    sc = ax.scatter(zoneDistance_HLR, OH_O23__z, s=1, **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(zoneDistance_HLR, OH_O23__z, mask=None)
+                    min_npts = 5
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
+                        ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                plt.close(f)
+                page += 1
+
+
+def fig6_cumulative_profile(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'O23'
+
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) cumulative profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = axArr[row][col]
+                    f3727__z = ALL.get_gal_prop(g, ALL.f3727__z)
+                    f4861__z = ALL.get_gal_prop(g, ALL.f4861__z)
+                    f5007__z = ALL.get_gal_prop(g, ALL.f5007__z)
+                    f6563__z = ALL.get_gal_prop(g, ALL.f6563__z)
+                    f6583__z = ALL.get_gal_prop(g, ALL.f6583__z)
+                    N_zones = ALL.get_gal_prop_unique(g, ALL.N_zone)
+                    tau_V_neb = lambda Ha, Hb: (1./(q[0] - q[1])) * np.ma.log(Ha/Hb/2.86)
+                    tau_V_neb__z = tau_V_neb(f6563__z.filled(0.).cumsum(), f4861__z.filled(0.).cumsum())
+                    tau_V_neb__z = np.where(np.less(tau_V_neb__z, 0), 0, tau_V_neb__z)
+                    logO23__z = logO23(fOII=f3727__z.filled(0.).cumsum(), fHb=f4861__z.filled(0.).cumsum(), f5007=f5007__z.filled(0.).cumsum(), tau_V=tau_V_neb__z)
+                    logN2O2__z = logN2O2(fNII=f6583__z.filled(0.).cumsum(), fOII=f3727__z.filled(0.).cumsum(), tau_V=tau_V_neb__z)
+                    mask = np.zeros((N_zones), dtype='bool')
+                    mask = np.bitwise_or(mask, f3727__z.mask)
+                    mask = np.bitwise_or(mask, f4861__z.mask)
+                    mask = np.bitwise_or(mask, f5007__z.mask)
+                    mask = np.bitwise_or(mask, f6583__z.mask)
+                    mask = np.bitwise_or(mask, logO23__z.mask)
+                    mask = np.bitwise_or(mask, logN2O2__z.mask)
+                    mlogO23__z, mlogN2O2__z = ma_mask_xyz(logO23__z, logN2O2__z, mask=mask)
+                    OH_O23__z = np.ma.masked_all((N_zones))
+                    OH_O23__z[~mask] = OH_O23(logO23_ratio=mlogO23__z.compressed(), logN2O2_ratio=mlogN2O2__z.compressed())
+                    OH_O23__z[~np.isfinite(OH_O23__z)] = np.ma.masked
+                    y = OH_O23__z
+                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
+                    # sc = ax.scatter(zoneDistance_HLR, OH_O3N2, s=1, **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(zoneDistance_HLR, y, mask=None)
+                    min_npts = 5
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
+                        ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_cumulative_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                plt.close(f)
+                page += 1
+
+
+def fig7_profile(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'N2O2'
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                # f = plt.figure(dpi=300, figsize=(N_cols * 2, N_rows * 2))
+                # from mpl_toolkits.axes_grid1 import Grid
+                # grid = Grid(f, rect=111, nrows_ncols=(N_rows, N_cols), axes_pad=0.0, label_mode='all',)
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                # for i in xrange(N_rows):
+                #     for j in xrange(N_cols):
+                #         # axArr[i, j].axis('off')
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = axArr[row][col]
+                    f3727__z = ALL.get_gal_prop(g, ALL.f3727__z)
+                    f4861__z = ALL.get_gal_prop(g, ALL.f4861__z)
+                    f6563__z = ALL.get_gal_prop(g, ALL.f6563__z)
+                    f6583__z = ALL.get_gal_prop(g, ALL.f6583__z)
+                    N_zones = ALL.get_gal_prop_unique(g, ALL.N_zone)
+                    tau_V_neb = lambda Ha, Hb: (1./(q[0] - q[1])) * np.ma.log(Ha/Hb/2.86)
+                    tau_V_neb__z = tau_V_neb(f6563__z, f4861__z)
+                    tau_V_neb__z = np.where(np.less(tau_V_neb__z, 0), 0, tau_V_neb__z)
+                    logN2O2__z = logN2O2(fNII=f6583__z, fOII=f3727__z, tau_V=tau_V_neb__z)
+                    mask = np.zeros((N_zones), dtype='bool')
+                    mask = np.bitwise_or(mask, f3727__z.mask)
+                    mask = np.bitwise_or(mask, f6583__z.mask)
+                    mask = np.bitwise_or(mask, logN2O2__z.mask)
+                    mlogN2O2__z = np.ma.masked_array(logN2O2__z, mask=mask)
+                    OH_N2O2__z = np.ma.masked_all((N_zones))
+                    OH_N2O2__z[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2__z.compressed())
+                    OH_N2O2__z[~np.isfinite(OH_N2O2__z)] = np.ma.masked
+                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
+                    sc = ax.scatter(zoneDistance_HLR, OH_N2O2__z, s=1, **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(zoneDistance_HLR, OH_N2O2__z, mask=None)
+                    min_npts = 5
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
+                        ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                plt.close(f)
+                page += 1
+
+
+def fig7_cumulative_profile(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'N2O2'
+
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) cumulative profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = axArr[row][col]
+                    f3727__z = ALL.get_gal_prop(g, ALL.f3727__z)
+                    f4861__z = ALL.get_gal_prop(g, ALL.f4861__z)
+                    f6563__z = ALL.get_gal_prop(g, ALL.f6563__z)
+                    f6583__z = ALL.get_gal_prop(g, ALL.f6583__z)
+                    N_zones = ALL.get_gal_prop_unique(g, ALL.N_zone)
+                    tau_V_neb = lambda Ha, Hb: (1./(q[0] - q[1])) * np.ma.log(Ha/Hb/2.86)
+                    tau_V_neb__z = tau_V_neb(f6563__z.filled(0.).cumsum(), f4861__z.filled(0.).cumsum())
+                    tau_V_neb__z = np.where(np.less(tau_V_neb__z, 0), 0, tau_V_neb__z)
+                    logN2O2__z = logN2O2(fNII=f6583__z.filled(0.).cumsum(), fOII=f3727__z.filled(0.).cumsum(), tau_V=tau_V_neb__z)
+                    mask = np.zeros((N_zones), dtype='bool')
+                    mask = np.bitwise_or(mask, f3727__z.mask)
+                    mask = np.bitwise_or(mask, f6583__z.mask)
+                    mask = np.bitwise_or(mask, logN2O2__z.mask)
+                    mlogN2O2__z = np.ma.masked_array(logN2O2__z, mask=mask)
+                    OH_N2O2__z = np.ma.masked_all((N_zones))
+                    OH_N2O2__z[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2__z.compressed())
+                    OH_N2O2__z[~np.isfinite(OH_N2O2__z)] = np.ma.masked
+                    y = OH_N2O2__z
+                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
+                    # sc = ax.scatter(zoneDistance_HLR, OH_O3N2, s=1, **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(zoneDistance_HLR, y, mask=None)
+                    min_npts = 5
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
+                        ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_cumulative_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                plt.close(f)
+                page += 1
 
 
 if __name__ == '__main__':

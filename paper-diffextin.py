@@ -33,7 +33,7 @@ debug = False
 q = calc_redlaw([4861, 6563], R_V=3.1, redlaw='CCM')
 # config variables
 lineratios_range = {
-    '6563/4861': [0, 1],
+    '6563/4861': [0.15, 0.75],
     '6583/6563': [-0.7, 0.1],
     '6300/6563': [-2, 0],
     '6717+6731/6563': [-0.8, 0.2],
@@ -86,6 +86,8 @@ def main(argv=None):
 
     # if debug:
     #     gals = ['K0073']
+    # sel3gals = ['K0010', 'K0813', 'K0187']
+    sel3gals = ['K0010', 'K0813', 'K0836']
     """
     Fig 1.
         Example fig (maps, images, spectral fit and a zoom on EML on resid. spectra)
@@ -99,7 +101,7 @@ def main(argv=None):
         Scatter could be colored by zone distance from center. (grayscale?)
         -- WHa_SBHa_zones_sample_histograms() from diffextin-experiences.py
     """
-    # fig2(ALL, gals)
+    fig2(ALL, gals)
 
     """
     Fig 3.
@@ -107,7 +109,7 @@ def main(argv=None):
         TODO: choose 3 example galaxies (Sa, Sb and Sc??)
     """
     # fig3(ALL, gals)  # gals=['K0010', 'K0187', 'K0813', 'K0388'])
-    # fig3_3gals(ALL, gals=['K0010', 'K0813', 'K0187'])
+    fig3_3gals(ALL, gals=sel3gals)
 
     """
     Fig 4.
@@ -115,7 +117,7 @@ def main(argv=None):
         Should be those same example galaxies from Fig. 3.
     """
     #  fig4(ALL, gals)  # gals=['K0010', 'K0187', 'K0813', 'K0388'])
-    # fig4_3gals(ALL, gals=['K0010', 'K0813', 'K0187'])
+    fig4_3gals(ALL, gals=sel3gals)
 
     """
     Fig 5.
@@ -132,7 +134,7 @@ def main(argv=None):
         Should be those same example galaxies from Fig. 3.
     """
     # fig6(ALL, gals)  #  gals=['K0010', 'K0187', 'K0813', 'K0388'])
-    # fig6_3gals(ALL, gals=['K0010', 'K0813', 'K0187'])
+    fig6_3gals(ALL, gals=sel3gals)
 
     """
     Fig 7.
@@ -141,7 +143,7 @@ def main(argv=None):
         panel c: Histogram of D_tau_classif (tau_HII - tau_DIG)/integrated_tau_V_neb
         All sample.
     """
-    # fig7(ALL, gals)
+    fig7(ALL, gals)
 
     """
     Fig 8.
@@ -149,7 +151,7 @@ def main(argv=None):
         All sample.
         -- histograms_HaHb_Dt() from diffextin-experiences.py
     """
-    # fig8(ALL, gals)
+    fig8(ALL, gals)
 
     """
     Fig 9.
@@ -158,43 +160,6 @@ def main(argv=None):
         -- Dt_xY_profile_sample() from diffextin-experiences.py
     """
     # fig9(ALL, gals)
-
-
-def create_segmented_map(ALL, califaID, selDIG, selCOMP, selHII):
-    N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
-    N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
-    sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, califaID, selDIG, selCOMP, selHII)
-    map__yx = np.ma.masked_all((N_y, N_x))
-    map__yx[sel_DIG__yx] = 1
-    map__yx[sel_COMP__yx] = 2
-    map__yx[sel_HII__yx] = 3
-    return map__yx
-
-
-def create_segmented_map_zones(ALL, califaID, selDIG, selCOMP, selHII):
-    N_zone = ALL.get_gal_prop_unique(califaID, ALL.N_zone)
-    sel_DIG__z, sel_COMP__z, sel_HII__z = get_selections_zones(ALL, califaID, selDIG, selCOMP, selHII)
-    map__z = np.ma.masked_all((N_zone))
-    map__z[sel_DIG__z] = 1
-    map__z[sel_COMP__z] = 2
-    map__z[sel_HII__z] = 3
-    return map__z
-
-
-def get_selections(ALL, califaID, selDIG, selCOMP, selHII):
-    N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
-    N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
-    sel_DIG__yx = ALL.get_gal_prop(califaID, selDIG).reshape(N_y, N_x)
-    sel_COMP__yx = ALL.get_gal_prop(califaID, selCOMP).reshape(N_y, N_x)
-    sel_HII__yx = ALL.get_gal_prop(califaID, selHII).reshape(N_y, N_x)
-    return sel_DIG__yx, sel_COMP__yx, sel_HII__yx
-
-
-def get_selections_zones(ALL, califaID, selDIG, selCOMP, selHII):
-    sel_DIG__z = ALL.get_gal_prop(califaID, selDIG)
-    sel_COMP__z = ALL.get_gal_prop(califaID, selCOMP)
-    sel_HII__z = ALL.get_gal_prop(califaID, selHII)
-    return sel_DIG__z, sel_COMP__z, sel_HII__z
 
 
 def plotBPT(ax, N2Ha, O3Hb, z=None, cmap='viridis', mask=None, labels=True, N=False, cb_label=r'R [HLR]', vmax=None, vmin=None, dcontour=True, s=10):
@@ -1069,7 +1034,7 @@ def fig6_3gals(ALL, gals=None):
         f__lz = {'%s' % L: ALL.get_gal_prop(califaID, 'f%s__z' % L) for L in lines}
 
         x = distance_HLR__z
-        y = np.ma.log10(f__lz['6563']/f__lz['4861'])
+        y = (1./(q[0] - q[1])) * np.ma.log(f__lz['6563']/f__lz['4861']/2.86)
         x_range = distance_range
         y_range = lineratios_range['6563/4861']
         map__z = create_segmented_map_zones(ALL, califaID, sel_WHa_DIG__z, sel_WHa_COMP__z, sel_WHa_HII__z)
@@ -1102,9 +1067,12 @@ def fig6_3gals(ALL, gals=None):
             sel = npts_HII > min_npts
             ax1.plot(bin_center_HII[sel], yPrc_HII[2][sel], 'k--', lw=2, c=colors_lines_DIG_COMP_HII[2])
             ax1.plot(bin_center_HII[sel], yPrc_HII[2][sel], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_HII[2], markersize=10)
+
         ax2 = ax1.twinx()
         mn, mx = ax1.get_ylim()
-        ax2.set_ylim((1/0.34652) * np.log(10**(mn)/2.86), (1/0.34652) * np.log(10**(mx)/2.86))
+        unit_converter = lambda x: np.log10(2.86 * np.exp(x * 0.34652))
+        ax2.set_ylim(unit_converter(mn), unit_converter(mx))
+        # ax2.set_ylim((1/0.34652) * np.log(10**(mn)/2.86), (1/0.34652) * np.log(10**(mx)/2.86))
 
         if row < 2:
             plt.setp(ax1.get_xticklabels(), visible=False)
@@ -1114,8 +1082,8 @@ def fig6_3gals(ALL, gals=None):
             cb = plt.colorbar(sc, cax=cbaxes, ticks=[1.+2/6., 2, 3-2/6.], orientation='horizontal')
             cb.ax.set_xticklabels(classif_labels, fontsize=9)
         if row == 1:
-            ax1.set_ylabel(r'$\log\ H\alpha/H\beta$')
-            ax2.set_ylabel(r'$\tau_V$')
+            ax1.set_ylabel(r'$\tau_V$')
+            ax2.set_ylabel(r'$\log\ H\alpha/H\beta$')
         row += 1
 
     f.tight_layout(h_pad=0)
@@ -1198,7 +1166,7 @@ def fig7(ALL, gals=None):
 
         # AXIS 1
         x = (1./(q[0] - q[1])) * np.ma.log(SB6563__gz/SB4861__gz/2.86)
-        range = [-3, 3]
+        range = [-2, 2]
         xDs = [x[sel_WHa_DIG__gz].compressed(),  x[sel_WHa_COMP__gz].compressed(),  x[sel_WHa_HII__gz].compressed()]
         # ax1.set_title('zones')
         plot_histo_ax(ax1, x.compressed(), histo=False, ini_pos_y=0.9, y_v_space=0.06, ha='left', pos_x=0.02, c='k', first=True)
