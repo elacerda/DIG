@@ -55,8 +55,8 @@ config = -2
 EL = True
 elliptical = True
 DIG_WHa_threshold = 10
-HII_WHa_threshold = 20
-HII_Zhang_threshold = 1e39/L_sun
+SF_WHa_threshold = 20
+SF_Zhang_threshold = 1e39/L_sun
 DIG_Zhang_threshold = 10**38.5/L_sun
 lines = ['3727', '4363', '4861', '4959', '5007', '6300', '6563', '6583', '6717', '6731']
 rbinini = 0.
@@ -88,6 +88,9 @@ def main(argv=None):
     #     gals = ['K0073']
     # sel3gals = ['K0010', 'K0813', 'K0187']
     sel3gals = ['K0010', 'K0813', 'K0836']
+    # sel, SN__lgz = samples(ALL, gals)
+    # summary(ALL, gals=gals, sel=sel)
+    # summary(ALL, gals=gals, sel=sel, mask_name='Below S06', mask__z=sel['BPT']['S06']['z'], mask__yx=sel['BPT']['S06']['yx'])
     """
     Fig 1.
         Example fig (maps, images, spectral fit and a zoom on EML on resid. spectra)
@@ -101,7 +104,7 @@ def main(argv=None):
         Scatter could be colored by zone distance from center. (grayscale?)
         -- WHa_SBHa_zones_sample_histograms() from diffextin-experiences.py
     """
-    fig2(ALL, gals)
+    # fig2(ALL, gals)
 
     """
     Fig 3.
@@ -109,7 +112,7 @@ def main(argv=None):
         TODO: choose 3 example galaxies (Sa, Sb and Sc??)
     """
     # fig3(ALL, gals)  # gals=['K0010', 'K0187', 'K0813', 'K0388'])
-    fig3_3gals(ALL, gals=sel3gals)
+    # fig3_3gals(ALL, gals=sel3gals)
 
     """
     Fig 4.
@@ -117,7 +120,7 @@ def main(argv=None):
         Should be those same example galaxies from Fig. 3.
     """
     #  fig4(ALL, gals)  # gals=['K0010', 'K0187', 'K0813', 'K0388'])
-    fig4_3gals(ALL, gals=sel3gals)
+    # fig4_3gals(ALL, gals=sel3gals)
 
     """
     Fig 5.
@@ -126,7 +129,7 @@ def main(argv=None):
             the color by the bootstrap classif. stats.
     """
     # fig5(ALL, gals)
-    fig5_2panels(ALL, gals)
+    # fig5_2panels(ALL, gals)
 
     """
     Fig 6.
@@ -134,7 +137,7 @@ def main(argv=None):
         Should be those same example galaxies from Fig. 3.
     """
     # fig6(ALL, gals)  #  gals=['K0010', 'K0187', 'K0813', 'K0388'])
-    fig6_3gals(ALL, gals=sel3gals)
+    # fig6_3gals(ALL, gals=sel3gals)
 
     """
     Fig 7.
@@ -143,7 +146,7 @@ def main(argv=None):
         panel c: Histogram of D_tau_classif (tau_HII - tau_DIG)/integrated_tau_V_neb
         All sample.
     """
-    fig7(ALL, gals)
+    # fig7(ALL, gals)
 
     """
     Fig 8.
@@ -151,7 +154,7 @@ def main(argv=None):
         All sample.
         -- histograms_HaHb_Dt() from diffextin-experiences.py
     """
-    fig8(ALL, gals)
+    # fig8(ALL, gals)
 
     """
     Fig 9.
@@ -160,6 +163,185 @@ def main(argv=None):
         -- Dt_xY_profile_sample() from diffextin-experiences.py
     """
     # fig9(ALL, gals)
+
+def summary(ALL, **kwargs):
+    import datetime
+    sel = kwargs.get('sel')
+    gals = kwargs.get('gals')
+    mask__z = kwargs.get('mask__z', np.zeros((ALL.califaID__z.shape), dtype='bool'))
+    mask__yx = kwargs.get('mask__yx', np.zeros((ALL.califaID__yx.shape), dtype='bool'))
+    mask_name = kwargs.get('mask_name', None)
+
+    print '# Summary - %s - {:%Y%m%d %H:%M:%S}'.format(mask_name, datetime.datetime.today()) % mask_name
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+    sel_gals__gyx = np.zeros((ALL.califaID__yx.shape), dtype='bool')
+
+    N_gals = 0
+    new_gals = gals[:]
+    for i, g in enumerate(gals):
+        N_mask = ALL.get_gal_prop(g, mask__z).astype(int).sum()
+        N_zone = ALL.get_gal_prop_unique(g, ALL.N_zone)
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        where_gals__gyx = np.where(ALL.califaID__yx == g)
+        N_where__gz = len(where_gals__gz[0])
+        N_where__gyx = len(where_gals__gyx[0])
+        if N_where__gz == 0 or N_where__gz == 0 or (N_zone - N_mask) == 0:
+            _ = new_gals.pop(i)
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        sel_gals__gyx[where_gals__gyx] = True
+        N_gals += 1
+    gals = new_gals
+    print 'N_gals: %d' % N_gals
+    print 'N_zones: %d' % sel_gals__gz.astype(int).sum()
+    print 'N_pixels: %d' % sel_gals__gyx.astype(int).sum()
+
+    print '# WHa classif:'
+    sel_WHa = sel['WHa'].copy()
+    for k in sel_WHa.keys():
+        sel_WHa[k]['z'][mask__z] = False
+        sel_WHa[k]['yx'][mask__yx] = False
+    print '\tTotal zones DIG: %d' % sel_WHa['DIG']['z'].astype(int).sum()
+    print '\tTotal zones COMP: %d' % sel_WHa['COMP']['z'].astype(int).sum()
+    print '\tTotal zones SF: %d' % sel_WHa['SF']['z'].astype(int).sum()
+    for g in gals:
+        mask_gal__z = ALL.get_gal_prop(g, mask__z)
+        N_zone = ALL.get_gal_prop_unique(g, ALL.N_zone)
+        N_DIG = ALL.get_gal_prop(g, sel_WHa['DIG']['z']).astype(int).sum()
+        N_COMP = ALL.get_gal_prop(g, sel_WHa['COMP']['z']).astype(int).sum()
+        N_SF = ALL.get_gal_prop(g, sel_WHa['SF']['z']).astype(int).sum()
+        N_TOT = N_DIG+N_SF+N_COMP
+        DIG_perc_tot = 0.
+        COMP_perc_tot = 0.
+        SF_perc_tot = 0.
+        DIG_perc = 0.
+        SF_perc = 0.
+        if N_TOT > 0:
+            DIG_perc_tot = 100. * N_DIG/(N_TOT)
+            COMP_perc_tot = 100. * N_COMP/(N_TOT)
+            SF_perc_tot = 100. * N_SF/(N_TOT)
+        if N_SF > 0 or N_DIG > 0:
+            DIG_perc = 100. * N_DIG/(N_DIG+N_SF)
+            SF_perc = 100. * N_SF/(N_DIG+N_SF)
+        print '%s - (%d - %d) - %d DIG (%.1f%% [%.1f%%]) - %d COMP ([%.1f%%]) - %d SF (%.1f%% [%.1f%%])' % (g, N_zone, N_TOT, N_DIG, DIG_perc, DIG_perc_tot, N_COMP, COMP_perc_tot, N_SF, SF_perc, SF_perc_tot)
+
+    print '# Zhang classif:'
+    sel_Zhang = sel['Zhang'].copy()
+    for k in sel_Zhang.keys():
+        sel_Zhang[k]['z'][mask__z] = False
+        sel_Zhang[k]['yx'][mask__yx] = False
+    print '\tTotal zones DIG: %d' % sel_Zhang['DIG']['z'].astype(int).sum()
+    print '\tTotal zones COMP: %d' % sel_Zhang['COMP']['z'].astype(int).sum()
+    print '\tTotal zones SF: %d' % sel_Zhang['SF']['z'].astype(int).sum()
+    for g in gals:
+        mask_gal__z = ALL.get_gal_prop(g, mask__z)
+        N_zone = ALL.get_gal_prop_unique(g, ALL.N_zone)
+        N_DIG = ALL.get_gal_prop(g, sel_Zhang['DIG']['z']).astype(int).sum()
+        N_COMP = ALL.get_gal_prop(g, sel_Zhang['COMP']['z']).astype(int).sum()
+        N_SF = ALL.get_gal_prop(g, sel_Zhang['SF']['z']).astype(int).sum()
+        N_TOT = N_DIG+N_SF+N_COMP
+        DIG_perc_tot = 0.
+        COMP_perc_tot = 0.
+        SF_perc_tot = 0.
+        DIG_perc = 0.
+        SF_perc = 0.
+        if N_TOT > 0:
+            DIG_perc_tot = 100. * N_DIG/(N_TOT)
+            COMP_perc_tot = 100. * N_COMP/(N_TOT)
+            SF_perc_tot = 100. * N_SF/(N_TOT)
+        if N_SF > 0 or N_DIG > 0:
+            DIG_perc = 100. * N_DIG/(N_DIG+N_SF)
+            SF_perc = 100. * N_SF/(N_DIG+N_SF)
+        print '%s - (%d - %d) - %d DIG (%.1f%% [%.1f%%]) - %d COMP ([%.1f%%]) - %d SF (%.1f%% [%.1f%%])' % (g, N_zone, N_TOT, N_DIG, DIG_perc, DIG_perc_tot, N_COMP, COMP_perc_tot, N_SF, SF_perc, SF_perc_tot)
+
+
+def samples(ALL, gals=None):
+    sel_WHa = dict(
+        DIG=dict(
+            z=(ALL.W6563__z < DIG_WHa_threshold).filled(False),
+            yx=(ALL.W6563__yx < DIG_WHa_threshold).filled(False)
+        ),
+        COMP=dict(
+            z=np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(
+                False), (ALL.W6563__z < SF_WHa_threshold).filled(False)),
+            yx=np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(
+                False), (ALL.W6563__yx < SF_WHa_threshold).filled(False))
+        ),
+        SF=dict(
+            z=(ALL.W6563__z >= SF_WHa_threshold).filled(False),
+            yx=(ALL.W6563__yx >= SF_WHa_threshold).filled(False)
+        ),
+    )
+
+    sel_Zhang = dict(
+        DIG=dict(
+            z=(ALL.SB6563__z < DIG_Zhang_threshold).filled(False),
+            yx=(ALL.SB6563__yx < DIG_Zhang_threshold).filled(False)
+        ),
+        COMP=dict(
+            z=np.bitwise_and((ALL.SB6563__z >= DIG_Zhang_threshold).filled(False), (ALL.SB6563__z < SF_Zhang_threshold).filled(False)),
+            yx=np.bitwise_and((ALL.SB6563__yx >= DIG_Zhang_threshold).filled(False), (ALL.SB6563__yx < SF_Zhang_threshold).filled(False))
+        ),
+        SF=dict(
+            z=(ALL.SB6563__z >= SF_Zhang_threshold).filled(False),
+            yx=(ALL.SB6563__yx >= SF_Zhang_threshold).filled(False)
+        ),
+    )
+
+    L = Lines()
+    N2Ha__yx, N2Ha__z = np.ma.log10(ALL.f6583__yx/ALL.f6563__yx), np.ma.log10(ALL.f6583__z/ALL.f6563__z)
+    O3Hb__yx, O3Hb__z = np.ma.log10(ALL.f5007__yx/ALL.f4861__yx), np.ma.log10(ALL.f5007__z/ALL.f4861__z)
+    x__z, y__z = N2Ha__z, O3Hb__z
+    x__yx, y__yx = N2Ha__yx, O3Hb__yx
+
+    sel_below_S06__z = L.belowlinebpt('S06', x__z, y__z)
+    sel_below_K03__z = L.belowlinebpt('K03', x__z, y__z)
+    sel_below_K01__z = L.belowlinebpt('K01', x__z, y__z)
+    sel_between_S06K03__z = np.bitwise_and(sel_below_K03__z, ~sel_below_S06__z)
+    sel_between_K03K01__z = np.bitwise_and(~sel_below_K03__z, sel_below_K01__z)
+    sel_above_K01__z = ~sel_below_K01__z
+    sel_below_S06__yx = L.belowlinebpt('S06', x__yx, y__yx)
+    sel_below_K03__yx = L.belowlinebpt('K03', x__yx, y__yx)
+    sel_below_K01__yx = L.belowlinebpt('K01', x__yx, y__yx)
+    sel_between_S06K03__yx = np.bitwise_and(sel_below_K03__yx, ~sel_below_S06__yx)
+    sel_between_K03K01__yx = np.bitwise_and(~sel_below_K03__yx, sel_below_K01__yx)
+    sel_above_K01__yx = ~sel_below_K01__yx
+
+    sel_BPT = dict(
+        S06=dict(z=sel_below_S06__z, yx=sel_below_S06__yx),
+        K03=dict(z=sel_below_K03__z, yx=sel_below_K03__yx),
+        K01=dict(z=sel_below_K01__z, yx=sel_below_K01__yx),
+        betS06K03=dict(z=sel_between_S06K03__z, yx=sel_between_S06K03__yx),
+        betK03K01=dict(z=sel_between_K03K01__z, yx=sel_between_K03K01__yx),
+        aboK01=dict(z=sel_above_K01__z, yx=sel_above_K01__yx),
+    )
+
+    f__lgz = {'%s' % l: getattr(ALL, 'f%s__z' % l) for l in lines}
+    ef__lgz = {'%s' % l: getattr(ALL, 'ef%s__z' % l) for l in lines}
+    SN__lgz = {'%s' % l: f__lgz[l]/ef__lgz[l] for l in lines}
+
+    sel_SN = dict(
+        S1=dict(
+            z={'%s' % l: np.greater(SN__lgz[l].filled(0.), 1) for l in lines},
+        ),
+        S3=dict(
+            z={'%s' % l: np.greater(SN__lgz[l].filled(0.), 3) for l in lines},
+        ),
+        S5=dict(
+            z={'%s' % l: np.greater(SN__lgz[l].filled(0.), 5) for l in lines},
+        ),
+    )
+
+    sel = dict(
+        SN=sel_SN,
+        WHa=sel_WHa,
+        Zhang=sel_Zhang,
+        BPT=sel_BPT
+    )
+
+    return sel, SN__lgz
+
 
 
 def plotBPT(ax, N2Ha, O3Hb, z=None, cmap='viridis', mask=None, labels=True, N=False, cb_label=r'R [HLR]', vmax=None, vmin=None, dcontour=True, s=10):
@@ -238,8 +420,8 @@ def fig2(ALL, gals=None):
 
         # WHa DIG-COMP-HII decomposition
         sel_WHa_DIG__gz = (W6563__gz < DIG_WHa_threshold).filled(False)
-        sel_WHa_COMP__gz = np.bitwise_and((W6563__gz >= DIG_WHa_threshold).filled(False), (W6563__gz < HII_WHa_threshold).filled(False))
-        sel_WHa_HII__gz = (W6563__gz >= HII_WHa_threshold).filled(False)
+        sel_WHa_COMP__gz = np.bitwise_and((W6563__gz >= DIG_WHa_threshold).filled(False), (W6563__gz < SF_WHa_threshold).filled(False))
+        sel_WHa_HII__gz = (W6563__gz >= SF_WHa_threshold).filled(False)
 
         x = np.ma.log10(W6563__gz)
         y = np.ma.log10(SB6563__gz)
@@ -257,7 +439,7 @@ def fig2(ALL, gals=None):
         cb = plt.colorbar(sc, cax=cbaxes, ticks=[0, 1, 2, 3], orientation='horizontal')
         cb.set_label(r'R [HLR]', fontsize=14)
         axS.axhline(y=np.log10(DIG_Zhang_threshold), color='k', linestyle='-.', lw=2)
-        axS.axhline(y=np.log10(HII_Zhang_threshold), color='k', linestyle='-.', lw=2)
+        axS.axhline(y=np.log10(SF_Zhang_threshold), color='k', linestyle='-.', lw=2)
         axS.set_xlim(logWHa_range)
         axS.set_ylim(logSBHa_range)
         axS.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
@@ -277,8 +459,8 @@ def fig2(ALL, gals=None):
 def fig3(ALL, gals=None):
     # WHa DIG-COMP-HII decomposition
     sel_WHa_DIG__yx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__yx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__yx = (ALL.W6563__yx >= SF_WHa_threshold).filled(False)
 
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
@@ -352,8 +534,8 @@ def fig3(ALL, gals=None):
 def fig3_3gals(ALL, gals=None):
     # WHa DIG-COMP-HII decomposition
     sel_WHa_DIG__yx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__yx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__yx = (ALL.W6563__yx >= SF_WHa_threshold).filled(False)
 
     N_cols = 4
     N_rows = 3
@@ -427,8 +609,8 @@ def fig3_3gals(ALL, gals=None):
 def fig4(ALL, gals=None):
     # WHa DIG-COMP-HII decomposition
     sel_WHa_DIG__z = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__z = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__z = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__z = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__z = (ALL.W6563__z >= SF_WHa_threshold).filled(False)
 
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
@@ -553,8 +735,8 @@ def fig4(ALL, gals=None):
 def fig4_3gals(ALL, gals=None):
     # WHa DIG-COMP-HII decomposition
     sel_WHa_DIG__z = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__z = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__z = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__z = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__z = (ALL.W6563__z >= SF_WHa_threshold).filled(False)
 
     N_cols = 3
     N_rows = 3
@@ -684,8 +866,8 @@ def fig4_3gals(ALL, gals=None):
 
 def fig5(ALL, gals=None):
     sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= SF_WHa_threshold).filled(False)
 
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
@@ -727,7 +909,7 @@ def fig5(ALL, gals=None):
         # AXIS 1
         extent = [-1.5, 1, -1.5, 1.5]
         xm, ym = ma_mask_xyz(N2Ha__gz, O3Hb__gz)
-        # sc = ax1.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=np.log10(DIG_WHa_threshold), vmax=np.log10(HII_WHa_threshold), cmap='rainbow_r', s=1, marker='o', edgecolor='none')
+        # sc = ax1.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=np.log10(DIG_WHa_threshold), vmax=np.log10(SF_WHa_threshold), cmap='rainbow_r', s=1, marker='o', edgecolor='none')
         sc = ax1.scatter(xm, ym, c=classif, cmap=cmap, s=1, marker='o', edgecolor='none')
         ax1.set_xlim(extent[0:2])
         ax1.set_ylim(extent[2:4])
@@ -755,7 +937,7 @@ def fig5(ALL, gals=None):
         # # AXIS 2
         # extent = [-1.5, 1, -1.5, 1.5]
         # xm, ym = ma_mask_xyz(S2Ha__gz, O3Hb__gz)
-        # # sc = ax2.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=np.log10(DIG_WHa_threshold), vmax=np.log10(HII_WHa_threshold), cmap='rainbow_r', s=1, marker='o', edgecolor='none')
+        # # sc = ax2.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=np.log10(DIG_WHa_threshold), vmax=np.log10(SF_WHa_threshold), cmap='rainbow_r', s=1, marker='o', edgecolor='none')
         # sc = ax2.scatter(xm, ym, c=classif, cmap=cmap, s=1, marker='o', edgecolor='none')
         # ax2.set_xlim(extent[0:2])
         # ax2.set_ylim(extent[2:4])
@@ -775,7 +957,7 @@ def fig5(ALL, gals=None):
         # # AXIS 3
         # extent = [-2.5, 0, -1.5, 1.5]
         # xm, ym = ma_mask_xyz(OIHa__gz, O3Hb__gz)
-        # # sc = ax3.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=np.log10(DIG_WHa_threshold), vmax=np.log10(HII_WHa_threshold), cmap='rainbow_r', s=1, marker='o', edgecolor='none')
+        # # sc = ax3.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=np.log10(DIG_WHa_threshold), vmax=np.log10(SF_WHa_threshold), cmap='rainbow_r', s=1, marker='o', edgecolor='none')
         # sc = ax3.scatter(xm, ym, c=classif, cmap=cmap, s=1, marker='o', edgecolor='none')
         # ax3.set_xlim(extent[0:2])
         # ax3.set_ylim(extent[2:4])
@@ -818,8 +1000,8 @@ def fig5(ALL, gals=None):
 
 def fig5_2panels(ALL, gals=None):
     sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= SF_WHa_threshold).filled(False)
 
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
@@ -884,7 +1066,7 @@ def fig5_2panels(ALL, gals=None):
         cb.ax.set_xticklabels(classif_labels, fontsize=12)
         # AXIS 2
         xm, ym = ma_mask_xyz(N2Ha__gz, O3Hb__gz)
-        # sc = ax2.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=np.log10(DIG_WHa_threshold), vmax=np.log10(HII_WHa_threshold), cmap='rainbow_r', s=1, marker='o', edgecolor='none')
+        # sc = ax2.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=np.log10(DIG_WHa_threshold), vmax=np.log10(SF_WHa_threshold), cmap='rainbow_r', s=1, marker='o', edgecolor='none')
         sc = ax2.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=logWHa_range[0], vmax=logWHa_range[1], cmap='rainbow_r', s=1, marker='o', edgecolor='none')
         ax2.set_xlim(extent[0:2])
         ax2.set_ylim(extent[2:4])
@@ -931,11 +1113,11 @@ def fig5_2panels(ALL, gals=None):
 def fig6(ALL, gals=None):
     # WHa DIG-COMP-HII decomposition
     sel_WHa_DIG__yx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__yx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__yx = (ALL.W6563__yx >= SF_WHa_threshold).filled(False)
     sel_WHa_DIG__z = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__z = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__z = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__z = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__z = (ALL.W6563__z >= SF_WHa_threshold).filled(False)
 
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
@@ -1009,8 +1191,8 @@ def fig6(ALL, gals=None):
 def fig6_3gals(ALL, gals=None):
     # WHa DIG-COMP-HII decomposition
     sel_WHa_DIG__z = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__z = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__z = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__z = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__z = (ALL.W6563__z >= SF_WHa_threshold).filled(False)
 
     N_cols = 1
     N_rows = 3
@@ -1100,8 +1282,8 @@ def fig7(ALL, gals=None):
 
     # WHa DIG-COMP-HII decomposition
     sel_WHa_DIG__yx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
-    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
-    sel_WHa_HII__yx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
+    sel_WHa_COMP__yx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < SF_WHa_threshold).filled(False))
+    sel_WHa_HII__yx = (ALL.W6563__yx >= SF_WHa_threshold).filled(False)
 
     N_gals = 0
     for g in gals:
@@ -1156,8 +1338,8 @@ def fig7(ALL, gals=None):
 
         # WHa DIG-COMP-HII decomposition
         sel_WHa_DIG__gz = (W6563__gz < DIG_WHa_threshold).filled(False)
-        sel_WHa_COMP__gz = np.bitwise_and((W6563__gz >= DIG_WHa_threshold).filled(False), (W6563__gz < HII_WHa_threshold).filled(False))
-        sel_WHa_HII__gz = (W6563__gz >= HII_WHa_threshold).filled(False)
+        sel_WHa_COMP__gz = np.bitwise_and((W6563__gz >= DIG_WHa_threshold).filled(False), (W6563__gz < SF_WHa_threshold).filled(False))
+        sel_WHa_HII__gz = (W6563__gz >= SF_WHa_threshold).filled(False)
 
         N_cols = 1
         N_rows = 3
@@ -1227,8 +1409,8 @@ def fig8(ALL, gals=None):
 
         # WHa DIG-COMP-HII decomposition
         sel_WHa_DIG__gz = (W6563__gz < DIG_WHa_threshold).filled(False)
-        sel_WHa_COMP__gz = np.bitwise_and((W6563__gz >= DIG_WHa_threshold).filled(False), (W6563__gz < HII_WHa_threshold).filled(False))
-        sel_WHa_HII__gz = (W6563__gz >= HII_WHa_threshold).filled(False)
+        sel_WHa_COMP__gz = np.bitwise_and((W6563__gz >= DIG_WHa_threshold).filled(False), (W6563__gz < SF_WHa_threshold).filled(False))
+        sel_WHa_HII__gz = (W6563__gz >= SF_WHa_threshold).filled(False)
 
         f = plt.figure(dpi=200, figsize=(6, 5))
         ax1 = f.gca()
@@ -1271,8 +1453,8 @@ def fig9(ALL, gals=None):
 
         # WHa DIG-COMP-HII decomposition
         sel_WHa_DIG__gz = (W6563__gz < DIG_WHa_threshold).filled(False)
-        sel_WHa_COMP__gz = np.bitwise_and((W6563__gz >= DIG_WHa_threshold).filled(False), (W6563__gz < HII_WHa_threshold).filled(False))
-        sel_WHa_HII__gz = (W6563__gz >= HII_WHa_threshold).filled(False)
+        sel_WHa_COMP__gz = np.bitwise_and((W6563__gz >= DIG_WHa_threshold).filled(False), (W6563__gz < SF_WHa_threshold).filled(False))
+        sel_WHa_HII__gz = (W6563__gz >= SF_WHa_threshold).filled(False)
 
         N_cols = 2
         N_rows = 1

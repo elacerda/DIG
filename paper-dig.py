@@ -33,6 +33,7 @@ minorLocator = AutoMinorLocator(5)
 debug = False
 # CCM reddening law
 q = calc_redlaw([4861, 6563], R_V=3.1, redlaw='CCM')
+qHbHa = q[0] - q[1]
 # config variables
 lineratios_range = {
     '6563/4861': [0, 1],
@@ -126,28 +127,102 @@ def main(argv=None):
         da galaxia, ou entao em funcao da posicao do oiii/hb vs nii/ha integrado
         no bpt.
     """
-    # fig4_profile(ALL, gals)
+    fig4_profile(ALL, gals)
     # fig4_cumulative_profile(ALL, gals)
     """
     Fig 5.
         Igual a Fig 4 mas usando O/H (N2)
     """
+    fig5_profile_new(ALL, gals)
     # fig5_profile(ALL, gals)
     # fig5_cumulative_profile(ALL, gals)
     """
     Fig 6.
         Igual a Fig 4 mas usando O/H (O23)
     """
+    fig6_profile_new(ALL, gals)
     # fig6_profile(ALL, gals)
     # fig6_cumulative_profile(ALL, gals)
     """
     Fig 7.
         Igual a Fig 4 mas usando O/H (N2O2)
     """
-    fig7_profile(ALL, gals)
-    fig7_cumulative_profile(ALL, gals)
+    fig7_profile_new(ALL, gals)
+    # fig7_profile(ALL, gals)
+    # fig7_cumulative_profile(ALL, gals)
     # figs4567(ALL, gals)
     # fig4567_new(ALL, gals)
+
+
+def cumulative_profiles(ALL, califaID, selDIG, selCOMP, selHII, negative_tauV=False):
+    HLR_pix = ALL.get_gal_prop_unique(califaID, ALL.HLR_pix)
+    pa = ALL.get_gal_prop_unique(califaID, ALL.pa)
+    ba = ALL.get_gal_prop_unique(califaID, ALL.ba)
+    N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
+    N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
+    x0 = ALL.get_gal_prop_unique(califaID, ALL.x0)
+    y0 = ALL.get_gal_prop_unique(califaID, ALL.y0)
+    SB__lyx = {'%s' % L: ALL.get_gal_prop(califaID, 'SB%s__yx' % L).reshape(N_y, N_x) for L in lines}
+    sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, califaID, selDIG, selCOMP, selHII)
+
+    SB_sum__lr = {}
+    SB_cumsum__lr = {}
+    SB_npts__lr = {}
+    SB_DIG__lyx = {}
+    SB_sum_DIG__lr = {}
+    SB_cumsum_DIG__lr = {}
+    SB_npts_DIG__lr = {}
+    SB_COMP__lyx = {}
+    SB_sum_COMP__lr = {}
+    SB_cumsum_COMP__lr = {}
+    SB_npts_COMP__lr = {}
+    SB_HII__lyx = {}
+    SB_sum_HII__lr = {}
+    SB_cumsum_HII__lr = {}
+    SB_npts_HII__lr = {}
+    for k, v in SB__lyx.iteritems():
+        SB_sum__lr[k], SB_npts__lr[k] = radialProfile(v, R_bin__r, x0, y0, pa, ba, HLR_pix, None, 'sum', True)
+        SB_cumsum__lr[k] = SB_sum__lr[k].filled(0.).cumsum()
+        SB_HII__lyx[k] = np.ma.masked_array(v, mask=~sel_HII__yx, copy=True)
+        SB_sum_HII__lr[k], SB_npts_HII__lr[k] = radialProfile(SB_HII__lyx[k], R_bin__r, x0, y0, pa, ba, HLR_pix, None, 'sum', True)
+        SB_cumsum_HII__lr[k] = SB_sum_HII__lr[k].filled(0.).cumsum()
+        SB_COMP__lyx[k] = np.ma.masked_array(v, mask=~sel_COMP__yx, copy=True)
+        SB_sum_COMP__lr[k], SB_npts_COMP__lr[k] = radialProfile(SB_COMP__lyx[k], R_bin__r, x0, y0, pa, ba, HLR_pix, None, 'sum', True)
+        SB_cumsum_COMP__lr[k] = SB_sum_COMP__lr[k].filled(0.).cumsum()
+        SB_DIG__lyx[k] = np.ma.masked_array(v, mask=~sel_DIG__yx, copy=True)
+        SB_sum_DIG__lr[k], SB_npts_DIG__lr[k] = radialProfile(SB_DIG__lyx[k], R_bin__r, x0, y0, pa, ba, HLR_pix, None, 'sum', True)
+        SB_cumsum_DIG__lr[k] = SB_sum_DIG__lr[k].filled(0.).cumsum()
+
+    HaHb__yx = SB__lyx['6563']/SB__lyx['4861']
+    tau_V_neb__yx = np.log(HaHb__yx / 2.86) / qHbHa
+    HaHb_cumsum__r = SB_sum__lr['6563'].filled(0.).cumsum()/SB_sum__lr['4861'].filled(0.).cumsum()
+    tau_V_neb_cumsum__r = np.log(HaHb_cumsum__r / 2.86) / qHbHa
+
+    HaHb_DIG__yx = SB_DIG__lyx['6563']/SB_DIG__lyx['4861']
+    HaHb_cumsum_DIG__r = SB_sum_DIG__lr['6563'].filled(0.).cumsum()/SB_sum_DIG__lr['4861'].filled(0.).cumsum()
+    tau_V_neb_cumsum_DIG__r = np.log(HaHb_cumsum_DIG__r / 2.86) / qHbHa
+    HaHb_COMP__yx = SB_COMP__lyx['6563']/SB_COMP__lyx['4861']
+    HaHb_cumsum_COMP__r = SB_sum_COMP__lr['6563'].filled(0.).cumsum()/SB_sum_COMP__lr['4861'].filled(0.).cumsum()
+    tau_V_neb_cumsum_COMP__r = np.log(HaHb_cumsum_COMP__r / 2.86) / qHbHa
+    HaHb_HII__yx = SB_HII__lyx['6563']/SB_HII__lyx['4861']
+    HaHb_cumsum_HII__r = SB_sum_HII__lr['6563'].filled(0.).cumsum()/SB_sum_HII__lr['4861'].filled(0.).cumsum()
+    tau_V_neb_cumsum_HII__r = np.log(HaHb_cumsum_HII__r / 2.86) / qHbHa
+
+    HaHb_classif = dict(
+        total=dict(HaHb__yx=HaHb__yx, tau_V_neb__yx=tau_V_neb__yx, HaHb_cumsum__r=HaHb_cumsum__r, tau_V_neb_cumsum__r=tau_V_neb_cumsum__r),
+        DIG=dict(HaHb__yx=HaHb_DIG__yx, HaHb_cumsum__r=HaHb_cumsum_DIG__r, tau_V_neb_cumsum__r=tau_V_neb_cumsum_DIG__r),
+        COMP=dict(HaHb__yx=HaHb_COMP__yx, HaHb_cumsum__r=HaHb_cumsum_COMP__r, tau_V_neb_cumsum__r=tau_V_neb_cumsum_COMP__r),
+        HII=dict(HaHb__yx=HaHb_HII__yx, HaHb_cumsum__r=HaHb_cumsum_HII__r, tau_V_neb_cumsum__r=tau_V_neb_cumsum_HII__r),
+    )
+
+    cumsum_classif = dict(
+        total__lr=dict(v=SB_cumsum__lr, vsum=SB_sum__lr, npts=SB_npts__lr, img=SB__lyx),
+        DIG__lr=dict(v=SB_cumsum_DIG__lr, vsum=SB_sum_DIG__lr, npts=SB_npts_DIG__lr, img=SB_DIG__lyx),
+        COMP__lr=dict(v=SB_cumsum_COMP__lr, vsum=SB_sum_COMP__lr, npts=SB_npts_COMP__lr, img=SB_COMP__lyx),
+        HII__lr=dict(v=SB_cumsum_HII__lr, vsum=SB_sum_HII__lr, npts=SB_npts_HII__lr, img=SB_HII__lyx),
+    )
+
+    return SB__lyx, HaHb_classif, cumsum_classif,
 
 
 def create_segmented_map(ALL, califaID, selDIG, selCOMP, selHII):
@@ -696,11 +771,11 @@ def fig2(ALL, gals=None):
             SB_cumsum_DIG__lr[k] = SB_sum_DIG__lr[k].filled(0.).cumsum()
 
         HaHb__yx = SB__lyx['6563']/SB__lyx['4861']
-        tau_V_neb__yx = np.log(HaHb__yx / 2.86) / (q[0] - q[1])
+        tau_V_neb__yx = np.log(HaHb__yx / 2.86) / qHbHa
         HaHb_cumsum__r = SB_sum__lr['6563'].filled(0.).cumsum()/SB_sum__lr['4861'].filled(0.).cumsum()
-        tau_V_neb_cumsum__r = np.log(HaHb_cumsum__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_cumsum__r = np.log(HaHb_cumsum__r / 2.86) / qHbHa
         HaHb_sum_HII__r = SB_sum_HII__lr['6563'].filled(0.).cumsum()/SB_sum_HII__lr['4861'].filled(0.).cumsum()
-        tau_V_neb_cumsum_HII__r = np.log(HaHb_sum_HII__r / 2.86) / (q[0] - q[1])
+        tau_V_neb_cumsum_HII__r = np.log(HaHb_sum_HII__r / 2.86) / qHbHa
 
         tau_V_neb__yx = np.where(np.less(tau_V_neb__yx.filled(-1), 0), 0, tau_V_neb__yx)
         tau_V_neb_cumsum__r = np.where(np.less(tau_V_neb_cumsum__r, 0), 0, tau_V_neb_cumsum__r)
@@ -956,6 +1031,9 @@ def fig4_profile(ALL, gals=None):
     sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
     sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
     sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_DIG__gyx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gyx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gyx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
 
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
@@ -1015,13 +1093,113 @@ def fig4_profile(ALL, gals=None):
                     # ax = grid[i]
                     ax = axArr[row][col]
                     # ax.axis('off')
-                    ALL_O3Hb__z = ALL.get_gal_prop(g, ALL.f5007__z/ALL.f4861__z)
-                    ALL_N2Ha__z = ALL.get_gal_prop(g, ALL.f6583__z/ALL.f6563__z)
-                    ALL_OH_O3N2__z = 8.73 - 0.32 * np.ma.log10(ALL_O3Hb__z/ALL_N2Ha__z)
-                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
-                    sc = ax.scatter(zoneDistance_HLR, ALL_OH_O3N2__z, s=1, **dflt_kw_scatter)
-                    xm, ym = ma_mask_xyz(zoneDistance_HLR, ALL_OH_O3N2__z, mask=None)
-                    min_npts = 5
+
+                    HLR_pix = ALL.get_gal_prop_unique(g, ALL.HLR_pix)
+                    N_x = ALL.get_gal_prop_unique(g, ALL.N_x)
+                    N_y = ALL.get_gal_prop_unique(g, ALL.N_y)
+                    pixelDistance__yx = ALL.get_gal_prop(g, ALL.pixelDistance__yx).reshape(N_y, N_x)
+                    pixelDistance_HLR__yx = pixelDistance__yx / HLR_pix
+                    SB__lyx, HaHb_classif, cumsum_classif = cumulative_profiles(ALL, g, sel_WHa_DIG__gyx, sel_WHa_COMP__gyx, sel_WHa_HII__gyx)
+                    SB_cumsum__lr = cumsum_classif['total__lr']['v']
+                    SB_cumsum_HII__lr = cumsum_classif['HII__lr']['v']
+                    tau_V_neb__yx = HaHb_classif['total']['tau_V_neb__yx']
+                    tau_V_neb_cumsum__r = HaHb_classif['total']['tau_V_neb_cumsum__r']
+                    tau_V_neb_cumsum_HII__r = HaHb_classif['HII']['tau_V_neb_cumsum__r']
+                    ####################################
+                    # O/H - Relative Oxygen abundances #
+                    ####################################
+                    #############
+                    # O3N2 PP04 #
+                    #############
+                    O3Hb__yx = SB__lyx['5007']/SB__lyx['4861']
+                    N2Ha__yx = SB__lyx['6583']/SB__lyx['6563']
+                    OH_O3N2__yx = 8.73 - 0.32 * np.ma.log10(O3Hb__yx/N2Ha__yx)
+                    O3Hb_cumsum__r = SB_cumsum__lr['5007']/SB_cumsum__lr['4861']
+                    N2Ha_cumsum__r = SB_cumsum__lr['6583']/SB_cumsum__lr['6563']
+                    OH_O3N2_cumsum__r = 8.73 - 0.32 * np.ma.log10(O3Hb_cumsum__r/N2Ha_cumsum__r)
+                    O3Hb_cumsum_HII__r = SB_cumsum_HII__lr['5007']/SB_cumsum_HII__lr['4861']
+                    N2Ha_cumsum_HII__r = SB_cumsum_HII__lr['6583']/SB_cumsum_HII__lr['6563']
+                    OH_O3N2_cumsum_HII__r = 8.73 - 0.32 * np.ma.log10(O3Hb_cumsum_HII__r/N2Ha_cumsum_HII__r)
+                    ###########
+                    # N2 PP04 #
+                    ###########
+                    OH_N2Ha__yx = 8.90 + 0.57 * np.ma.log10(N2Ha__yx)
+                    OH_N2Ha_cumsum__r = 8.90 + 0.57 * np.ma.log10(N2Ha_cumsum__r)
+                    OH_N2Ha_cumsum_HII__r = 8.90 + 0.57 * np.ma.log10(N2Ha_cumsum_HII__r)
+                    #################################
+                    # O23 Maiolino, R. et al (2008) #
+                    #################################
+                    mask = np.zeros((N_y, N_x), dtype='bool')
+                    mask = np.bitwise_or(mask, SB__lyx['3727'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['4861'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['5007'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['6583'].mask)
+                    logO23__yx = logO23(fOII=SB__lyx['3727'], fHb=SB__lyx['4861'], f5007=SB__lyx['5007'], tau_V=tau_V_neb__yx)
+                    logN2O2__yx = logN2O2(fNII=SB__lyx['6583'], fOII=SB__lyx['3727'], tau_V=tau_V_neb__yx)
+                    mask = np.bitwise_or(mask, logO23__yx.mask)
+                    mask = np.bitwise_or(mask, logN2O2__yx.mask)
+                    mlogO23__yx, mlogN2O2__yx = ma_mask_xyz(logO23__yx, logN2O2__yx, mask=mask)
+                    OH_O23__yx = np.ma.masked_all((N_y, N_x))
+                    OH_O23__yx[~mask] = OH_O23(logO23_ratio=mlogO23__yx.compressed(), logN2O2_ratio=mlogN2O2__yx.compressed())
+                    OH_O23__yx[~np.isfinite(OH_O23__yx)] = np.ma.masked
+                    # HII cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logO23_cumsum_HII__r = logO23(fOII=SB_cumsum_HII__lr['3727'], fHb=SB_cumsum_HII__lr['4861'], f5007=SB_cumsum_HII__lr['5007'], tau_V=tau_V_neb_cumsum_HII__r)
+                    logN2O2_cumsum_HII__r = logN2O2(fNII=SB_cumsum_HII__lr['6583'], fOII=SB_cumsum_HII__lr['3727'], tau_V=tau_V_neb_cumsum_HII__r)
+                    mask = np.bitwise_or(mask, logO23_cumsum_HII__r.mask)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum_HII__r.mask)
+                    mlogO23_cumsum_HII__r, mlogN2O2_cumsum_HII__r = ma_mask_xyz(logO23_cumsum_HII__r, logN2O2_cumsum_HII__r, mask=mask)
+                    OH_O23_cumsum_HII__r = np.ma.masked_all((N_R_bins))
+                    OH_O23_cumsum_HII__r[~mask] = OH_O23(logO23_ratio=mlogO23_cumsum_HII__r.compressed(), logN2O2_ratio=mlogN2O2_cumsum_HII__r.compressed())
+                    OH_O23_cumsum_HII__r[~np.isfinite(OH_O23_cumsum_HII__r)] = np.ma.masked
+                    # total cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logO23_cumsum__r = logO23(fOII=SB_cumsum__lr['3727'], fHb=SB_cumsum__lr['4861'], f5007=SB_cumsum__lr['5007'], tau_V=tau_V_neb_cumsum__r)
+                    logN2O2_cumsum__r = logN2O2(fNII=SB_cumsum__lr['6583'], fOII=SB_cumsum__lr['3727'], tau_V=tau_V_neb_cumsum__r)
+                    mask = np.bitwise_or(mask, logO23_cumsum__r.mask)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum__r.mask)
+                    mlogO23_cumsum__r, mlogN2O2_cumsum__r = ma_mask_xyz(logO23_cumsum__r, logN2O2_cumsum__r, mask=mask)
+                    OH_O23_cumsum__r = np.ma.masked_all((N_R_bins))
+                    OH_O23_cumsum__r[~mask] = OH_O23(logO23_ratio=mlogO23_cumsum__r.compressed(), logN2O2_ratio=mlogN2O2_cumsum__r.compressed())
+                    OH_O23_cumsum__r[~np.isfinite(OH_O23_cumsum__r)] = np.ma.masked
+                    #############################
+                    # N2O2 Dopita et al. (2013) #
+                    #############################
+                    mask = np.zeros((N_y, N_x), dtype='bool')
+                    mask = np.bitwise_or(mask, SB__lyx['3727'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['6583'].mask)
+                    logN2O2__yx = logN2O2(fNII=SB__lyx['6583'], fOII=SB__lyx['3727'], tau_V=tau_V_neb__yx)
+                    mask = np.bitwise_or(mask, logN2O2__yx.mask)
+                    mlogN2O2__yx = np.ma.masked_array(logN2O2__yx, mask=mask)
+                    OH_N2O2__yx = np.ma.masked_all((N_y, N_x))
+                    OH_N2O2__yx[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2__yx.compressed())
+                    OH_N2O2__yx[~np.isfinite(OH_N2O2__yx)] = np.ma.masked
+                    # HII cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logN2O2_cumsum_HII__r = logN2O2(fNII=SB_cumsum_HII__lr['6583'], fOII=SB_cumsum_HII__lr['3727'], tau_V=tau_V_neb_cumsum_HII__r)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum_HII__r.mask)
+                    mlogN2O2_cumsum_HII__r = np.ma.masked_array(logN2O2_cumsum_HII__r, mask=mask)
+                    OH_N2O2_cumsum_HII__r = np.ma.masked_all((N_R_bins))
+                    OH_N2O2_cumsum_HII__r[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2_cumsum_HII__r.compressed())
+                    # total cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logN2O2_cumsum__r = logN2O2(fNII=SB_cumsum__lr['6583'], fOII=SB_cumsum__lr['3727'], tau_V=tau_V_neb_cumsum__r)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum__r.mask)
+                    mlogN2O2_cumsum__r = np.ma.masked_array(logN2O2_cumsum__r, mask=mask)
+                    OH_N2O2_cumsum__r = np.ma.masked_all((N_R_bins))
+                    OH_N2O2_cumsum__r[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2_cumsum__r.compressed())
+                    #####################
+                    y = OH_O3N2__yx
+                    y_cumsum = OH_O3N2_cumsum__r
+                    y_cumsum_HII = OH_O3N2_cumsum_HII__r
+                    sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, g, sel_WHa_DIG__gyx, sel_WHa_COMP__gyx, sel_WHa_HII__gyx)
+
+                    ax.scatter(pixelDistance_HLR__yx, y, s=5, color='silver', **dflt_kw_scatter)
+                    ax.scatter(pixelDistance_HLR__yx[sel_HII__yx], y[sel_HII__yx], s=5, color='blue', **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(pixelDistance_HLR__yx, y, mask=None)
+                    ax.plot(R_bin_center__r, y_cumsum, linewidth=2, linestyle='-', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.plot(R_bin_center__r, y_cumsum_HII, linewidth=2, linestyle='-', marker='*', markeredgewidth=0, markeredgecolor=colors_lines_DIG_COMP_HII[2], c='cyan', markersize=5)
+                    min_npts = 10
                     yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
                     txt = '%s' % g
                     plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
@@ -1029,9 +1207,9 @@ def fig4_profile(ALL, gals=None):
                     plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
                     if npts.any():
                         sel = npts > min_npts
-                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
                         ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
-                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=1, c='k')
+                        # ax.plot(bin_center[sel], yPrc[2][sel], linest-yle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
                     ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
                     ax.xaxis.set_ticks([0, 1, 2])
                     ax.set_xlim(distance_range)
@@ -1055,15 +1233,18 @@ def fig4_profile(ALL, gals=None):
                     for i in xrange(ax_i, N_axes):
                         np.ravel(axArr)[i].set_axis_off()
                 f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
-                f.savefig('%s_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                f.savefig('%s_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=200)
                 plt.close(f)
                 page += 1
 
 
-def fig4_cumulative_profile(ALL, gals=None):
+def fig5_profile_new(ALL, gals=None):
     sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
     sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
     sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_DIG__gyx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gyx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gyx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
 
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
@@ -1080,8 +1261,7 @@ def fig4_cumulative_profile(ALL, gals=None):
         N_gals += 1
 
     if (sel_gals__gz).any():
-        OH_name = 'O3N2'
-
+        OH_name = 'N2'
         p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
 
         sel_gals_ba = [
@@ -1089,7 +1269,6 @@ def fig4_cumulative_profile(ALL, gals=None):
             np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
             np.greater_equal(ALL.ba, p66ba)
         ]
-
         ba_labels = [
             r'b/a < %.2f' % p33ba,
             r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
@@ -1110,27 +1289,129 @@ def fig4_cumulative_profile(ALL, gals=None):
                 iS = np.argsort(sort_var[selection])
                 N_rows, N_cols = 10, 12
                 row, col = 0, 0
+                # f = plt.figure(dpi=300, figsize=(N_cols * 2, N_rows * 2))
+                # from mpl_toolkits.axes_grid1 import Grid
+                # grid = Grid(f, rect=111, nrows_ncols=(N_rows, N_cols), axes_pad=0.0, label_mode='all',)
                 f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
-                f.suptitle('OH (%s) cumulative profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                f.suptitle('OH (%s) profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                # for i in xrange(N_rows):
+                #     for j in xrange(N_cols):
+                #         # axArr[i, j].axis('off')
                 ax_i = 0
                 N_axes = N_cols * N_rows
                 for g in sel_gals[iS]:
                     ax = np.ravel(axArr)[ax_i]
+                    # ax = grid[i]
                     ax = axArr[row][col]
-                    Hb__z = ALL.get_gal_prop(g, ALL.f4861__z)
-                    O3__z = ALL.get_gal_prop(g, ALL.f5007__z)
-                    Ha__z = ALL.get_gal_prop(g, ALL.f6563__z)
-                    N2__z = ALL.get_gal_prop(g, ALL.f6583__z)
-                    Hb_cumsum__z = Hb__z.filled(0.).cumsum()
-                    O3_cumsum__z = O3__z.filled(0.).cumsum()
-                    Ha_cumsum__z = Ha__z.filled(0.).cumsum()
-                    N2_cumsum__z = N2__z.filled(0.).cumsum()
-                    OH_O3N2 = 8.73 - 0.32 * np.ma.log10((O3_cumsum__z * Ha_cumsum__z)/(N2_cumsum__z * Hb_cumsum__z))
-                    y = OH_O3N2
-                    zoneDistance_HLR = ALL.get_gal_prop(g, ALL.zoneDistance_HLR)
-                    # sc = ax.scatter(zoneDistance_HLR, OH_O3N2, s=1, **dflt_kw_scatter)
-                    xm, ym = ma_mask_xyz(zoneDistance_HLR, y, mask=None)
-                    min_npts = 5
+                    # ax.axis('off')
+
+                    HLR_pix = ALL.get_gal_prop_unique(g, ALL.HLR_pix)
+                    N_x = ALL.get_gal_prop_unique(g, ALL.N_x)
+                    N_y = ALL.get_gal_prop_unique(g, ALL.N_y)
+                    pixelDistance__yx = ALL.get_gal_prop(g, ALL.pixelDistance__yx).reshape(N_y, N_x)
+                    pixelDistance_HLR__yx = pixelDistance__yx / HLR_pix
+                    SB__lyx, HaHb_classif, cumsum_classif = cumulative_profiles(ALL, g, sel_WHa_DIG__gyx, sel_WHa_COMP__gyx, sel_WHa_HII__gyx)
+                    SB_cumsum__lr = cumsum_classif['total__lr']['v']
+                    SB_cumsum_HII__lr = cumsum_classif['HII__lr']['v']
+                    tau_V_neb__yx = HaHb_classif['total']['tau_V_neb__yx']
+                    tau_V_neb_cumsum__r = HaHb_classif['total']['tau_V_neb_cumsum__r']
+                    tau_V_neb_cumsum_HII__r = HaHb_classif['HII']['tau_V_neb_cumsum__r']
+                    ####################################
+                    # O/H - Relative Oxygen abundances #
+                    ####################################
+                    #############
+                    # O3N2 PP04 #
+                    #############
+                    O3Hb__yx = SB__lyx['5007']/SB__lyx['4861']
+                    N2Ha__yx = SB__lyx['6583']/SB__lyx['6563']
+                    OH_O3N2__yx = 8.73 - 0.32 * np.ma.log10(O3Hb__yx/N2Ha__yx)
+                    O3Hb_cumsum__r = SB_cumsum__lr['5007']/SB_cumsum__lr['4861']
+                    N2Ha_cumsum__r = SB_cumsum__lr['6583']/SB_cumsum__lr['6563']
+                    OH_O3N2_cumsum__r = 8.73 - 0.32 * np.ma.log10(O3Hb_cumsum__r/N2Ha_cumsum__r)
+                    O3Hb_cumsum_HII__r = SB_cumsum_HII__lr['5007']/SB_cumsum_HII__lr['4861']
+                    N2Ha_cumsum_HII__r = SB_cumsum_HII__lr['6583']/SB_cumsum_HII__lr['6563']
+                    OH_O3N2_cumsum_HII__r = 8.73 - 0.32 * np.ma.log10(O3Hb_cumsum_HII__r/N2Ha_cumsum_HII__r)
+                    ###########
+                    # N2 PP04 #
+                    ###########
+                    OH_N2Ha__yx = 8.90 + 0.57 * np.ma.log10(N2Ha__yx)
+                    OH_N2Ha_cumsum__r = 8.90 + 0.57 * np.ma.log10(N2Ha_cumsum__r)
+                    OH_N2Ha_cumsum_HII__r = 8.90 + 0.57 * np.ma.log10(N2Ha_cumsum_HII__r)
+                    #################################
+                    # O23 Maiolino, R. et al (2008) #
+                    #################################
+                    mask = np.zeros((N_y, N_x), dtype='bool')
+                    mask = np.bitwise_or(mask, SB__lyx['3727'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['4861'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['5007'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['6583'].mask)
+                    logO23__yx = logO23(fOII=SB__lyx['3727'], fHb=SB__lyx['4861'], f5007=SB__lyx['5007'], tau_V=tau_V_neb__yx)
+                    logN2O2__yx = logN2O2(fNII=SB__lyx['6583'], fOII=SB__lyx['3727'], tau_V=tau_V_neb__yx)
+                    mask = np.bitwise_or(mask, logO23__yx.mask)
+                    mask = np.bitwise_or(mask, logN2O2__yx.mask)
+                    mlogO23__yx, mlogN2O2__yx = ma_mask_xyz(logO23__yx, logN2O2__yx, mask=mask)
+                    OH_O23__yx = np.ma.masked_all((N_y, N_x))
+                    OH_O23__yx[~mask] = OH_O23(logO23_ratio=mlogO23__yx.compressed(), logN2O2_ratio=mlogN2O2__yx.compressed())
+                    OH_O23__yx[~np.isfinite(OH_O23__yx)] = np.ma.masked
+                    # HII cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logO23_cumsum_HII__r = logO23(fOII=SB_cumsum_HII__lr['3727'], fHb=SB_cumsum_HII__lr['4861'], f5007=SB_cumsum_HII__lr['5007'], tau_V=tau_V_neb_cumsum_HII__r)
+                    logN2O2_cumsum_HII__r = logN2O2(fNII=SB_cumsum_HII__lr['6583'], fOII=SB_cumsum_HII__lr['3727'], tau_V=tau_V_neb_cumsum_HII__r)
+                    mask = np.bitwise_or(mask, logO23_cumsum_HII__r.mask)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum_HII__r.mask)
+                    mlogO23_cumsum_HII__r, mlogN2O2_cumsum_HII__r = ma_mask_xyz(logO23_cumsum_HII__r, logN2O2_cumsum_HII__r, mask=mask)
+                    OH_O23_cumsum_HII__r = np.ma.masked_all((N_R_bins))
+                    OH_O23_cumsum_HII__r[~mask] = OH_O23(logO23_ratio=mlogO23_cumsum_HII__r.compressed(), logN2O2_ratio=mlogN2O2_cumsum_HII__r.compressed())
+                    OH_O23_cumsum_HII__r[~np.isfinite(OH_O23_cumsum_HII__r)] = np.ma.masked
+                    # total cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logO23_cumsum__r = logO23(fOII=SB_cumsum__lr['3727'], fHb=SB_cumsum__lr['4861'], f5007=SB_cumsum__lr['5007'], tau_V=tau_V_neb_cumsum__r)
+                    logN2O2_cumsum__r = logN2O2(fNII=SB_cumsum__lr['6583'], fOII=SB_cumsum__lr['3727'], tau_V=tau_V_neb_cumsum__r)
+                    mask = np.bitwise_or(mask, logO23_cumsum__r.mask)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum__r.mask)
+                    mlogO23_cumsum__r, mlogN2O2_cumsum__r = ma_mask_xyz(logO23_cumsum__r, logN2O2_cumsum__r, mask=mask)
+                    OH_O23_cumsum__r = np.ma.masked_all((N_R_bins))
+                    OH_O23_cumsum__r[~mask] = OH_O23(logO23_ratio=mlogO23_cumsum__r.compressed(), logN2O2_ratio=mlogN2O2_cumsum__r.compressed())
+                    OH_O23_cumsum__r[~np.isfinite(OH_O23_cumsum__r)] = np.ma.masked
+                    #############################
+                    # N2O2 Dopita et al. (2013) #
+                    #############################
+                    mask = np.zeros((N_y, N_x), dtype='bool')
+                    mask = np.bitwise_or(mask, SB__lyx['3727'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['6583'].mask)
+                    logN2O2__yx = logN2O2(fNII=SB__lyx['6583'], fOII=SB__lyx['3727'], tau_V=tau_V_neb__yx)
+                    mask = np.bitwise_or(mask, logN2O2__yx.mask)
+                    mlogN2O2__yx = np.ma.masked_array(logN2O2__yx, mask=mask)
+                    OH_N2O2__yx = np.ma.masked_all((N_y, N_x))
+                    OH_N2O2__yx[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2__yx.compressed())
+                    OH_N2O2__yx[~np.isfinite(OH_N2O2__yx)] = np.ma.masked
+                    # HII cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logN2O2_cumsum_HII__r = logN2O2(fNII=SB_cumsum_HII__lr['6583'], fOII=SB_cumsum_HII__lr['3727'], tau_V=tau_V_neb_cumsum_HII__r)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum_HII__r.mask)
+                    mlogN2O2_cumsum_HII__r = np.ma.masked_array(logN2O2_cumsum_HII__r, mask=mask)
+                    OH_N2O2_cumsum_HII__r = np.ma.masked_all((N_R_bins))
+                    OH_N2O2_cumsum_HII__r[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2_cumsum_HII__r.compressed())
+                    # total cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logN2O2_cumsum__r = logN2O2(fNII=SB_cumsum__lr['6583'], fOII=SB_cumsum__lr['3727'], tau_V=tau_V_neb_cumsum__r)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum__r.mask)
+                    mlogN2O2_cumsum__r = np.ma.masked_array(logN2O2_cumsum__r, mask=mask)
+                    OH_N2O2_cumsum__r = np.ma.masked_all((N_R_bins))
+                    OH_N2O2_cumsum__r[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2_cumsum__r.compressed())
+                    #####################
+                    y = OH_N2Ha__yx
+                    y_cumsum = OH_N2Ha_cumsum__r
+                    y_cumsum_HII = OH_N2Ha_cumsum_HII__r
+                    sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, g, sel_WHa_DIG__gyx, sel_WHa_COMP__gyx, sel_WHa_HII__gyx)
+
+                    ax.scatter(pixelDistance_HLR__yx, y, s=5, color='silver', **dflt_kw_scatter)
+                    ax.scatter(pixelDistance_HLR__yx[sel_HII__yx], y[sel_HII__yx], s=5, color='blue', **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(pixelDistance_HLR__yx, y, mask=None)
+                    ax.plot(R_bin_center__r, y_cumsum, linewidth=2, linestyle='-', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.plot(R_bin_center__r, y_cumsum_HII, linewidth=2, linestyle='-', marker='*', markeredgewidth=0, markeredgecolor=colors_lines_DIG_COMP_HII[2], c='cyan', markersize=5)
+
+                    min_npts = 10
                     yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
                     txt = '%s' % g
                     plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
@@ -1138,9 +1419,9 @@ def fig4_cumulative_profile(ALL, gals=None):
                     plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
                     if npts.any():
                         sel = npts > min_npts
-                        ax.plot(bin_center[sel], yPrc[2][sel], '-', lw=2, c='k')
-                        ax.plot(bin_center, yPrc[2], '-', lw=1, c='gray')
-                        ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                        ax.plot(bin_center, yPrc[2], '--', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], '--', lw=1, c='k')
+                        # ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
                     ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
                     ax.xaxis.set_ticks([0, 1, 2])
                     ax.set_xlim(distance_range)
@@ -1164,10 +1445,542 @@ def fig4_cumulative_profile(ALL, gals=None):
                     for i in xrange(ax_i, N_axes):
                         np.ravel(axArr)[i].set_axis_off()
                 f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
-                f.savefig('%s_cumulative_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+                f.savefig('%s_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=200)
                 plt.close(f)
                 page += 1
 
+def fig6_profile_new(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_DIG__gyx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gyx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gyx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'O23'
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                # f = plt.figure(dpi=300, figsize=(N_cols * 2, N_rows * 2))
+                # from mpl_toolkits.axes_grid1 import Grid
+                # grid = Grid(f, rect=111, nrows_ncols=(N_rows, N_cols), axes_pad=0.0, label_mode='all',)
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                # for i in xrange(N_rows):
+                #     for j in xrange(N_cols):
+                #         # axArr[i, j].axis('off')
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = np.ravel(axArr)[ax_i]
+                    # ax = grid[i]
+                    ax = axArr[row][col]
+                    # ax.axis('off')
+
+                    HLR_pix = ALL.get_gal_prop_unique(g, ALL.HLR_pix)
+                    N_x = ALL.get_gal_prop_unique(g, ALL.N_x)
+                    N_y = ALL.get_gal_prop_unique(g, ALL.N_y)
+                    pixelDistance__yx = ALL.get_gal_prop(g, ALL.pixelDistance__yx).reshape(N_y, N_x)
+                    pixelDistance_HLR__yx = pixelDistance__yx / HLR_pix
+                    SB__lyx, HaHb_classif, cumsum_classif = cumulative_profiles(ALL, g, sel_WHa_DIG__gyx, sel_WHa_COMP__gyx, sel_WHa_HII__gyx)
+                    SB_cumsum__lr = cumsum_classif['total__lr']['v']
+                    SB_cumsum_HII__lr = cumsum_classif['HII__lr']['v']
+                    tau_V_neb__yx = HaHb_classif['total']['tau_V_neb__yx']
+                    tau_V_neb_cumsum__r = HaHb_classif['total']['tau_V_neb_cumsum__r']
+                    tau_V_neb_cumsum_HII__r = HaHb_classif['HII']['tau_V_neb_cumsum__r']
+                    ####################################
+                    # O/H - Relative Oxygen abundances #
+                    ####################################
+                    #############
+                    # O3N2 PP04 #
+                    #############
+                    O3Hb__yx = SB__lyx['5007']/SB__lyx['4861']
+                    N2Ha__yx = SB__lyx['6583']/SB__lyx['6563']
+                    OH_O3N2__yx = 8.73 - 0.32 * np.ma.log10(O3Hb__yx/N2Ha__yx)
+                    O3Hb_cumsum__r = SB_cumsum__lr['5007']/SB_cumsum__lr['4861']
+                    N2Ha_cumsum__r = SB_cumsum__lr['6583']/SB_cumsum__lr['6563']
+                    OH_O3N2_cumsum__r = 8.73 - 0.32 * np.ma.log10(O3Hb_cumsum__r/N2Ha_cumsum__r)
+                    O3Hb_cumsum_HII__r = SB_cumsum_HII__lr['5007']/SB_cumsum_HII__lr['4861']
+                    N2Ha_cumsum_HII__r = SB_cumsum_HII__lr['6583']/SB_cumsum_HII__lr['6563']
+                    OH_O3N2_cumsum_HII__r = 8.73 - 0.32 * np.ma.log10(O3Hb_cumsum_HII__r/N2Ha_cumsum_HII__r)
+                    ###########
+                    # N2 PP04 #
+                    ###########
+                    OH_N2Ha__yx = 8.90 + 0.57 * np.ma.log10(N2Ha__yx)
+                    OH_N2Ha_cumsum__r = 8.90 + 0.57 * np.ma.log10(N2Ha_cumsum__r)
+                    OH_N2Ha_cumsum_HII__r = 8.90 + 0.57 * np.ma.log10(N2Ha_cumsum_HII__r)
+                    #################################
+                    # O23 Maiolino, R. et al (2008) #
+                    #################################
+                    mask = np.zeros((N_y, N_x), dtype='bool')
+                    mask = np.bitwise_or(mask, SB__lyx['3727'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['4861'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['5007'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['6583'].mask)
+                    logO23__yx = logO23(fOII=SB__lyx['3727'], fHb=SB__lyx['4861'], f5007=SB__lyx['5007'], tau_V=tau_V_neb__yx)
+                    logN2O2__yx = logN2O2(fNII=SB__lyx['6583'], fOII=SB__lyx['3727'], tau_V=tau_V_neb__yx)
+                    mask = np.bitwise_or(mask, logO23__yx.mask)
+                    mask = np.bitwise_or(mask, logN2O2__yx.mask)
+                    mlogO23__yx, mlogN2O2__yx = ma_mask_xyz(logO23__yx, logN2O2__yx, mask=mask)
+                    OH_O23__yx = np.ma.masked_all((N_y, N_x))
+                    OH_O23__yx[~mask] = OH_O23(logO23_ratio=mlogO23__yx.compressed(), logN2O2_ratio=mlogN2O2__yx.compressed())
+                    OH_O23__yx[~np.isfinite(OH_O23__yx)] = np.ma.masked
+                    # HII cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logO23_cumsum_HII__r = logO23(fOII=SB_cumsum_HII__lr['3727'], fHb=SB_cumsum_HII__lr['4861'], f5007=SB_cumsum_HII__lr['5007'], tau_V=tau_V_neb_cumsum_HII__r)
+                    logN2O2_cumsum_HII__r = logN2O2(fNII=SB_cumsum_HII__lr['6583'], fOII=SB_cumsum_HII__lr['3727'], tau_V=tau_V_neb_cumsum_HII__r)
+                    mask = np.bitwise_or(mask, logO23_cumsum_HII__r.mask)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum_HII__r.mask)
+                    mlogO23_cumsum_HII__r, mlogN2O2_cumsum_HII__r = ma_mask_xyz(logO23_cumsum_HII__r, logN2O2_cumsum_HII__r, mask=mask)
+                    OH_O23_cumsum_HII__r = np.ma.masked_all((N_R_bins))
+                    OH_O23_cumsum_HII__r[~mask] = OH_O23(logO23_ratio=mlogO23_cumsum_HII__r.compressed(), logN2O2_ratio=mlogN2O2_cumsum_HII__r.compressed())
+                    OH_O23_cumsum_HII__r[~np.isfinite(OH_O23_cumsum_HII__r)] = np.ma.masked
+                    # total cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logO23_cumsum__r = logO23(fOII=SB_cumsum__lr['3727'], fHb=SB_cumsum__lr['4861'], f5007=SB_cumsum__lr['5007'], tau_V=tau_V_neb_cumsum__r)
+                    logN2O2_cumsum__r = logN2O2(fNII=SB_cumsum__lr['6583'], fOII=SB_cumsum__lr['3727'], tau_V=tau_V_neb_cumsum__r)
+                    mask = np.bitwise_or(mask, logO23_cumsum__r.mask)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum__r.mask)
+                    mlogO23_cumsum__r, mlogN2O2_cumsum__r = ma_mask_xyz(logO23_cumsum__r, logN2O2_cumsum__r, mask=mask)
+                    OH_O23_cumsum__r = np.ma.masked_all((N_R_bins))
+                    OH_O23_cumsum__r[~mask] = OH_O23(logO23_ratio=mlogO23_cumsum__r.compressed(), logN2O2_ratio=mlogN2O2_cumsum__r.compressed())
+                    OH_O23_cumsum__r[~np.isfinite(OH_O23_cumsum__r)] = np.ma.masked
+                    #############################
+                    # N2O2 Dopita et al. (2013) #
+                    #############################
+                    mask = np.zeros((N_y, N_x), dtype='bool')
+                    mask = np.bitwise_or(mask, SB__lyx['3727'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['6583'].mask)
+                    logN2O2__yx = logN2O2(fNII=SB__lyx['6583'], fOII=SB__lyx['3727'], tau_V=tau_V_neb__yx)
+                    mask = np.bitwise_or(mask, logN2O2__yx.mask)
+                    mlogN2O2__yx = np.ma.masked_array(logN2O2__yx, mask=mask)
+                    OH_N2O2__yx = np.ma.masked_all((N_y, N_x))
+                    OH_N2O2__yx[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2__yx.compressed())
+                    OH_N2O2__yx[~np.isfinite(OH_N2O2__yx)] = np.ma.masked
+                    # HII cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logN2O2_cumsum_HII__r = logN2O2(fNII=SB_cumsum_HII__lr['6583'], fOII=SB_cumsum_HII__lr['3727'], tau_V=tau_V_neb_cumsum_HII__r)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum_HII__r.mask)
+                    mlogN2O2_cumsum_HII__r = np.ma.masked_array(logN2O2_cumsum_HII__r, mask=mask)
+                    OH_N2O2_cumsum_HII__r = np.ma.masked_all((N_R_bins))
+                    OH_N2O2_cumsum_HII__r[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2_cumsum_HII__r.compressed())
+                    # total cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logN2O2_cumsum__r = logN2O2(fNII=SB_cumsum__lr['6583'], fOII=SB_cumsum__lr['3727'], tau_V=tau_V_neb_cumsum__r)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum__r.mask)
+                    mlogN2O2_cumsum__r = np.ma.masked_array(logN2O2_cumsum__r, mask=mask)
+                    OH_N2O2_cumsum__r = np.ma.masked_all((N_R_bins))
+                    OH_N2O2_cumsum__r[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2_cumsum__r.compressed())
+                    #####################
+                    y = OH_O23__yx
+                    y_cumsum = OH_O23_cumsum__r
+                    y_cumsum_HII = OH_O23_cumsum_HII__r
+                    sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, g, sel_WHa_DIG__gyx, sel_WHa_COMP__gyx, sel_WHa_HII__gyx)
+
+                    ax.scatter(pixelDistance_HLR__yx, y, s=5, color='silver', **dflt_kw_scatter)
+                    ax.scatter(pixelDistance_HLR__yx[sel_HII__yx], y[sel_HII__yx], s=5, color='blue', **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(pixelDistance_HLR__yx, y, mask=None)
+                    ax.plot(R_bin_center__r, y_cumsum, linewidth=2, linestyle='-', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.plot(R_bin_center__r, y_cumsum_HII, linewidth=2, linestyle='-', marker='*', markeredgewidth=0, markeredgecolor=colors_lines_DIG_COMP_HII[2], c='cyan', markersize=5)
+
+                    min_npts = 10
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center, yPrc[2], '--', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], '--', lw=1, c='k')
+                        # ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=200)
+                plt.close(f)
+                page += 1
+
+
+def fig7_profile_new(ALL, gals=None):
+    sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+    sel_WHa_DIG__gyx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
+    sel_WHa_COMP__gyx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
+    sel_WHa_HII__gyx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+
+    N_gals = 0
+    for g in gals:
+        where_gals__gz = np.where(ALL.califaID__z == g)
+        if not where_gals__gz:
+            continue
+        sel_gals__gz[where_gals__gz] = True
+        N_gals += 1
+
+    if (sel_gals__gz).any():
+        OH_name = 'N2O2'
+        p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+
+        sel_gals_ba = [
+            np.less(ALL.ba, p33ba),
+            np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+            np.greater_equal(ALL.ba, p66ba)
+        ]
+        ba_labels = [
+            r'b/a < %.2f' % p33ba,
+            r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+            r'b/a >= %.2f' % p66ba,
+        ]
+
+        versions = dict(
+            Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+            CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+        )
+        for k_ver, v_ver in versions.iteritems():
+            page = 1
+            sort_var = v_ver['var']
+            for i_sel, selection in enumerate(sel_gals_ba):
+                print k_ver, page
+                sel_gals = np.asarray(gals)[selection]
+                N_gals_sel = len(sel_gals)
+                iS = np.argsort(sort_var[selection])
+                N_rows, N_cols = 10, 12
+                row, col = 0, 0
+                # f = plt.figure(dpi=300, figsize=(N_cols * 2, N_rows * 2))
+                # from mpl_toolkits.axes_grid1 import Grid
+                # grid = Grid(f, rect=111, nrows_ncols=(N_rows, N_cols), axes_pad=0.0, label_mode='all',)
+                f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+                f.suptitle('OH (%s) profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+                # for i in xrange(N_rows):
+                #     for j in xrange(N_cols):
+                #         # axArr[i, j].axis('off')
+                ax_i = 0
+                N_axes = N_cols * N_rows
+                for g in sel_gals[iS]:
+                    ax = np.ravel(axArr)[ax_i]
+                    # ax = grid[i]
+                    ax = axArr[row][col]
+                    # ax.axis('off')
+
+                    HLR_pix = ALL.get_gal_prop_unique(g, ALL.HLR_pix)
+                    N_x = ALL.get_gal_prop_unique(g, ALL.N_x)
+                    N_y = ALL.get_gal_prop_unique(g, ALL.N_y)
+                    pixelDistance__yx = ALL.get_gal_prop(g, ALL.pixelDistance__yx).reshape(N_y, N_x)
+                    pixelDistance_HLR__yx = pixelDistance__yx / HLR_pix
+                    SB__lyx, HaHb_classif, cumsum_classif = cumulative_profiles(ALL, g, sel_WHa_DIG__gyx, sel_WHa_COMP__gyx, sel_WHa_HII__gyx)
+                    SB_cumsum__lr = cumsum_classif['total__lr']['v']
+                    SB_cumsum_HII__lr = cumsum_classif['HII__lr']['v']
+                    tau_V_neb__yx = HaHb_classif['total']['tau_V_neb__yx']
+                    tau_V_neb_cumsum__r = HaHb_classif['total']['tau_V_neb_cumsum__r']
+                    tau_V_neb_cumsum_HII__r = HaHb_classif['HII']['tau_V_neb_cumsum__r']
+                    ####################################
+                    # O/H - Relative Oxygen abundances #
+                    ####################################
+                    #############
+                    # O3N2 PP04 #
+                    #############
+                    O3Hb__yx = SB__lyx['5007']/SB__lyx['4861']
+                    N2Ha__yx = SB__lyx['6583']/SB__lyx['6563']
+                    OH_O3N2__yx = 8.73 - 0.32 * np.ma.log10(O3Hb__yx/N2Ha__yx)
+                    O3Hb_cumsum__r = SB_cumsum__lr['5007']/SB_cumsum__lr['4861']
+                    N2Ha_cumsum__r = SB_cumsum__lr['6583']/SB_cumsum__lr['6563']
+                    OH_O3N2_cumsum__r = 8.73 - 0.32 * np.ma.log10(O3Hb_cumsum__r/N2Ha_cumsum__r)
+                    O3Hb_cumsum_HII__r = SB_cumsum_HII__lr['5007']/SB_cumsum_HII__lr['4861']
+                    N2Ha_cumsum_HII__r = SB_cumsum_HII__lr['6583']/SB_cumsum_HII__lr['6563']
+                    OH_O3N2_cumsum_HII__r = 8.73 - 0.32 * np.ma.log10(O3Hb_cumsum_HII__r/N2Ha_cumsum_HII__r)
+                    ###########
+                    # N2 PP04 #
+                    ###########
+                    OH_N2Ha__yx = 8.90 + 0.57 * np.ma.log10(N2Ha__yx)
+                    OH_N2Ha_cumsum__r = 8.90 + 0.57 * np.ma.log10(N2Ha_cumsum__r)
+                    OH_N2Ha_cumsum_HII__r = 8.90 + 0.57 * np.ma.log10(N2Ha_cumsum_HII__r)
+                    #################################
+                    # O23 Maiolino, R. et al (2008) #
+                    #################################
+                    mask = np.zeros((N_y, N_x), dtype='bool')
+                    mask = np.bitwise_or(mask, SB__lyx['3727'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['4861'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['5007'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['6583'].mask)
+                    logO23__yx = logO23(fOII=SB__lyx['3727'], fHb=SB__lyx['4861'], f5007=SB__lyx['5007'], tau_V=tau_V_neb__yx)
+                    logN2O2__yx = logN2O2(fNII=SB__lyx['6583'], fOII=SB__lyx['3727'], tau_V=tau_V_neb__yx)
+                    mask = np.bitwise_or(mask, logO23__yx.mask)
+                    mask = np.bitwise_or(mask, logN2O2__yx.mask)
+                    mlogO23__yx, mlogN2O2__yx = ma_mask_xyz(logO23__yx, logN2O2__yx, mask=mask)
+                    OH_O23__yx = np.ma.masked_all((N_y, N_x))
+                    OH_O23__yx[~mask] = OH_O23(logO23_ratio=mlogO23__yx.compressed(), logN2O2_ratio=mlogN2O2__yx.compressed())
+                    OH_O23__yx[~np.isfinite(OH_O23__yx)] = np.ma.masked
+                    # HII cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logO23_cumsum_HII__r = logO23(fOII=SB_cumsum_HII__lr['3727'], fHb=SB_cumsum_HII__lr['4861'], f5007=SB_cumsum_HII__lr['5007'], tau_V=tau_V_neb_cumsum_HII__r)
+                    logN2O2_cumsum_HII__r = logN2O2(fNII=SB_cumsum_HII__lr['6583'], fOII=SB_cumsum_HII__lr['3727'], tau_V=tau_V_neb_cumsum_HII__r)
+                    mask = np.bitwise_or(mask, logO23_cumsum_HII__r.mask)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum_HII__r.mask)
+                    mlogO23_cumsum_HII__r, mlogN2O2_cumsum_HII__r = ma_mask_xyz(logO23_cumsum_HII__r, logN2O2_cumsum_HII__r, mask=mask)
+                    OH_O23_cumsum_HII__r = np.ma.masked_all((N_R_bins))
+                    OH_O23_cumsum_HII__r[~mask] = OH_O23(logO23_ratio=mlogO23_cumsum_HII__r.compressed(), logN2O2_ratio=mlogN2O2_cumsum_HII__r.compressed())
+                    OH_O23_cumsum_HII__r[~np.isfinite(OH_O23_cumsum_HII__r)] = np.ma.masked
+                    # total cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logO23_cumsum__r = logO23(fOII=SB_cumsum__lr['3727'], fHb=SB_cumsum__lr['4861'], f5007=SB_cumsum__lr['5007'], tau_V=tau_V_neb_cumsum__r)
+                    logN2O2_cumsum__r = logN2O2(fNII=SB_cumsum__lr['6583'], fOII=SB_cumsum__lr['3727'], tau_V=tau_V_neb_cumsum__r)
+                    mask = np.bitwise_or(mask, logO23_cumsum__r.mask)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum__r.mask)
+                    mlogO23_cumsum__r, mlogN2O2_cumsum__r = ma_mask_xyz(logO23_cumsum__r, logN2O2_cumsum__r, mask=mask)
+                    OH_O23_cumsum__r = np.ma.masked_all((N_R_bins))
+                    OH_O23_cumsum__r[~mask] = OH_O23(logO23_ratio=mlogO23_cumsum__r.compressed(), logN2O2_ratio=mlogN2O2_cumsum__r.compressed())
+                    OH_O23_cumsum__r[~np.isfinite(OH_O23_cumsum__r)] = np.ma.masked
+                    #############################
+                    # N2O2 Dopita et al. (2013) #
+                    #############################
+                    mask = np.zeros((N_y, N_x), dtype='bool')
+                    mask = np.bitwise_or(mask, SB__lyx['3727'].mask)
+                    mask = np.bitwise_or(mask, SB__lyx['6583'].mask)
+                    logN2O2__yx = logN2O2(fNII=SB__lyx['6583'], fOII=SB__lyx['3727'], tau_V=tau_V_neb__yx)
+                    mask = np.bitwise_or(mask, logN2O2__yx.mask)
+                    mlogN2O2__yx = np.ma.masked_array(logN2O2__yx, mask=mask)
+                    OH_N2O2__yx = np.ma.masked_all((N_y, N_x))
+                    OH_N2O2__yx[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2__yx.compressed())
+                    OH_N2O2__yx[~np.isfinite(OH_N2O2__yx)] = np.ma.masked
+                    # HII cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logN2O2_cumsum_HII__r = logN2O2(fNII=SB_cumsum_HII__lr['6583'], fOII=SB_cumsum_HII__lr['3727'], tau_V=tau_V_neb_cumsum_HII__r)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum_HII__r.mask)
+                    mlogN2O2_cumsum_HII__r = np.ma.masked_array(logN2O2_cumsum_HII__r, mask=mask)
+                    OH_N2O2_cumsum_HII__r = np.ma.masked_all((N_R_bins))
+                    OH_N2O2_cumsum_HII__r[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2_cumsum_HII__r.compressed())
+                    # total cumulative O/H
+                    mask = np.zeros((N_R_bins), dtype='bool')
+                    logN2O2_cumsum__r = logN2O2(fNII=SB_cumsum__lr['6583'], fOII=SB_cumsum__lr['3727'], tau_V=tau_V_neb_cumsum__r)
+                    mask = np.bitwise_or(mask, logN2O2_cumsum__r.mask)
+                    mlogN2O2_cumsum__r = np.ma.masked_array(logN2O2_cumsum__r, mask=mask)
+                    OH_N2O2_cumsum__r = np.ma.masked_all((N_R_bins))
+                    OH_N2O2_cumsum__r[~mask] = OH_N2O2(logN2O2_ratio=mlogN2O2_cumsum__r.compressed())
+                    #####################
+                    y = OH_N2O2__yx
+                    y_cumsum = OH_N2O2_cumsum__r
+                    y_cumsum_HII = OH_N2O2_cumsum_HII__r
+                    sel_DIG__yx, sel_COMP__yx, sel_HII__yx = get_selections(ALL, g, sel_WHa_DIG__gyx, sel_WHa_COMP__gyx, sel_WHa_HII__gyx)
+
+                    ax.scatter(pixelDistance_HLR__yx, y, s=5, color='silver', **dflt_kw_scatter)
+                    ax.scatter(pixelDistance_HLR__yx[sel_HII__yx], y[sel_HII__yx], s=5, color='blue', **dflt_kw_scatter)
+                    xm, ym = ma_mask_xyz(pixelDistance_HLR__yx, y, mask=None)
+                    ax.plot(R_bin_center__r, y_cumsum, linewidth=2, linestyle='-', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.plot(R_bin_center__r, y_cumsum_HII, linewidth=2, linestyle='-', marker='*', markeredgewidth=0, markeredgecolor=colors_lines_DIG_COMP_HII[2], c='cyan', markersize=5)
+
+                    min_npts = 10
+                    yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), R_bin__r)
+                    txt = '%s' % g
+                    plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+                    txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+                    plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+                    if npts.any():
+                        sel = npts > min_npts
+                        ax.plot(bin_center, yPrc[2], '--', lw=1, c='gray')
+                        ax.plot(bin_center[sel], yPrc[2][sel], '--', lw=1, c='k')
+                        # ax.plot(bin_center[sel], yPrc[2][sel], linestyle='', marker='*', markeredgewidth=0, markeredgecolor='k', c='k', markersize=5)
+                    ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+                    ax.xaxis.set_ticks([0, 1, 2])
+                    ax.set_xlim(distance_range)
+                    ax.set_ylim(OH_range)
+                    ax.grid('on')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                    if g == sel_gals[iS][-1]:
+                        axArr[row][0].xaxis.set_visible(True)
+                        plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+                        axArr[row][0].set_xlabel(r'R [HLR]')
+                        for i_r in xrange(0, row+1):
+                            axArr[i_r][0].yaxis.set_visible(True)
+                            plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+                    col += 1
+                    if col == N_cols:
+                        col = 0
+                        row += 1
+                    ax_i += 1
+                if ax_i < N_axes:
+                    for i in xrange(ax_i, N_axes):
+                        np.ravel(axArr)[i].set_axis_off()
+                f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+                f.savefig('%s_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=200)
+                plt.close(f)
+                page += 1
+
+
+# def fig4_cumulative_profile(ALL, gals=None):
+#     sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
+#     sel_WHa_COMP__gz = np.bitwise_and((ALL.W6563__z >= DIG_WHa_threshold).filled(False), (ALL.W6563__z < HII_WHa_threshold).filled(False))
+#     sel_WHa_HII__gz = (ALL.W6563__z >= HII_WHa_threshold).filled(False)
+#     sel_WHa_DIG__gyx = (ALL.W6563__yx < DIG_WHa_threshold).filled(False)
+#     sel_WHa_COMP__gyx = np.bitwise_and((ALL.W6563__yx >= DIG_WHa_threshold).filled(False), (ALL.W6563__yx < HII_WHa_threshold).filled(False))
+#     sel_WHa_HII__gyx = (ALL.W6563__yx >= HII_WHa_threshold).filled(False)
+#
+#     if gals is None:
+#         _, ind = np.unique(ALL.califaID__z, return_index=True)
+#         gals = ALL.califaID__z[sorted(ind)]
+#
+#     sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
+#
+#     N_gals = 0
+#     for g in gals:
+#         where_gals__gz = np.where(ALL.califaID__z == g)
+#         if not where_gals__gz:
+#             continue
+#         sel_gals__gz[where_gals__gz] = True
+#         N_gals += 1
+#
+#     if (sel_gals__gz).any():
+#         OH_name = 'O3N2'
+#
+#         p33ba, p66ba = np.percentile(ALL.ba, [33, 66])
+#
+#         sel_gals_ba = [
+#             np.less(ALL.ba, p33ba),
+#             np.bitwise_and(np.greater_equal(ALL.ba, p33ba), np.less(ALL.ba, p66ba)),
+#             np.greater_equal(ALL.ba, p66ba)
+#         ]
+#
+#         ba_labels = [
+#             r'b/a < %.2f' % p33ba,
+#             r'%.2f <= b/a < %.2f' % (p33ba, p66ba),
+#             r'b/a >= %.2f' % p66ba,
+#         ]
+#
+#         versions = dict(
+#             Mtot=dict(var=np.ma.log10(ALL.Mtot), label=r'$\log$ M${}_\star}$'),
+#             CI_9050=dict(var=ALL.CI_9050, label=r'CI${}_{50}^{90}$'),
+#         )
+#         for k_ver, v_ver in versions.iteritems():
+#             page = 1
+#             sort_var = v_ver['var']
+#             for i_sel, selection in enumerate(sel_gals_ba):
+#                 print k_ver, page
+#                 sel_gals = np.asarray(gals)[selection]
+#                 N_gals_sel = len(sel_gals)
+#                 iS = np.argsort(sort_var[selection])
+#                 N_rows, N_cols = 10, 12
+#                 row, col = 0, 0
+#                 f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 3.2, N_rows * 2.4))
+#                 f.suptitle('OH (%s) cumulative profiles - %d gals (%d this page) - %s - sort by: %s' % (OH_name, N_gals, N_gals_sel, ba_labels[i_sel], v_ver['label']), fontsize=20)
+#                 ax_i = 0
+#                 N_axes = N_cols * N_rows
+#                 for g in sel_gals[iS]:
+#                     SB__lyx, HaHb_classif, cumsum_classif = cumulative_profiles(ALL, g, sel_WHa_DIG__gyx, sel_WHa_COMP__gyx, sel_WHa_HII__gyx)
+#                     ax = np.ravel(axArr)[ax_i]
+#                     ax = axArr[row][col]
+#                     Hb_cumsum__r = cumsum_classif['total__lr']['v']['4861']
+#                     O3_cumsum__r = cumsum_classif['total__lr']['v']['5007']
+#                     Ha_cumsum__r = cumsum_classif['total__lr']['v']['6563']
+#                     N2_cumsum__r = cumsum_classif['total__lr']['v']['6583']
+#                     OH_O3N2 = 8.73 - 0.32 * np.ma.log10((O3_cumsum__r * Ha_cumsum__r)/(N2_cumsum__r * Hb_cumsum__r))
+#                     Hb_cumsum_HII__r = cumsum_classif['HII__lr']['v']['4861']
+#                     O3_cumsum_HII__r = cumsum_classif['HII__lr']['v']['5007']
+#                     Ha_cumsum_HII__r = cumsum_classif['HII__lr']['v']['6563']
+#                     N2_cumsum_HII__r = cumsum_classif['HII__lr']['v']['6583']
+#                     OH_O3N2_HII = 8.73 - 0.32 * np.ma.log10((O3_cumsum_HII__r * Ha_cumsum_HII__r)/(N2_cumsum_HII__r * Hb_cumsum_HII__r))
+#                     y = OH_O3N2
+#                     y_HII = OH_O3N2_HII
+#                     # sc = ax.scatter(zoneDistance_HLR, OH_O3N2, s=1, **dflt_kw_scatter)
+#                     xm, ym = ma_mask_xyz(R_bin_center__r, y, mask=None)
+#                     xm_HII, ym_HII = ma_mask_xyz(R_bin_center__r, y_HII, mask=None)
+#                     txt = '%s' % g
+#                     plot_text_ax(ax, txt, 0.02, 0.98, 16, 'top', 'left', color='k')
+#                     txt = r'%s: $%.2f$' % (v_ver['label'], ALL.get_gal_prop_unique(g, sort_var))
+#                     plot_text_ax(ax, txt, 0.98, 0.02, 16, 'bottom', 'right', color='k')
+#                     ax.plot(R_bin_center__r, y, '-', lw=2, c='k')
+#                     ax.plot(R_bin_center__r, y_HII, '-', lw=2, c=colors_lines_DIG_COMP_HII[2])
+#                     ax.yaxis.set_ticks([8, 8.25, 8.5, 8.75, 9, 9.25])
+#                     ax.xaxis.set_ticks([0, 1, 2])
+#                     ax.set_xlim(distance_range)
+#                     ax.set_ylim(OH_range)
+#                     ax.grid('on')
+#                     plt.setp(ax.get_xticklabels(), visible=False)
+#                     plt.setp(ax.get_yticklabels(), visible=False)
+#                     if g == sel_gals[iS][-1]:
+#                         axArr[row][0].xaxis.set_visible(True)
+#                         plt.setp(axArr[row][0].get_xticklabels(), visible=True)
+#                         axArr[row][0].set_xlabel(r'R [HLR]')
+#                         for i_r in xrange(0, row+1):
+#                             axArr[i_r][0].yaxis.set_visible(True)
+#                             plt.setp(axArr[i_r][0].get_yticklabels(), visible=True)
+#                     col += 1
+#                     if col == N_cols:
+#                         col = 0
+#                         row += 1
+#                     ax_i += 1
+#                 if ax_i < N_axes:
+#                     for i in xrange(ax_i, N_axes):
+#                         np.ravel(axArr)[i].set_axis_off()
+#                 f.subplots_adjust(left=0.05, bottom=0.05, wspace=0, hspace=0, right=0.95, top=0.95)
+#                 f.savefig('%s_cumulative_%s_p%d.png' % (OH_name, k_ver, page), orientation='landscape', dpi=100)
+#                 plt.close(f)
+#                 page += 1
 
 def fig5_profile(ALL, gals=None):
     sel_WHa_DIG__gz = (ALL.W6563__z < DIG_WHa_threshold).filled(False)
@@ -1443,7 +2256,7 @@ def fig6_profile(ALL, gals=None):
                     f6563__z = ALL.get_gal_prop(g, ALL.f6563__z)
                     f6583__z = ALL.get_gal_prop(g, ALL.f6583__z)
                     N_zones = ALL.get_gal_prop_unique(g, ALL.N_zone)
-                    tau_V_neb = lambda Ha, Hb: (1./(q[0] - q[1])) * np.ma.log(Ha/Hb/2.86)
+                    tau_V_neb = lambda Ha, Hb: (1./qHbHa) * np.ma.log(Ha/Hb/2.86)
                     tau_V_neb__z = tau_V_neb(f6563__z, f4861__z)
                     tau_V_neb__z = np.where(np.less(tau_V_neb__z, 0), 0, tau_V_neb__z)
                     logO23__z = logO23(fOII=f3727__z, fHb=f4861__z, f5007=f5007__z, tau_V=tau_V_neb__z)
@@ -1563,7 +2376,7 @@ def fig6_cumulative_profile(ALL, gals=None):
                     f6563__z = ALL.get_gal_prop(g, ALL.f6563__z)
                     f6583__z = ALL.get_gal_prop(g, ALL.f6583__z)
                     N_zones = ALL.get_gal_prop_unique(g, ALL.N_zone)
-                    tau_V_neb = lambda Ha, Hb: (1./(q[0] - q[1])) * np.ma.log(Ha/Hb/2.86)
+                    tau_V_neb = lambda Ha, Hb: (1./qHbHa) * np.ma.log(Ha/Hb/2.86)
                     tau_V_neb__z = tau_V_neb(f6563__z.filled(0.).cumsum(), f4861__z.filled(0.).cumsum())
                     tau_V_neb__z = np.where(np.less(tau_V_neb__z, 0), 0, tau_V_neb__z)
                     logO23__z = logO23(fOII=f3727__z.filled(0.).cumsum(), fHb=f4861__z.filled(0.).cumsum(), f5007=f5007__z.filled(0.).cumsum(), tau_V=tau_V_neb__z)
@@ -1687,7 +2500,7 @@ def fig7_profile(ALL, gals=None):
                     f6563__z = ALL.get_gal_prop(g, ALL.f6563__z)
                     f6583__z = ALL.get_gal_prop(g, ALL.f6583__z)
                     N_zones = ALL.get_gal_prop_unique(g, ALL.N_zone)
-                    tau_V_neb = lambda Ha, Hb: (1./(q[0] - q[1])) * np.ma.log(Ha/Hb/2.86)
+                    tau_V_neb = lambda Ha, Hb: (1./qHbHa) * np.ma.log(Ha/Hb/2.86)
                     tau_V_neb__z = tau_V_neb(f6563__z, f4861__z)
                     tau_V_neb__z = np.where(np.less(tau_V_neb__z, 0), 0, tau_V_neb__z)
                     logN2O2__z = logN2O2(fNII=f6583__z, fOII=f3727__z, tau_V=tau_V_neb__z)
@@ -1802,7 +2615,7 @@ def fig7_cumulative_profile(ALL, gals=None):
                     f6563__z = ALL.get_gal_prop(g, ALL.f6563__z)
                     f6583__z = ALL.get_gal_prop(g, ALL.f6583__z)
                     N_zones = ALL.get_gal_prop_unique(g, ALL.N_zone)
-                    tau_V_neb = lambda Ha, Hb: (1./(q[0] - q[1])) * np.ma.log(Ha/Hb/2.86)
+                    tau_V_neb = lambda Ha, Hb: (1./qHbHa) * np.ma.log(Ha/Hb/2.86)
                     tau_V_neb__z = tau_V_neb(f6563__z.filled(0.).cumsum(), f4861__z.filled(0.).cumsum())
                     tau_V_neb__z = np.where(np.less(tau_V_neb__z, 0), 0, tau_V_neb__z)
                     logN2O2__z = logN2O2(fNII=f6583__z.filled(0.).cumsum(), fOII=f3727__z.filled(0.).cumsum(), tau_V=tau_V_neb__z)
