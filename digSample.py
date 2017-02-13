@@ -14,7 +14,7 @@ config = -3
 EL = True
 elliptical = True
 kw_cube = dict(EL=EL, config=config, elliptical=elliptical)
-debug=False
+debug = False
 
 
 def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
@@ -57,16 +57,16 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         'f6583__z', 'ef6583__z', 'SB6583__z', 'L6583__z',
         'f6717__z', 'ef6717__z', 'SB6717__z', 'L6717__z',
         'f6731__z', 'ef6731__z', 'SB6731__z', 'L6731__z',
-        'f3727__yx', 'SB3727__yx', 'L3727__yx',
-        'f4363__yx', 'SB4363__yx', 'L4363__yx',
-        'f4861__yx', 'SB4861__yx', 'L4861__yx',
-        'f4959__yx', 'SB4959__yx', 'L4959__yx',
-        'f5007__yx', 'SB5007__yx', 'L5007__yx',
-        'f6300__yx', 'SB6300__yx', 'L6300__yx',
-        'f6563__yx', 'SB6563__yx', 'L6563__yx',
-        'f6583__yx', 'SB6583__yx', 'L6583__yx',
-        'f6717__yx', 'SB6717__yx', 'L6717__yx',
-        'f6731__yx', 'SB6731__yx', 'L6731__yx',
+        'f3727__yx', 'ef3727__yx', 'SB3727__yx', 'L3727__yx',
+        'f4363__yx', 'ef4363__yx', 'SB4363__yx', 'L4363__yx',
+        'f4861__yx', 'ef4861__yx', 'SB4861__yx', 'L4861__yx',
+        'f4959__yx', 'ef4959__yx', 'SB4959__yx', 'L4959__yx',
+        'f5007__yx', 'ef5007__yx', 'SB5007__yx', 'L5007__yx',
+        'f6300__yx', 'ef6300__yx', 'SB6300__yx', 'L6300__yx',
+        'f6563__yx', 'ef6563__yx', 'SB6563__yx', 'L6563__yx',
+        'f6583__yx', 'ef6583__yx', 'SB6583__yx', 'L6583__yx',
+        'f6717__yx', 'ef6717__yx', 'SB6717__yx', 'L6717__yx',
+        'f6731__yx', 'ef6731__yx', 'SB6731__yx', 'L6731__yx',
     ]
     ALL = stack_gals(keys1d=keys1d, keys1d_masked=keys1d_masked)
     for i_gal, K in loop_cubes(g, **kw_cube):
@@ -162,6 +162,7 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
                 ALL.append1d_masked('SB%s__z' % l, zeros__yx, zeros__yx.mask)
                 ALL.append1d_masked('L%s__z' % l, zeros__z, zeros__z.mask)
                 ALL.append1d_masked('f%s__yx' % l, zeros__z, zeros__z.mask)
+                ALL.append1d_masked('ef%s__yx' % l, zeros__z, zeros__z.mask)
                 ALL.append1d_masked('SB%s__yx' % l, zeros__yx, zeros__yx.mask)
                 ALL.append1d_masked('L%s__yx' % l, zeros__yx, zeros__yx.mask)
                 ALL.append1d('integrated_f%s' % l, 0.)
@@ -189,6 +190,8 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
                 ALL.append1d_masked('SB%s__z' % l, SBl_obs__z, SBl_obs__z.mask)
                 fl_obs__yx = K.zoneToYX(fl_obs__z/K.zoneArea_pix, extensive=False)
                 ALL.append1d_masked('f%s__yx' % l, np.ravel(fl_obs__yx), np.ravel(fl_obs__yx.mask))
+                efl_obs__yx = K.zoneToYX(efl_obs__z/K.zoneArea_pix, extensive=False)
+                ALL.append1d_masked('ef%s__yx' % l, np.ravel(efl_obs__yx), np.ravel(efl_obs__yx.mask))
                 Ll_obs__yx = K.EL._F_to_L(fl_obs__yx)/L_sun
                 ALL.append1d_masked('L%s__yx' % l, np.ravel(Ll_obs__yx), np.ravel(Ll_obs__yx.mask))
                 SBl_obs__yx = K.zoneToYX(Ll_obs__z/(K.zoneArea_pc2 * 1e-6), extensive=False)
