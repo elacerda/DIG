@@ -140,7 +140,7 @@ def main(argv=None):
             the color by the bootstrap classif. stats.
     """
     # fig5(ALL, gals)
-    # fig5_2panels(ALL, sel, gals)
+    fig5_3panels(ALL, sel, gals)
 
     """
     Fig 6.
@@ -175,13 +175,14 @@ def main(argv=None):
         -- Dt_xY_profile_sample() from diffextin-experiences.py
     """
     # fig9(ALL, sel, gals)
-    #
+
+    # fig_tauVNeb_WHaSBHa(ALL, sel, gals)
+    # fig_tauVNeb_WHaSBHa_3gals(ALL, sel, sel3gals1, suffix='1')
+    # fig_tauVNeb_WHaSBHa_3gals(ALL, sel, sel3gals2, suffix='2')
+
+    # fig_WHaSBHa_per_morftype(sample_choice)
     # fig_WHaSBHa_profile_3gals(ALL, sel, sel3gals1, suffix='1')
     # fig_WHaSBHa_profile_3gals(ALL, sel, sel3gals2, suffix='2')
-    #
-    # fig_WHaSBHa_per_morftype(sample_choice)
-    # fig_tauVNeb_WHaSBHa_3gals(ALL, sel, sel3gals2, suffix='2')
-    fig_tauVNeb_WHaSBHa(ALL, sel, gals)
 
 
 def samples(ALL, sample_choice, gals=None):
@@ -1271,9 +1272,25 @@ def fig5(ALL, gals=None):
         plt.close(f)
 
 
-def fig5_2panels(ALL, sel, gals):
+def fig5_3panels(ALL, sel, gals):
     sel_gals_sample__gz = sel['gals_sample__z']
     sel_gals_sample__gyx = sel['gals_sample__yx']
+
+    sel_tmp__gz = np.zeros_like(sel_gals_sample__gz, dtype='bool')
+    sel_tmp__gyx = np.zeros_like(sel_gals_sample__gyx, dtype='bool')
+
+    O3Hb__g = np.ma.masked_all(len(gals), dtype='float')
+    N2Ha__g = np.ma.masked_all(len(gals), dtype='float')
+
+    for i_g, califaID in enumerate(gals):
+        sel_gal__gz = np.bitwise_and(ALL.califaID__z == califaID, sel_gals_sample__gz)
+        sel_gal__gyx = np.bitwise_and(ALL.califaID__yx == califaID, sel_gals_sample__gyx)
+        f4861__z = ALL.get_gal_prop(califaID, ALL.f4861__z)
+        f5007__z = ALL.get_gal_prop(califaID, ALL.f5007__z)
+        f6563__z = ALL.get_gal_prop(califaID, ALL.f6563__z)
+        f6583__z = ALL.get_gal_prop(califaID, ALL.f6583__z)
+        O3Hb__g[i_g] = np.ma.log10(f5007__z.sum()/f4861__z.sum())
+        N2Ha__g[i_g] = np.ma.log10(f6583__z.sum()/f6563__z.sum())
 
     if (sel_gals_sample__gz).any():
         f__lgz = {'%s' % l: np.ma.masked_array(getattr(ALL, 'f%s__z' % l), mask=~sel_gals_sample__gz) for l in lines}
@@ -1297,9 +1314,9 @@ def fig5_2panels(ALL, sel, gals):
         classif[sel_WHa_SF__gz] = 3
 
         N_cols = 1
-        N_rows = 2
+        N_rows = 3
         f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 5, N_rows * 4))
-        ax2, ax1 = axArr
+        ax2, ax1, ax3 = axArr
         cmap = cmap_discrete(colors_DIG_COMP_SF)
         # AXIS 1
         extent = [-1.5, 1, -1.5, 1.5]
@@ -1322,7 +1339,7 @@ def fig5_2panels(ALL, sel, gals):
         plot_text_ax(ax1, '%d %s' % (N, c), 0.01, 0.99, 15, 'top', 'left', 'k')
         plot_text_ax(ax1, 'S06', 0.30, 0.02, 20, 'bottom', 'left', 'k')
         plot_text_ax(ax1, 'K03', 0.55, 0.02, 20, 'bottom', 'left', 'k')
-        plot_text_ax(ax1, 'a)', 0.02, 0.02, 16, 'bottom', 'left', 'k')
+        plot_text_ax(ax1, 'b)', 0.02, 0.02, 16, 'bottom', 'left', 'k')
         cbaxes = add_subplot_axes(ax1, [0.54, 0.99, 0.46, 0.06])
         # cbaxes = add_subplot_axes(ax1, [0.51, 1.06, 0.5, 0.06])
         cb = plt.colorbar(sc, cax=cbaxes, ticks=[1.+2/6., 2, 3-2/6.], orientation='horizontal')
@@ -1348,7 +1365,7 @@ def fig5_2panels(ALL, sel, gals):
         plot_text_ax(ax2, '%d %s' % (N, c), 0.01, 0.99, 15, 'top', 'left', 'k')
         plot_text_ax(ax2, 'S06', 0.30, 0.02, 20, 'bottom', 'left', 'k')
         plot_text_ax(ax2, 'K03', 0.55, 0.02, 20, 'bottom', 'left', 'k')
-        plot_text_ax(ax2, 'b)', 0.02, 0.02, 16, 'bottom', 'left', 'k')
+        plot_text_ax(ax2, 'a)', 0.02, 0.02, 16, 'bottom', 'left', 'k')
         # cbaxes = add_subplot_axes(ax2, [0.51, 0.99, 0.49, 0.06])
         cbaxes = add_subplot_axes(ax2, [0.51, 1.06, 0.47, 0.06])
         # cb = plt.colorbar(sc, cax=cbaxes, ticks=[1.0, 1.1, 1.2, 1.3], orientation='horizontal')
@@ -1356,20 +1373,45 @@ def fig5_2panels(ALL, sel, gals):
         cb.ax.xaxis.labelpad = -28
         cb.ax.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]', fontsize=11)
 
-        ax2.set_ylabel(r'$\log\ [OIII]/H\beta$')
-        # ax.set_xlabel(r'$\log\ [NII]/H\alpha$')
-        ax1.set_ylabel(r'$\log\ [OIII]/H\beta$')
-        ax1.set_xlabel(r'$\log\ [NII]/H\alpha$')
-        # ax1.set_ylabel(r'$\log\ [OIII]/H\beta$')
-        # # ax.set_xlabel(r'$\log\ [NII]/H\alpha$')
-        # ax2.set_ylabel(r'$\log\ [OIII]/H\beta$')
-        # ax2.set_xlabel(r'$\log\ [NII]/H\alpha$')
+        xm, ym = ma_mask_xyz(N2Ha__g, O3Hb__g)
+        # sc = ax2.scatter(xm, ym, c=np.ma.log10(W6563__gz), vmin=np.log10(DIG_WHa_threshold), vmax=np.log10(SF_WHa_threshold), cmap='rainbow_r', s=1, marker='o', edgecolor='none')
+        extent = [-1, 0, -1, 0]
+        sc = ax3.scatter(xm, ym, s=20, marker='*', edgecolor='none')
+        print xm.count()
+        ax3.set_xlim(extent[0:2])
+        ax3.set_ylim(extent[2:4])
+        N = xm.count()
+        c = ''
+        if (xm.compressed() < extent[0]).any():
+            c += 'x-'
+        if (xm.compressed() > extent[1]).any():
+            c += 'x+'
+        if (ym.compressed() < extent[2]).any():
+            c += 'y-'
+        if (ym.compressed() > extent[3]).any():
+            c += 'y+'
+        ax3.plot(L.x['S06'], L.y['S06'], 'k-', label='S06')
+        ax3.plot(L.x['K03'], L.y['K03'], 'k-', label='K03')
+        plot_text_ax(ax3, '%d %s' % (N, c), 0.01, 0.99, 15, 'top', 'left', 'k')
+        plot_text_ax(ax3, 'S06', 0.30, 0.02, 20, 'bottom', 'left', 'k')
+        plot_text_ax(ax3, 'K03', 0.55, 0.02, 20, 'bottom', 'left', 'k')
+        plot_text_ax(ax3, 'c)', 0.02, 0.02, 16, 'bottom', 'left', 'k')
+        # cbaxes = add_subplot_axes(ax3, [0.51, 0.99, 0.49, 0.06])
+        # cbaxes = add_subplot_axes(ax3, [0.51, 1.06, 0.47, 0.06])
+        # cb = plt.colorbar(sc, cax=cbaxes, ticks=[1.0, 1.1, 1.2, 1.3], orientation='horizontal')
+
         ax1.xaxis.set_minor_locator(minorLocator)
         ax1.yaxis.set_minor_locator(minorLocator)
         ax2.xaxis.set_minor_locator(minorLocator)
         ax2.yaxis.set_minor_locator(minorLocator)
+        ax3.xaxis.set_minor_locator(minorLocator)
+        ax3.yaxis.set_minor_locator(minorLocator)
+
+        ax1.set_ylabel(r'$\log\ [OIII]/H\beta$')
+        ax3.set_xlabel(r'$\log\ [NII]/H\alpha$')
+
         f.tight_layout()
-        f.savefig('fig5_2panels.png', dpi=dpi_choice, transparent=transp_choice)
+        f.savefig('fig5_3panels.png', dpi=dpi_choice, transparent=transp_choice)
         plt.close(f)
 
 
@@ -1710,7 +1752,7 @@ def fig9(ALL, sel, gals):
         x = x_Y__gz
         y = tau_V_neb__gz - tau_V__gz
         xm, ym = ma_mask_xyz(x, y)
-        f = plt.figure(figsize=(8,8))
+        f = plt.figure(figsize=(8, 8))
         cmap = cmap_discrete(colors_DIG_COMP_SF)
         x_dataset = [xm[sel_WHa_DIG__gz].compressed(), xm[sel_WHa_COMP__gz].compressed(), xm[sel_WHa_SF__gz].compressed()]
         y_dataset = [ym[sel_WHa_DIG__gz].compressed(), ym[sel_WHa_COMP__gz].compressed(), ym[sel_WHa_SF__gz].compressed()]
@@ -2045,6 +2087,7 @@ def fig_WHaSBHa_profile_3gals(ALL, sel, gals, suffix):
 
 
 def fig_tauVNeb_WHaSBHa_3gals(ALL, sel, gals, suffix):
+    from pytu.plots import plot_spearmanr_ax
     sel_sample__gz = sel['gals_sample__z']
     sel_sample__gyx = sel['gals_sample__yx']
 
@@ -2098,26 +2141,34 @@ def fig_tauVNeb_WHaSBHa_3gals(ALL, sel, gals, suffix):
         ax1.set_xlabel(r'$\tau_V^{neb}$')
         ax1.set_ylabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
         ax1.grid()
-        sel_DIG__z, sel_COMP__z, sel_SF__z, _ = get_selections_zones(ALL, califaID, sel['WHa'], sel_sample__gz)
+        xm, ym = ma_mask_xyz(x__z, y__z)
+        plot_spearmanr_ax(ax=ax1, x=xm.compressed(), y=ym.compressed(), pos_x=0.02, pos_y=0.90, fontsize=16)
+        yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
         min_npts = 20
-        xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_DIG__z)
-        yMean_DIG, yPrc_DIG, bin_center_DIG, npts_DIG = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
-        if npts_DIG.any():
-            sel_npts = npts_DIG > min_npts
-            ax1.plot(bin_center_DIG[sel_npts], yPrc_DIG[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[0])
-            ax1.plot(bin_center_DIG[sel_npts], yPrc_DIG[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[0], markersize=10)
-        xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_COMP__z)
-        yMean_COMP, yPrc_COMP, bin_center_COMP, npts_COMP = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
-        if npts_COMP.any():
-            sel_npts = npts_COMP > min_npts
-            ax1.plot(bin_center_COMP[sel_npts], yPrc_COMP[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[1])
-            ax1.plot(bin_center_COMP[sel_npts], yPrc_COMP[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[1], markersize=10)
-        xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_SF__z)
-        yMean_SF, yPrc_SF, bin_center_SF, npts_SF = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
-        if npts_SF.any():
-            sel_npts = npts_SF > min_npts
-            ax1.plot(bin_center_SF[sel_npts], yPrc_SF[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[2])
-            ax1.plot(bin_center_SF[sel_npts], yPrc_SF[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[2], markersize=10)
+        if npts.any():
+            sel_npts = npts > min_npts
+            ax1.plot(bin_center[sel_npts], yPrc[2][sel_npts], '-', lw=2, c='k')
+            ax1.plot(bin_center[sel_npts], yPrc[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c='k', markersize=10)
+        # sel_DIG__z, sel_COMP__z, sel_SF__z, _ = get_selections_zones(ALL, califaID, sel['WHa'], sel_sample__gz)
+        # min_npts = 20
+        # xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_DIG__z)
+        # yMean_DIG, yPrc_DIG, bin_center_DIG, npts_DIG = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
+        # if npts_DIG.any():
+        #     sel_npts = npts_DIG > min_npts
+        #     ax1.plot(bin_center_DIG[sel_npts], yPrc_DIG[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[0])
+        #     ax1.plot(bin_center_DIG[sel_npts], yPrc_DIG[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[0], markersize=10)
+        # xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_COMP__z)
+        # yMean_COMP, yPrc_COMP, bin_center_COMP, npts_COMP = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
+        # if npts_COMP.any():
+        #     sel_npts = npts_COMP > min_npts
+        #     ax1.plot(bin_center_COMP[sel_npts], yPrc_COMP[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[1])
+        #     ax1.plot(bin_center_COMP[sel_npts], yPrc_COMP[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[1], markersize=10)
+        # xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_SF__z)
+        # yMean_SF, yPrc_SF, bin_center_SF, npts_SF = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
+        # if npts_SF.any():
+        #     sel_npts = npts_SF > min_npts
+        #     ax1.plot(bin_center_SF[sel_npts], yPrc_SF[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[2])
+        #     ax1.plot(bin_center_SF[sel_npts], yPrc_SF[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[2], markersize=10)
         x__z = tau_V_neb__z
         y__z = np.ma.log10(mSB6563__z)
         map__z = create_segmented_map_zones(ALL, califaID, sel['WHa'], sel_sample__gz)
@@ -2126,26 +2177,33 @@ def fig_tauVNeb_WHaSBHa_3gals(ALL, sel, gals, suffix):
         ax2.set_xlabel(r'$\tau_V^{neb}$')
         ax2.set_ylabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
         ax2.grid()
-        sel_DIG__z, sel_COMP__z, sel_SF__z, _ = get_selections_zones(ALL, califaID, sel['WHa'], sel_sample__gz)
+        xm, ym = ma_mask_xyz(x__z, y__z)
+        plot_spearmanr_ax(ax=ax2, x=xm.compressed(), y=ym.compressed(), pos_x=0.02, pos_y=0.98, fontsize=16)
         min_npts = 20
-        xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_DIG__z)
-        yMean_DIG, yPrc_DIG, bin_center_DIG, npts_DIG = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
-        if npts_DIG.any():
-            sel_npts = npts_DIG > min_npts
-            ax2.plot(bin_center_DIG[sel_npts], yPrc_DIG[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[0])
-            ax2.plot(bin_center_DIG[sel_npts], yPrc_DIG[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[0], markersize=10)
-        xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_COMP__z)
-        yMean_COMP, yPrc_COMP, bin_center_COMP, npts_COMP = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
-        if npts_COMP.any():
-            sel_npts = npts_COMP > min_npts
-            ax2.plot(bin_center_COMP[sel_npts], yPrc_COMP[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[1])
-            ax2.plot(bin_center_COMP[sel_npts], yPrc_COMP[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[1], markersize=10)
-        xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_SF__z)
-        yMean_SF, yPrc_SF, bin_center_SF, npts_SF = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
-        if npts_SF.any():
-            sel_npts = npts_SF > min_npts
-            ax2.plot(bin_center_SF[sel_npts], yPrc_SF[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[2])
-            ax2.plot(bin_center_SF[sel_npts], yPrc_SF[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[2], markersize=10)
+        yMean, yPrc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
+        if npts.any():
+            sel_npts = npts > min_npts
+            ax2.plot(bin_center[sel_npts], yPrc[2][sel_npts], '-', lw=2, c='k')
+            ax2.plot(bin_center[sel_npts], yPrc[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c='k', markersize=10)
+        # sel_DIG__z, sel_COMP__z, sel_SF__z, _ = get_selections_zones(ALL, califaID, sel['WHa'], sel_sample__gz)
+        # xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_DIG__z)
+        # yMean_DIG, yPrc_DIG, bin_center_DIG, npts_DIG = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
+        # if npts_DIG.any():
+        #     sel_npts = npts_DIG > min_npts
+        #     ax2.plot(bin_center_DIG[sel_npts], yPrc_DIG[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[0])
+        #     ax2.plot(bin_center_DIG[sel_npts], yPrc_DIG[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[0], markersize=10)
+        # xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_COMP__z)
+        # yMean_COMP, yPrc_COMP, bin_center_COMP, npts_COMP = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
+        # if npts_COMP.any():
+        #     sel_npts = npts_COMP > min_npts
+        #     ax2.plot(bin_center_COMP[sel_npts], yPrc_COMP[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[1])
+        #     ax2.plot(bin_center_COMP[sel_npts], yPrc_COMP[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[1], markersize=10)
+        # xm, ym = ma_mask_xyz(x__z, y__z, mask=~sel_SF__z)
+        # yMean_SF, yPrc_SF, bin_center_SF, npts_SF = stats_med12sigma(xm.compressed(), ym.compressed(), x_bins)
+        # if npts_SF.any():
+        #     sel_npts = npts_SF > min_npts
+        #     ax2.plot(bin_center_SF[sel_npts], yPrc_SF[2][sel_npts], '-', lw=2, c=colors_lines_DIG_COMP_SF[2])
+        #     ax2.plot(bin_center_SF[sel_npts], yPrc_SF[2][sel_npts], linestyle='', marker='*', markeredgewidth=1, markeredgecolor='k', c=colors_lines_DIG_COMP_SF[2], markersize=10)
         if row == 0:
             ax1.set_title(r'W${}_{H\alpha}$ profile', fontsize=20, y=1.03)
             ax2.set_title(r'$\Sigma_{H\alpha}$ profile', fontsize=20, y=1.03)
@@ -2178,9 +2236,6 @@ def fig_tauVNeb_WHaSBHa(ALL, sel, gals):
         max_dist_HLR = max_dist/HLR_pc
         tmp_sel = np.bitwise_and(ALL.califaID__z == g, np.less_equal(ALL.zoneDistance_HLR, max_dist_HLR))
         sel_center__gz[tmp_sel] = True
-        print sel_center__gz.sum()
-
-    print sel_center__gz.sum()
 
     if (sel_gals_sample__gz).any():
         f6563__gz = ALL.f6563__z
@@ -2190,8 +2245,7 @@ def fig_tauVNeb_WHaSBHa(ALL, sel, gals):
 
         dist__gz = ALL.zoneDistance_HLR
         tau_V_neb__gz = f_tauVneb(f6563__gz, f4861__gz)
-        sel_gals_sample__gz = np.bitwise_and(sel_gals_sample__gz, sel_center__gz)
-        print sel_gals_sample__gz.sum()
+        # sel_gals_sample__gz = np.bitwise_and(sel_gals_sample__gz, sel_center__gz)
 
         # WHa DIG-COMP-SF decomposition
         sel_WHa_DIG__gz = np.bitwise_and(sel['WHa']['DIG']['z'], sel_gals_sample__gz)
