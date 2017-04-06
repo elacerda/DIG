@@ -79,15 +79,15 @@ def fig1_compare_gal(gals):
     new_WHa__gz = []
     print gals
     for califaID in gals:
-        oldELdir = '/Users/lacerda/califa/legacy/q054/EML/Bgstf6e'
+        oldELdir = '/Users/lacerda/RGB/Bgstf6e/v02'  # '/Users/lacerda/califa/legacy/q054/EML/Bgstf6e'
         oldELsuf = '_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits'
         oldEL = EmLinesDataCube('%s/%s%s' % (oldELdir, califaID, oldELsuf))
         oldf__lz = {l: oldEL.flux[oldEL.lines.index(l)] for l in BPTlines}
         oldef__lz = {l: oldEL.eflux[oldEL.lines.index(l)] for l in BPTlines}
         oldW6563__z = oldEL.EW[oldEL.lines.index('6563')]
         oldtauVneb__z = f_tauVneb(oldf__lz['6563'], oldf__lz['4861'])
-        newELdir = '/Users/lacerda/califa/legacy/q054/EML/Bgsd6e'
-        newELsuf = '_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgsd6e.EML.MC100.fits'
+        newELdir = '/Users/lacerda/RGB/Bgstf6e/v04'
+        newELsuf = '_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits'
         newEL = EmLinesDataCube('%s/%s%s' % (newELdir, califaID, newELsuf))
         newf__lz = {l: newEL.flux[newEL.lines.index(l)] for l in BPTlines}
         newef__lz = {l: newEL.eflux[newEL.lines.index(l)] for l in BPTlines}
