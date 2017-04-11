@@ -10,11 +10,12 @@ from CALIFAUtils.scripts import try_q055_instead_q054, calc_SFR, my_morf, get_mo
 
 
 tY = 32e6
-config = -3
+config = -2
 EL = True
 elliptical = True
-kw_cube = dict(EL=EL, config=config, elliptical=elliptical)
-debug = False
+# kw_cube = dict(config=config, elliptical=elliptical)
+kw_cube = dict(EL=True, config=config, elliptical=elliptical)
+debug = True
 
 
 def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
@@ -74,9 +75,16 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         if K is None:
             print 'califaID:', califaID, ' trying another qVersion...'
             K = try_q055_instead_q054(califaID, **kw_cube)
-            if K is None or K.EL is None:
+            if (K is None) or (K.EL is None):
+                # if K is None:
                 print 'califaID:%s missing fits files...' % califaID
+                # print 'califaID:%s missing superfits file...' % califaID
                 continue
+        # try:
+        #     K.loadEmLinesDataCube('/Users/lacerda/RGB/Bgstf6e/v04/%s_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits' % califaID)
+        # except IOError:
+        #     print 'califaID:%s missing eml fits file...' % califaID
+        #     continue
         zones_map__z = np.array(list(range(K.N_zone)), dtype='int')
         ALL.append1d('zones_map', zones_map__z)
         califaID__z = np.array([K.califaID for i in range(K.N_zone)], dtype='|S5')
@@ -189,7 +197,12 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
                 integrated_SBl_obs = integrated_Ll_obs/(K.zoneArea_pc2 * 1e-6)
                 ALL.append1d_masked('SB%s__z' % l, SBl_obs__z, SBl_obs__z.mask)
                 fl_obs__yx = K.zoneToYX(fl_obs__z/K.zoneArea_pix, extensive=False)
+                # print l, (~(fl_obs__z.mask)).any(), (~(fl_obs__yx.mask)).any()
                 ALL.append1d_masked('f%s__yx' % l, np.ravel(fl_obs__yx), np.ravel(fl_obs__yx.mask))
+                _f__yx = getattr(ALL, '_f%s__yx' % l)[-1]
+                _fmsk__yx = getattr(ALL, '_mask_f%s__yx' % l)[-1]
+                # print _f__yx.any(), _f__yx.sum(), len(_f__yx)
+                # print _fmsk__yx.any(), _fmsk__yx.sum(), len(_fmsk__yx)
                 efl_obs__yx = K.zoneToYX(efl_obs__z/K.zoneArea_pix, extensive=False)
                 ALL.append1d_masked('ef%s__yx' % l, np.ravel(efl_obs__yx), np.ravel(efl_obs__yx.mask))
                 Ll_obs__yx = K.EL._F_to_L(fl_obs__yx)/L_sun
@@ -208,6 +221,7 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
                     ALL.append1d('integrated_W%s' % l, integrated_W6563)
 
     ALL.stack()
+    # print ALL.get_gal_prop('K0073', ALL.f6563__yx)
     if dump:
         ALL.dump(output_filename)
     return ALL

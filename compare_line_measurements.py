@@ -4,12 +4,14 @@ import matplotlib as mpl
 from pycasso import EmLinesDataCube
 from matplotlib import pyplot as plt
 from pytu.functions import ma_mask_xyz
+from astropy import constants as const
 from pytu.plots import plot_histo_ax, stats_med12sigma, plot_spearmanr_ax
 from pystarlight.util.redenninglaws import calc_redlaw
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator, MaxNLocator, \
                               ScalarFormatter
 
 
+c = const.c.to('km/s').value
 mpl.rcParams['font.size'] = 20
 mpl.rcParams['axes.labelsize'] = 16
 mpl.rcParams['axes.titlesize'] = 16
@@ -34,6 +36,7 @@ dflt_kw_scatter = dict(s=5, marker='o', edgecolor='none')
 logSNRrange = [0, 2.5]
 logWHa_range = [0, 2.5]
 SNRthreshold = 1
+vcompare = ['v03', 'v04']
 
 
 def main(argv=None):
@@ -54,11 +57,13 @@ def main(argv=None):
             gals.append(g)
     gals = sorted(gals)
 
-    stacked_dict = fig1_compare_gal(gals)
+    fig1plot = False
+    stacked_dict = fig1_compare_gal(gals, plot_data=fig1plot)
     fig2_compare_allsample(gals, stacked_dict)
+    fig3(gals, stacked_dict)
 
 
-def fig1_compare_gal(gals):
+def fig1_compare_gal(gals, plot_data=True):
     old_Hb__gz = []
     old_eHb__gz = []
     old_O3__gz = []
@@ -68,6 +73,7 @@ def fig1_compare_gal(gals):
     old_N2__gz = []
     old_eN2__gz = []
     old_WHa__gz = []
+    old_v0Hb__gz = []
     new_Hb__gz = []
     new_eHb__gz = []
     new_O3__gz = []
@@ -77,16 +83,17 @@ def fig1_compare_gal(gals):
     new_N2__gz = []
     new_eN2__gz = []
     new_WHa__gz = []
+    new_v0Hb__gz = []
     print gals
     for califaID in gals:
-        oldELdir = '/Users/lacerda/RGB/Bgstf6e/v02'  # '/Users/lacerda/califa/legacy/q054/EML/Bgstf6e'
+        oldELdir = '/Users/lacerda/RGB/Bgstf6e/%s' % vcompare[0]  # '/Users/lacerda/califa/legacy/q054/EML/Bgstf6e'
         oldELsuf = '_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits'
         oldEL = EmLinesDataCube('%s/%s%s' % (oldELdir, califaID, oldELsuf))
         oldf__lz = {l: oldEL.flux[oldEL.lines.index(l)] for l in BPTlines}
         oldef__lz = {l: oldEL.eflux[oldEL.lines.index(l)] for l in BPTlines}
         oldW6563__z = oldEL.EW[oldEL.lines.index('6563')]
         oldtauVneb__z = f_tauVneb(oldf__lz['6563'], oldf__lz['4861'])
-        newELdir = '/Users/lacerda/RGB/Bgstf6e/v04'
+        newELdir = '/Users/lacerda/RGB/Bgstf6e/%s' % vcompare[1]
         newELsuf = '_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits'
         newEL = EmLinesDataCube('%s/%s%s' % (newELdir, califaID, newELsuf))
         newf__lz = {l: newEL.flux[newEL.lines.index(l)] for l in BPTlines}
@@ -111,69 +118,77 @@ def fig1_compare_gal(gals):
         new_N2__gz.append(newf__lz['6583'])
         new_eN2__gz.append(newef__lz['6583'])
         new_WHa__gz.append(newW6563__z)
-        ###############################################################
-        ###############################################################
-        ###############################################################
-        N_cols = 2
-        N_rows = 3
-        f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 4))
-        f.suptitle('%s' % califaID)
-        ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = axArr
-        axArr = [ax1, ax2, ax3, ax4, ax5, ax6]
-        for i_l, l in enumerate(BPTlines):
-            old_f = oldf__lz[l]
-            new_f = newf__lz[l]
-            new_snr = new_f/newef__lz[l]
-            sel_f = np.bitwise_and(np.bitwise_and(np.greater(old_f, 0), np.greater(new_f, 0)), np.greater_equal(new_snr, 1.))
-            ax = axArr[i_l]
-            x = np.ma.log10(1.+new_snr)
-            y = (new_f - old_f)/new_f
-            xm, ym = ma_mask_xyz(x, y, mask=~sel_f)
-            plot_histo_ax(ax, ym.compressed(), ini_pos_y=0.45, y_v_space=0.07, first=True, histo=False, stats_txt=True, c='k')
-            ax.scatter(xm, ym, **dflt_kw_scatter)
-            ax.axhline(y=0, c='k', ls='--')
-            ax.set_xlabel(r'$\log$ (1+SN${}_{NEW}$)')
-            ax.set_ylabel(r'(F${}_{NEW}$ - F${}_{OLD}$)/F${}_{NEW}$')
-            ax.set_title(l)
-            ax.set_xlim(logSNRrange)
-            ax.xaxis.set_major_locator(MaxNLocator(5))
-            ax.xaxis.set_minor_locator(MaxNLocator(25))
-            ax.yaxis.set_major_locator(MaxNLocator(5))
-            ax.yaxis.set_minor_locator(MaxNLocator(25))
-        snrHb__z = newf__lz['4861']/newef__lz['4861']
-        snrHa__z = newf__lz['6563']/newef__lz['6563']
-        x = np.ma.log10(1.+snrHb__z)
-        y = (newtauVneb__z - oldtauVneb__z)
-        sel = np.bitwise_and(np.greater_equal(snrHa__z, SNRthreshold), np.greater_equal(snrHb__z, SNRthreshold))
-        xm, ym = ma_mask_xyz(x, y, mask=~sel)
-        ax5.scatter(xm, ym, **dflt_kw_scatter)
-        ax5.set_xlabel(r'$\log$ (1+SN${}_{H\beta}$)')
-        ax5.set_ylabel(r'($\tau_V^{NEW}$ - $\tau_V^{OLD}$)')
-        ax5.axhline(y=0, c='k', ls='--')
-        plot_histo_ax(ax5, ym.compressed(), ini_pos_y=0.98, y_v_space=0.07, first=True, histo=False, stats_txt=True, c='k')
-        ax5.set_xlim(logSNRrange)
-        ax5.xaxis.set_major_locator(MaxNLocator(5))
-        ax5.xaxis.set_minor_locator(MaxNLocator(25))
-        ax5.yaxis.set_major_locator(MaxNLocator(5))
-        ax5.yaxis.set_minor_locator(MaxNLocator(25))
-        x = np.ma.log10(newW6563__z)
-        xm, ym = ma_mask_xyz(x, y, mask=~np.greater_equal(snrHa__z, SNRthreshold))
-        ax6.scatter(xm, ym, **dflt_kw_scatter)
-        ax6.axhline(y=0, c='k', ls='--')
-        ax6.set_xlabel(r'$\log\ W_{H\alpha}$')
-        ax6.set_ylabel(r'($\tau_V^{NEW}$ - $\tau_V^{OLD}$)')
-        plot_histo_ax(ax6, ym.compressed(), ini_pos_y=0.98, y_v_space=0.07, first=True, histo=False, stats_txt=True, c='k')
-        ax6.set_xlim(logWHa_range)
-        ax6.xaxis.set_major_locator(MaxNLocator(5))
-        ax6.xaxis.set_minor_locator(MaxNLocator(25))
-        ax6.yaxis.set_major_locator(MaxNLocator(5))
-        ax6.yaxis.set_minor_locator(MaxNLocator(25))
-        f.tight_layout(w_pad=0.8, h_pad=0.8)
-        f.savefig('%s_comparelines.png' % califaID, dpi=dpi_choice, transparent=transp_choice)
-        plt.close(f)
-        ###############################################################
-        ###############################################################
-        ###############################################################
+        wl0_Hb = 4861.
+        old_posHb = oldEL.pos[oldEL.lines.index('4861')]
+        old_v0Hb = c * (old_posHb - wl0_Hb)/wl0_Hb
+        new_posHb = newEL.pos[newEL.lines.index('4861')]
+        new_v0Hb = c * (new_posHb - wl0_Hb)/wl0_Hb
+        old_v0Hb__gz.append(old_v0Hb)
+        new_v0Hb__gz.append(new_v0Hb)
+        if plot_data:
+            ###############################################################
+            ###############################################################
+            ###############################################################
+            N_cols = 2
+            N_rows = 3
+            f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 4))
+            f.suptitle('%s' % califaID)
+            ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = axArr
+            axArr = [ax1, ax2, ax3, ax4, ax5, ax6]
+            for i_l, l in enumerate(BPTlines):
+                old_f = oldf__lz[l]
+                new_f = newf__lz[l]
+                new_snr = new_f/newef__lz[l]
+                sel_f = np.bitwise_and(np.bitwise_and(np.greater(old_f, 0), np.greater(new_f, 0)), np.greater_equal(new_snr, 1.))
+                ax = axArr[i_l]
+                x = np.ma.log10(1.+new_snr)
+                y = (new_f - old_f)/new_f
+                xm, ym = ma_mask_xyz(x, y, mask=~sel_f)
+                plot_histo_ax(ax, ym.compressed(), ini_pos_y=0.45, y_v_space=0.07, first=True, histo=False, stats_txt=True, c='k')
+                ax.scatter(xm, ym, **dflt_kw_scatter)
+                ax.axhline(y=0, c='k', ls='--')
+                ax.set_xlabel(r'$\log$ (1+SN${}_{NEW}$)')
+                ax.set_ylabel(r'(F${}_{NEW}$ - F${}_{OLD}$)/F${}_{NEW}$')
+                ax.set_title(l)
+                ax.set_xlim(logSNRrange)
+                ax.xaxis.set_major_locator(MaxNLocator(5))
+                ax.xaxis.set_minor_locator(MaxNLocator(25))
+                ax.yaxis.set_major_locator(MaxNLocator(5))
+                ax.yaxis.set_minor_locator(MaxNLocator(25))
+            snrHb__z = newf__lz['4861']/newef__lz['4861']
+            snrHa__z = newf__lz['6563']/newef__lz['6563']
+            x = np.ma.log10(1.+snrHb__z)
+            y = (newtauVneb__z - oldtauVneb__z)
+            sel = np.bitwise_and(np.greater_equal(snrHa__z, SNRthreshold), np.greater_equal(snrHb__z, SNRthreshold))
+            xm, ym = ma_mask_xyz(x, y, mask=~sel)
+            ax5.scatter(xm, ym, **dflt_kw_scatter)
+            ax5.set_xlabel(r'$\log$ (1+SN${}_{H\beta}$)')
+            ax5.set_ylabel(r'($\tau_V^{NEW}$ - $\tau_V^{OLD}$)')
+            ax5.axhline(y=0, c='k', ls='--')
+            plot_histo_ax(ax5, ym.compressed(), ini_pos_y=0.98, y_v_space=0.07, first=True, histo=False, stats_txt=True, c='k')
+            ax5.set_xlim(logSNRrange)
+            ax5.xaxis.set_major_locator(MaxNLocator(5))
+            ax5.xaxis.set_minor_locator(MaxNLocator(25))
+            ax5.yaxis.set_major_locator(MaxNLocator(5))
+            ax5.yaxis.set_minor_locator(MaxNLocator(25))
+            x = np.ma.log10(newW6563__z)
+            xm, ym = ma_mask_xyz(x, y, mask=~np.greater_equal(snrHa__z, SNRthreshold))
+            ax6.scatter(xm, ym, **dflt_kw_scatter)
+            ax6.axhline(y=0, c='k', ls='--')
+            ax6.set_xlabel(r'$\log\ W_{H\alpha}$')
+            ax6.set_ylabel(r'($\tau_V^{NEW}$ - $\tau_V^{OLD}$)')
+            plot_histo_ax(ax6, ym.compressed(), ini_pos_y=0.98, y_v_space=0.07, first=True, histo=False, stats_txt=True, c='k')
+            ax6.set_xlim(logWHa_range)
+            ax6.xaxis.set_major_locator(MaxNLocator(5))
+            ax6.xaxis.set_minor_locator(MaxNLocator(25))
+            ax6.yaxis.set_major_locator(MaxNLocator(5))
+            ax6.yaxis.set_minor_locator(MaxNLocator(25))
+            f.tight_layout(w_pad=0.8, h_pad=0.8)
+            f.savefig('%s_%s_comparelines.png' % ('-'.join(vcompare), califaID), dpi=dpi_choice, transparent=transp_choice)
+            plt.close(f)
+            ###############################################################
+            ###############################################################
+            ###############################################################
     ret_dict = dict(
         old_O3__gz=np.ma.hstack(old_O3__gz),
         old_eO3__gz=np.ma.hstack(old_eO3__gz),
@@ -193,6 +208,8 @@ def fig1_compare_gal(gals):
         new_N2__gz=np.ma.hstack(new_N2__gz),
         new_eN2__gz=np.ma.hstack(new_eN2__gz),
         new_WHa__gz=np.ma.hstack(new_WHa__gz),
+        old_v0Hb__gz=np.ma.hstack(old_v0Hb__gz),
+        new_v0Hb__gz=np.ma.hstack(new_v0Hb__gz),
     )
     return ret_dict
 
@@ -357,7 +374,76 @@ def fig2_compare_allsample(gals, data_dict):
     ax11.set_xlabel(r'$\tau_V^{neb}$ OLD')
     ax12.set_xlabel(r'$\tau_V^{neb}$ NEW')
     f.tight_layout(w_pad=0.8, h_pad=0.8)
-    f.savefig('comparelines_allsample.png', dpi=dpi_choice, transparent=transp_choice)
+    f.savefig('%s_comparelines_allsample.png' % '-'.join(vcompare), dpi=dpi_choice, transparent=transp_choice)
+    plt.close(f)
+
+
+def fig3(gals, data_dict):
+    old_Hb__gz = data_dict['old_Hb__gz']
+    old_eHb__gz = data_dict['old_eHb__gz']
+    old_Ha__gz = data_dict['old_Ha__gz']
+    old_v0Hb__gz = data_dict['old_v0Hb__gz']
+    new_Hb__gz = data_dict['new_Hb__gz']
+    new_eHb__gz = data_dict['new_eHb__gz']
+    new_Ha__gz = data_dict['new_Ha__gz']
+    new_v0Hb__gz = data_dict['new_v0Hb__gz']
+    N_cols = 2
+    N_rows = 1
+    NGals = len(gals)
+    f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 5))
+    f.suptitle('%d galaxies' % NGals)
+    ax1, ax2 = axArr
+    delta_logHaHb = np.ma.log10(new_Ha__gz/new_Hb__gz) - np.ma.log10(old_Ha__gz/old_Hb__gz)
+    delta_v0Hb = new_v0Hb__gz - old_v0Hb__gz
+    sel_f = np.bitwise_and(np.bitwise_and(np.bitwise_and(np.greater(old_Hb__gz, 0), np.greater(new_Hb__gz, 0)), np.greater(old_Ha__gz, 0)), np.greater(new_Hb__gz, 0))
+    x = np.ma.log10(new_eHb__gz/new_Hb__gz)
+    xrange = [-3, 2]
+    yrange = [-150, 150]
+    y = delta_v0Hb
+    xm, ym = ma_mask_xyz(x, y, mask=~sel_f)
+    ax1.scatter(xm, ym, **dflt_kw_scatter)
+    xbins = np.linspace(xrange[0], 0.2, 20)
+    yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), xbins)
+    yMedian = prc[2]
+    print yMedian[0], yMean[0]
+    y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
+    ax1.plot(bin_center, yMedian, 'r-', lw=1)
+    for y_prc in y_12sigma:
+        ax1.plot(bin_center, y_prc, 'k--', lw=1)
+    ax1.set_xlabel(r'$\log$ NS${}_{H\beta}$ (%s)' % vcompare[1])
+    ax1.set_ylabel(r'$\Delta $v${}_0$ (%s)' % '-'.join(vcompare[::-1]))
+    ax1.set_xlim(xrange)
+    ax1.set_ylim(yrange)
+    ax1.xaxis.set_major_locator(MaxNLocator(5))
+    ax1.xaxis.set_minor_locator(MaxNLocator(25))
+    ax1.yaxis.set_major_locator(MultipleLocator(50))
+    ax1.yaxis.set_minor_locator(MultipleLocator(10))
+    # ax1.xaxis.set_major_locator(MaxNLocator(5))
+    # ax1.xaxis.set_minor_locator(MaxNLocator(25))
+    # ax1.yaxis.set_major_locator(MaxNLocator(5))
+    # ax1.yaxis.set_minor_locator(MaxNLocator(25))
+    ax1.grid()
+    x = np.ma.log10(new_eHb__gz/new_Hb__gz)
+    y = delta_logHaHb
+    xm, ym = ma_mask_xyz(x, y, mask=~sel_f)
+    ax2.scatter(xm, ym, **dflt_kw_scatter)
+    xbins = np.linspace(xrange[0], xrange[1], 20)
+    yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), xbins)
+    yMedian = prc[2]
+    y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
+    ax2.plot(bin_center, yMedian, 'r-', lw=1)
+    for y_prc in y_12sigma:
+        ax2.plot(bin_center, y_prc, 'k--', lw=1)
+    ax2.set_xlabel(r'$\log$ NS${}_{H\beta}$ (%s)' % vcompare[1])
+    ax2.set_ylabel(r'$\Delta\ \log$ H$\alpha/$H$\beta$ (%s)' % '-'.join(vcompare[::-1]))
+    ax2.set_xlim(xrange)
+    ax2.xaxis.set_major_locator(MaxNLocator(5))
+    ax2.xaxis.set_minor_locator(MaxNLocator(25))
+    ax2.yaxis.set_major_locator(MaxNLocator(5))
+    ax2.yaxis.set_minor_locator(MaxNLocator(25))
+    ax2.grid()
+    f.tight_layout(w_pad=0.8, h_pad=0.8)
+    f.savefig('%s_compare_velocity_allsample.png' % '-'.join(vcompare), dpi=dpi_choice, transparent=transp_choice)
     plt.close(f)
 
 
