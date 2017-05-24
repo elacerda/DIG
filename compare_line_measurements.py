@@ -5,8 +5,9 @@ from pycasso import EmLinesDataCube
 from matplotlib import pyplot as plt
 from pytu.functions import ma_mask_xyz
 from astropy import constants as const
-from pytu.plots import plot_histo_ax, stats_med12sigma, plot_spearmanr_ax
 from pystarlight.util.redenninglaws import calc_redlaw
+from pytu.plots import plot_histo_ax, stats_med12sigma, plot_spearmanr_ax, \
+                       plot_text_ax
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator, MaxNLocator, \
                               ScalarFormatter
 
@@ -36,7 +37,7 @@ dflt_kw_scatter = dict(s=5, marker='o', edgecolor='none')
 logSNRrange = [0, 2.5]
 logWHa_range = [0, 2.5]
 SNRthreshold = 1
-vcompare = ['v03', 'v04']
+vcompare = ['v01', 'v04']
 
 
 def main(argv=None):
@@ -361,8 +362,8 @@ def fig2_compare_allsample(gals, data_dict):
     sel = np.bitwise_and(np.greater_equal(snrHa, SNRthreshold), np.greater_equal(snrHb, SNRthreshold))
     sel = np.bitwise_and(sel, np.less(new_WHa__gz, WHamax))
     old_tauVNebm, new_tauVNebm = ma_mask_xyz(old_tauVNeb, new_tauVNeb, mask=~sel)
-    plot_histo_ax(ax11, old_tauVNebm.compressed(), histo=True, stats=True, first=True, pos_x=0.4, ini_pos_y=0.98, y_v_space=0.07, c='b', kwargs_histo=dict(normed=False, range=[-6, 6]))
-    plot_histo_ax(ax12, new_tauVNebm.compressed(), histo=True, stats=True, first=True, pos_x=0.4, ini_pos_y=0.98, y_v_space=0.07, c='b', kwargs_histo=dict(normed=False, range=[-6, 6]))
+    plot_histo_ax(ax11, old_tauVNebm.compressed(), histo=True, dataset_names='total', stats=True, first=True, pos_x=0.4, ini_pos_y=0.98, y_v_space=0.07, c='b', kwargs_histo=dict(normed=False, range=[-6, 6]))
+    plot_histo_ax(ax12, new_tauVNebm.compressed(), histo=True, dataset_names='total', stats=True, first=True, pos_x=0.4, ini_pos_y=0.98, y_v_space=0.07, c='b', kwargs_histo=dict(normed=False, range=[-6, 6]))
     SNRmax = 3
     sel = np.bitwise_and(np.greater_equal(snrHa, SNRmax), np.greater_equal(snrHb, SNRmax))
     sel = np.bitwise_and(sel, np.less(new_WHa__gz, WHamax))
@@ -408,6 +409,7 @@ def fig3(gals, data_dict):
     print yMedian[0], yMean[0]
     y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
     ax1.plot(bin_center, yMedian, 'r-', lw=1)
+    plot_text_ax(ax1, '%d' % xm.count(), pos_x=0.99, pos_y=0.99, fs='11', va='top', ha='right', c='k')
     for y_prc in y_12sigma:
         ax1.plot(bin_center, y_prc, 'k--', lw=1)
     ax1.set_xlabel(r'$\log$ NS${}_{H\beta}$ (%s)' % vcompare[1])
@@ -418,10 +420,6 @@ def fig3(gals, data_dict):
     ax1.xaxis.set_minor_locator(MaxNLocator(25))
     ax1.yaxis.set_major_locator(MultipleLocator(50))
     ax1.yaxis.set_minor_locator(MultipleLocator(10))
-    # ax1.xaxis.set_major_locator(MaxNLocator(5))
-    # ax1.xaxis.set_minor_locator(MaxNLocator(25))
-    # ax1.yaxis.set_major_locator(MaxNLocator(5))
-    # ax1.yaxis.set_minor_locator(MaxNLocator(25))
     ax1.grid()
     x = np.ma.log10(new_eHb__gz/new_Hb__gz)
     y = delta_logHaHb
@@ -432,6 +430,7 @@ def fig3(gals, data_dict):
     yMedian = prc[2]
     y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
     ax2.plot(bin_center, yMedian, 'r-', lw=1)
+    plot_text_ax(ax2, '%d' % xm.count(), pos_x=0.99, pos_y=0.99, fs='11', va='top', ha='right', c='k')
     for y_prc in y_12sigma:
         ax2.plot(bin_center, y_prc, 'k--', lw=1)
     ax2.set_xlabel(r'$\log$ NS${}_{H\beta}$ (%s)' % vcompare[1])

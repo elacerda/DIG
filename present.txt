@@ -1,0 +1,24 @@
+Motivação inicial: procurar entender o efeito das regiões de DIG na interpretação dos espectros das galáxias.
+
+O que são regiões diffuse ionized gas? São regiões geralmente caracterizadas por baixa densidade, baixa ionização e high collisional to recombination line-ratios. As fontes de ionização dessas regiões ainda não são bem definidas, podendo ser devido aos HOLMES, a fótons que escapam das regiões SF. Essas são as duas principais fontes que se pensam, mas há especulações de outros tipos como, pre-MS stars, turbulência, fantasma de Quetzalcoatl? TEMER? DOGE? Independentemente da fonte ionizantes, as regiões de DIG possuem regimes diferentes daquelas de SF, portanto, caso não se leve em conta isso podemos ter resultados enviesados.
+
+Antes de começarmos a estudar os espectros temos que corrigi-los por atenuação. Portanto vamos estudar qual o efeito da atenuação medida pelo decremento de Balmer nas diferentes regiões.
+
+Como não temos resolução espacial de forma que possamos separar exatamente regiões SF daquelas que são de gás difuso, temos buscar algum tipo de classificação que nos possa separar SF-dominated regions daquelas DIG-dominated regions… 
+
+Nossos resultados:
+
+Dados:
+31 galáxias late-type (fig 4 exemplo)
+
+Separação DIG-SF baseada em EWHa: 
+In the limit where nothing other than these old stars ionizes the interstellar gas, the approximately constant ratio of ionizing photons per unit mass of old stellar populations implies a constatnt value of order 1A (Cid Fernandes et al 2011)
+Z17 trabalha com dados do MaNGA e separa reigões SF usando a SB(Ha) mas isso não leva em conta as populações estelares. Por exemplo, regiões DIG com Ha muito forte podem ser classificadas como SF por engano. Estudos anteriores do CALIFA mostram que regiões centrais de ETG, onde não existem populações jovem possuem valores de SBHa que excedem a classificação de Z17. (comentar DIG + DIG leads to an SF classif.). (fig2 mostra que em um WHa fixo temos SBHa maior nos menores R e para SBHa fixo temos os valores mais altor de WHa nas partes de fora). Figura 5 mostra esse efeito internamente nas galáxias. 
+Pela figura 3 vemos que essencialmente TODAS AS GALÁXIAS possuem uma distribuição bimodal de valores de WHa, mas o que muda é a fração entre alto e baixo WHa. Regiões de baixo WHa em galáxias late-type nos mostram regiões onde o ionization-budget é dominado pelas populações mais velhas. (SFS et al 2014 usa WHa > 6 para selecionar regiões HII na amostra do CALIFA)
+
+The Balmer decrement - Ha/Hb em diferentes regimes:
+Z17 não encontra relação entre Hb/Ha e SB(Ha) em um dado raio e portanto conclui que a correção por extinção não causa diferentes razões de linhas entre as regiões DIG e SF.
+figura 6 do paper mostrando resultado por galáxia. sempre temos (Ha/Hb)_DIG < (Ha/Hb)_COMP < (Ha/Hb)_SF em um dado raio em uma análise galáxia por galáxia. O resultado da média está na figura 7 painel a e o painel b corrige o problema de olhar galáxia por galáxia e então mostra que mesmo quando fazemos a estatística com todas as galáxias juntas continuamos tendo DELTA(Ha/Hb)(R) = (Ha/Hb)_SF(R) - (Ha/Hb)_DIG(R).
+
+Figuras bonitas na pasta .../runs/20170502/
+

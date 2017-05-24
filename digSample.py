@@ -11,11 +11,11 @@ from CALIFAUtils.scripts import try_q055_instead_q054, calc_SFR, my_morf, get_mo
 
 tY = 32e6
 config = -2
-EL = True
+EL = None
 elliptical = True
 # kw_cube = dict(config=config, elliptical=elliptical)
-kw_cube = dict(EL=True, config=config, elliptical=elliptical)
 debug = True
+kw_cube = dict(debug=debug, EL=EL, config=config, elliptical=elliptical)
 
 
 def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
@@ -75,16 +75,20 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         if K is None:
             print 'califaID:', califaID, ' trying another qVersion...'
             K = try_q055_instead_q054(califaID, **kw_cube)
-            if (K is None) or (K.EL is None):
-                # if K is None:
-                print 'califaID:%s missing fits files...' % califaID
-                # print 'califaID:%s missing superfits file...' % califaID
+            # if (K is None) or (K.EL is None):
+            if K is None:
+                # print 'califaID:%s missing fits files...' % califaID
+                print 'califaID:%s missing superfits file...' % califaID
                 continue
-        # try:
-        #     K.loadEmLinesDataCube('/Users/lacerda/RGB/Bgstf6e/v04/%s_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits' % califaID)
-        # except IOError:
-        #     print 'califaID:%s missing eml fits file...' % califaID
-        #     continue
+        try:
+            EMLDataCube_file = '/Users/lacerda/RGB/Bgstf6e/v04/%s_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits' % califaID
+            K.loadEmLinesDataCube(EMLDataCube_file)
+        except IOError:
+            try:
+                K.loadEmLinesDataCube(EMLDataCube_file.replace('q054', 'q055'))
+            except IOError:
+                print 'califaID:%s missing eml fits file...' % califaID
+                continue
         zones_map__z = np.array(list(range(K.N_zone)), dtype='int')
         ALL.append1d('zones_map', zones_map__z)
         califaID__z = np.array([K.califaID for i in range(K.N_zone)], dtype='|S5')
