@@ -28,11 +28,19 @@ mpl.rcParams['xtick.labelsize'] = 14
 mpl.rcParams['ytick.labelsize'] = 14
 mpl.rcParams['font.family'] = 'serif'
 mpl.rcParams['font.serif'] = 'Times New Roman'
+# with comp
 colors_DIG_COMP_SF = ['brown', 'tomato', 'lightgreen', 'royalblue']
 colors_lines_DIG_COMP_SF = ['maroon', 'darkred', 'olive', 'mediumblue']
 classif_labels = ['HIG', 'DIG', 'COMP', 'SF']
 colors_DIG_COMP_SF_dict = {'HIG':'brown', 'DIG':'tomato', 'COMP':'lightgreen', 'SF':'royalblue'}
 colors_lines_DIG_COMP_SF_dict = {'HIG':'maroon', 'DIG':'darkred','COMP':'olive','SF':'mediumblue'}
+# without
+colors_DIG_COMP_SF = ['brown', 'tomato', 'royalblue']
+colors_lines_DIG_COMP_SF = ['maroon', 'darkred', 'mediumblue']
+classif_labels = ['HIG', 'DIG', 'COMP', 'SF']
+colors_DIG_COMP_SF_dict = {'HIG':'brown', 'DIG':'tomato', 'SF':'royalblue'}
+colors_lines_DIG_COMP_SF_dict = {'HIG':'maroon', 'DIG':'darkred', 'SF':'mediumblue'}
+
 cmap_R = plt.cm.copper
 minorLocator = AutoMinorLocator(5)
 debug = False
@@ -67,7 +75,7 @@ EL = True
 elliptical = True
 HIG_WHa_threshold = 3
 DIG_WHa_threshold = 12
-SF_WHa_threshold = 20
+SF_WHa_threshold = 12
 SF_Zhang_threshold = 1e39/L_sun
 # DIG_Zhang_threshold = 10**38.5/L_sun
 # lines = ['3727', '4363', '4861', '4959', '5007', '6300', '6563', '6583', '6717', '6731']
@@ -958,7 +966,6 @@ def gals_sample_choice(ALL, sel, gals, sample_choice):
         print 'sample_choice %s does not exists' % sample_choice
         print 'running for S0...' % sample_choice
 
-    sel_gals = np.zeros((ALL.ba.shape), dtype='bool')
     sel_gals__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
     sel_gals__gyx = np.zeros((ALL.califaID__yx.shape), dtype='bool')
     sel_gals_sample__gz = np.zeros((ALL.califaID__z.shape), dtype='bool')
@@ -968,9 +975,12 @@ def gals_sample_choice(ALL, sel, gals, sample_choice):
     print ALL.ba.shape
     print len(gals)
     # print gals
-    for i, g in enumerate(gals):
-        print g
+    for g in gals:
         tmp_sel__gz = (ALL.califaID__z == g)
+        if not tmp_sel__gz.any():
+            print g
+            new_gals.remove(g)
+            continue
         tmp_sel_sample__gz = np.bitwise_and(sample__z, ALL.califaID__z == g)
         tmp_sel_gal_sample__z = ALL.get_gal_prop(g, tmp_sel_sample__gz)
         tmp_sel__gyx = (ALL.califaID__yx == g)
@@ -981,13 +991,11 @@ def gals_sample_choice(ALL, sel, gals, sample_choice):
         if N_zone_notmasked == 0 or N_pixel_notmasked == 0:
             new_gals.remove(g)
             continue
-        sel_gals[i] = True
         sel_gals__gz[tmp_sel__gz] = True
         sel_gals__gyx[tmp_sel__gyx] = True
         sel_gals_sample__gz[tmp_sel_sample__gz] = True
         sel_gals_sample__gyx[tmp_sel_sample__gyx] = True
 
-    sel['gals'] = sel_gals
     sel['gals__z'] = sel_gals__gz
     sel['gals__yx'] = sel_gals__gyx
     sel['gals_sample__z'] = sel_gals_sample__gz

@@ -1,0 +1,4 @@
+--class_names HIG LIG SF 
+--class_colors brown olive royalblue 
+--class_linecolors brown olive royalblue 
+--class_thresholds 3 14

@@ -1,4 +1,5 @@
 import sys
+import os.path
 import numpy as np
 from pytu.functions import debug_var
 from CALIFAUtils.scripts import calc_xY
@@ -9,7 +10,9 @@ from pycasso.util import getGenFracRadius
 from CALIFAUtils.scripts import try_q055_instead_q054, calc_SFR, my_morf, get_morfologia
 
 
-tY = 32e6
+# tY = 2e7
+tSF__T = np.array([0.032 , 0.3 , 1.5, 14.2]) * 1.e9
+N_T = len(tSF__T)
 config = -2
 EL = None
 elliptical = True
@@ -20,15 +23,22 @@ kw_cube = dict(debug=debug, EL=EL, config=config, elliptical=elliptical)
 
 def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
     lines = ['3727', '4363', '4861', '4959', '5007', '6300', '6563', '6583', '6717', '6731']
+    keys2d = [
+        ('x_Y__Tz', N_T), ('SFR__Tz', N_T), ('SFRSD__Tz', N_T), ('integrated_x_Y__T', N_T),
+    ]
+    keys2d_masked = [
+        ('x_Y__Tyx', N_T)
+    ]
     keys1d = [
-        'zones_map', 'califaID__z', 'califaID__yx', 'pixels_map',
+        'Mini__z', 'Mcor__z', 'McorSD__z', 'tau_V__z',
+        'at_flux__z', 'at_mass__z', 'alogZ_flux__z', 'alogZ_mass__z', 'fobs_norm__z',
+        'zones_map', 'califaID__g', 'califaID__z', 'califaID__yx', 'pixels_map',
         'x0', 'y0', 'N_x', 'N_y', 'N_zone', 'ml_ba', 'ba', 'pa',
         'mt', 'mto', 'HLR_pix', 'HLR_pc',
         'galDistance_Mpc', 'zoneArea_pc2', 'zoneArea_pix',
         'pixelDistance__yx', 'pixelDistance_HLR__yx',
         'zoneDistance_pc', 'zoneDistance_HLR', 'zoneDistance_pix',
         'lines', 'CI', 'CI_9050', 'Mtot',
-        'integrated_x_Y',
         'integrated_tau_V', 'integrated_tau_V_neb', 'integrated_etau_V_neb',
         'integrated_W6563',
         'integrated_f3727', 'integrated_ef3727', 'integrated_SB3727', 'integrated_L3727',
@@ -43,9 +53,7 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         'integrated_f6731', 'integrated_ef6731', 'integrated_SB6731', 'integrated_L6731',
     ]
     keys1d_masked = [
-        'Mini__z', 'SFR32__z', 'SFR100__z',
-        'tau_V__z', 'tau_V__yx', 'x_Y__z', 'x_Y__yx',
-        'tau_V_neb__z', 'etau_V_neb__z', 'tau_V_neb__yx',
+        'tau_V__yx', 'tau_V_neb__z', 'etau_V_neb__z', 'tau_V_neb__yx',
         'tau_V_neb_zeros__z', 'tau_V_neb_zeros__yx',
         'W6563__z', 'W6563__yx',
         'f3727__z', 'ef3727__z', 'SB3727__z', 'L3727__z',
@@ -69,7 +77,7 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         'f6717__yx', 'ef6717__yx', 'SB6717__yx', 'L6717__yx',
         'f6731__yx', 'ef6731__yx', 'SB6731__yx', 'L6731__yx',
     ]
-    ALL = stack_gals(keys1d=keys1d, keys1d_masked=keys1d_masked)
+    ALL = stack_gals(keys1d=keys1d, keys1d_masked=keys1d_masked, keys2d=keys2d, keys2d_masked=keys2d_masked)
     for i_gal, K in loop_cubes(g, **kw_cube):
         califaID = g[i_gal]
         if K is None:
@@ -80,15 +88,18 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
                 # print 'califaID:%s missing fits files...' % califaID
                 print 'califaID:%s missing superfits file...' % califaID
                 continue
-        try:
-            EMLDataCube_file = '/Users/lacerda/RGB/Bgstf6e/v04/%s_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits' % califaID
+        EMLDataCube_file = '/Users/lacerda/RGB/Bgstf6e/v04/%s_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits' % califaID
+        if os.path.isfile(EMLDataCube_file):
             K.loadEmLinesDataCube(EMLDataCube_file)
-        except IOError:
-            try:
-                K.loadEmLinesDataCube(EMLDataCube_file.replace('q054', 'q055'))
-            except IOError:
+        else:
+            EMLDataCube_file = EMLDataCube_file.replace('q054', 'q055')
+            if os.path.isfile(EMLDataCube_file):
+                K.loadEmLinesDataCube(EMLDataCube_file)
+            else:
                 print 'califaID:%s missing eml fits file...' % califaID
                 continue
+        ageBase = K.ageBase
+        metBase = K.metBase
         zones_map__z = np.array(list(range(K.N_zone)), dtype='int')
         ALL.append1d('zones_map', zones_map__z)
         califaID__z = np.array([K.califaID for i in range(K.N_zone)], dtype='|S5')
@@ -97,6 +108,7 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d('califaID__yx', califaID__yx)
         pixels_map__yx = np.array(list(range(K.N_y * K.N_x)), dtype='int')
         mto = get_morfologia(K.califaID)[0]
+        ALL.append1d('califaID__g', califaID)
         ALL.append1d('mto', mto)
         ALL.append1d('mt', my_morf(mto))
         ALL.append1d('pixels_map', pixels_map__yx)
@@ -118,11 +130,32 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d('zoneArea_pix', K.zoneArea_pix)
         ALL.append1d('pixelDistance__yx', np.ravel(K.pixelDistance__yx))
         ALL.append1d('pixelDistance_HLR__yx', np.ravel(K.pixelDistance__yx / K.HLR_pix))
-        ALL.append1d('zoneDistance_pc', K.zoneDistance_HLR)
+        ALL.append1d('zoneDistance_pc', K.zoneDistance_pc)
+        print K.zoneDistance_HLR
         ALL.append1d('zoneDistance_HLR', K.zoneDistance_HLR)
         ALL.append1d('zoneDistance_pix', K.zoneDistance_pix)
         ALL.append1d('lines', lines)
+        ALL.append1d('Mini__z', K.Mini__z)
+        ALL.append1d('fobs_norm__z', K.fobs_norm)
         ALL.append1d('Mtot', K.Mcor_tot.sum())
+        ALL.append1d('Mcor__z', K.Mcor__z)
+        ALL.append1d('McorSD__z', K.Mcor__z / K.zoneArea_pc2)
+        ALL.append1d('at_flux__z', K.at_flux__z)
+        ALL.append1d('at_mass__z', K.at_mass__z)
+        ALL.append1d('tau_V__z', K.tau_V__z)
+        ALL.append1d('integrated_tau_V', K.integrated_tau_V)
+        ALL.append1d('alogZ_flux__z', K.alogZ_flux__z)
+        ALL.append1d('alogZ_mass__z', K.alogZ_mass__z)
+        # tSF things
+        for iT, tSF in enumerate(tSF__T):
+            x_Y__z, integrated_x_Y = calc_xY(K, tSF)
+            x_Y__yx, _ = calc_xY(tY=tSF, ageBase=K.ageBase, popx=K.popx__tZyx)
+            SFR__z, SFRSD__z = calc_SFR(K, tSF)
+            ALL.append2d(k='x_Y__Tz', i=iT, val=x_Y__z)
+            ALL.append2d_masked(k='x_Y__Tyx', i=iT, val=np.ravel(x_Y__yx), mask_val=np.ravel(np.ma.getmaskarray(x_Y__yx)))
+            ALL.append2d(k='integrated_x_Y__T', i=iT, val=integrated_x_Y)
+            ALL.append2d(k='SFR__Tz', i=iT, val=SFR__z)
+            ALL.append2d(k='SFRSD__Tz', i=iT, val=SFRSD__z)
         '''
         CI: Calc. usando a equacao que ta no paper do Conselice
         - http://iopscience.iop.org/article/10.1086/375001/pdf, pagina 7 -
@@ -138,53 +171,40 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d('CI', CI)
         ALL.append1d('CI_9050', CI_9050)
         debug_var(debug, CALIFAID=califaID, CI=CI, CI_9050=CI_9050)
-        tau_V__z = K.tau_V__z
-        ALL.append1d_masked(k='tau_V__z', val=tau_V__z, mask_val=np.zeros((K.N_zone), dtype='bool'))
         tau_V__yx = K.A_V__yx / (2.5 * np.log10(np.exp(1.)))
-        ALL.append1d_masked(k='tau_V__yx', val=np.ravel(tau_V__yx), mask_val=np.ravel(tau_V__yx.mask))
-        ALL.append1d('integrated_tau_V', K.integrated_tau_V)
-        x_Y__z, integrated_x_Y = calc_xY(K, tY)
-        ALL.append1d_masked(k='x_Y__z', val=x_Y__z, mask_val=np.zeros((K.N_zone), dtype='bool'))
-        x_Y__yx, _ = calc_xY(tY=tY, ageBase=K.ageBase, popx=K.popx__tZyx)
-        ALL.append1d_masked(k='x_Y__yx', val=np.ravel(x_Y__yx), mask_val=np.zeros((K.N_y*K.N_x), dtype='bool'))
-        ALL.append1d('integrated_x_Y', integrated_x_Y)
-        ALL.append1d_masked(k='Mini__z', val=K.Mini__z, mask_val=np.zeros((K.N_zone), dtype='bool'))
-        SFR32__z, SFRSD32__z = calc_SFR(K, 3.2e7)
-        SFR100__z, SFRSD100__z = calc_SFR(K, 1e8)
-        ALL.append1d_masked(k='SFR32__z', val=SFR32__z, mask_val=np.zeros((K.N_zone), dtype='bool'))
-        ALL.append1d_masked(k='SFR100__z', val=SFR100__z, mask_val=np.zeros((K.N_zone), dtype='bool'))
+        ALL.append1d_masked(k='tau_V__yx', val=np.ravel(tau_V__yx), mask_val=np.ravel(np.ma.getmaskarray(tau_V__yx)))
         # EML
-        ALL.append1d_masked(k='tau_V_neb__z', val=K.EL.tau_V_neb__z.data, mask_val=K.EL.tau_V_neb__z.mask)
+        ALL.append1d_masked(k='tau_V_neb__z', val=K.EL.tau_V_neb__z.data, mask_val=np.ma.getmaskarray(K.EL.tau_V_neb__z))
         tau_V_neb_zeros__z = np.where((K.EL.tau_V_neb__z < 0).filled(True), 0, K.EL.tau_V_neb__z)
         ALL.append1d_masked(k='tau_V_neb_zeros__z', val=tau_V_neb_zeros__z, mask_val=np.zeros((K.N_zone), dtype='bool'))
         etau_V_neb__z = K.EL.tau_V_neb_err__z
-        ALL.append1d_masked(k='etau_V_neb__z', val=etau_V_neb__z, mask_val=K.EL.tau_V_neb_err__z.mask)
+        ALL.append1d_masked(k='etau_V_neb__z', val=etau_V_neb__z, mask_val=np.ma.getmaskarray(K.EL.tau_V_neb_err__z))
         tau_V_neb__yx = K.zoneToYX(K.EL.tau_V_neb__z, extensive=False)
-        ALL.append1d_masked(k='tau_V_neb__yx', val=np.ravel(tau_V_neb__yx), mask_val=np.ravel(tau_V_neb__yx.mask))
+        ALL.append1d_masked(k='tau_V_neb__yx', val=np.ravel(tau_V_neb__yx), mask_val=np.ravel(np.ma.getmaskarray(tau_V_neb__yx)))
         tau_V_neb__yx = K.zoneToYX(tau_V_neb_zeros__z, extensive=False)
-        ALL.append1d_masked(k='tau_V_neb_zeros__yx', val=np.ravel(tau_V_neb__yx), mask_val=np.ravel(tau_V_neb__yx.mask))
+        ALL.append1d_masked(k='tau_V_neb_zeros__yx', val=np.ravel(tau_V_neb__yx), mask_val=np.ravel(np.ma.getmaskarray(tau_V_neb__yx)))
         ALL.append1d('integrated_tau_V_neb', K.EL.integrated_tau_V_neb)
         ALL.append1d('integrated_etau_V_neb', K.EL.integrated_tau_V_neb_err)
         for l in lines:
             if l not in K.EL.lines:
                 zeros__z = np.ma.masked_all((K.N_zone))
                 zeros__yx = np.ma.masked_all((K.N_y * K.N_x))
-                ALL.append1d_masked('f%s__z' % l, zeros__z, zeros__z.mask)
-                ALL.append1d_masked('ef%s__z' % l, zeros__z, zeros__z.mask)
-                ALL.append1d_masked('SB%s__z' % l, zeros__yx, zeros__yx.mask)
-                ALL.append1d_masked('L%s__z' % l, zeros__z, zeros__z.mask)
-                ALL.append1d_masked('f%s__yx' % l, zeros__z, zeros__z.mask)
-                ALL.append1d_masked('ef%s__yx' % l, zeros__z, zeros__z.mask)
-                ALL.append1d_masked('SB%s__yx' % l, zeros__yx, zeros__yx.mask)
-                ALL.append1d_masked('L%s__yx' % l, zeros__yx, zeros__yx.mask)
+                ALL.append1d_masked('f%s__z' % l, zeros__z, np.ma.getmaskarray(zeros__z))
+                ALL.append1d_masked('ef%s__z' % l, zeros__z, np.ma.getmaskarray(zeros__z))
+                ALL.append1d_masked('SB%s__z' % l, zeros__yx, np.ma.getmaskarray(zeros__yx))
+                ALL.append1d_masked('L%s__z' % l, zeros__z, np.ma.getmaskarray(zeros__z))
+                ALL.append1d_masked('f%s__yx' % l, zeros__z, np.ma.getmaskarray(zeros__z))
+                ALL.append1d_masked('ef%s__yx' % l, zeros__z, np.ma.getmaskarray(zeros__z))
+                ALL.append1d_masked('SB%s__yx' % l, zeros__yx, np.ma.getmaskarray(zeros__yx))
+                ALL.append1d_masked('L%s__yx' % l, zeros__yx, np.ma.getmaskarray(zeros__yx))
                 ALL.append1d('integrated_f%s' % l, 0.)
                 ALL.append1d('integrated_ef%s' % l, 0.)
                 ALL.append1d('integrated_L%s' % l, 0.)
                 ALL.append1d('integrated_SB%s' % l, 0.)
                 if l is lines[lines.index('6563')]:
                     W6563__z = K.EL.EW[i]
-                    ALL.append1d_masked('W%s__z' % l, zeros__z, zeros__z.mask)
-                    ALL.append1d_masked('W%s__yx' % l, zeros__yx, zeros__yx.mask)
+                    ALL.append1d_masked('W%s__z' % l, zeros__z, np.ma.getmaskarray(zeros__z))
+                    ALL.append1d_masked('W%s__yx' % l, zeros__yx, np.ma.getmaskarray(zeros__yx))
                     ALL.append1d('integrated_W%s' % l, 0.)
                 continue
             else:
@@ -196,23 +216,23 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
                 ALL.append1d_masked('ef%s__z' % l, efl_obs__z, mask)
                 Ll_obs__z = K.EL._F_to_L(fl_obs__z)/L_sun
                 integrated_Ll_obs = K.EL._F_to_L(K.EL.integrated_flux[i])/L_sun
-                ALL.append1d_masked('L%s__z' % l, Ll_obs__z, Ll_obs__z.mask)
+                ALL.append1d_masked('L%s__z' % l, Ll_obs__z, np.ma.getmaskarray(Ll_obs__z))
                 SBl_obs__z = Ll_obs__z/(K.zoneArea_pc2 * 1e-6)
                 integrated_SBl_obs = integrated_Ll_obs/(K.zoneArea_pc2 * 1e-6)
-                ALL.append1d_masked('SB%s__z' % l, SBl_obs__z, SBl_obs__z.mask)
+                ALL.append1d_masked('SB%s__z' % l, SBl_obs__z, np.ma.getmaskarray(SBl_obs__z))
                 fl_obs__yx = K.zoneToYX(fl_obs__z/K.zoneArea_pix, extensive=False)
                 # print l, (~(fl_obs__z.mask)).any(), (~(fl_obs__yx.mask)).any()
-                ALL.append1d_masked('f%s__yx' % l, np.ravel(fl_obs__yx), np.ravel(fl_obs__yx.mask))
-                _f__yx = getattr(ALL, '_f%s__yx' % l)[-1]
-                _fmsk__yx = getattr(ALL, '_mask_f%s__yx' % l)[-1]
+                ALL.append1d_masked('f%s__yx' % l, np.ravel(fl_obs__yx), np.ravel(np.ma.getmaskarray(fl_obs__yx)))
+                # _f__yx = getattr(ALL, '_f%s__yx' % l)[-1]
+                # _fmsk__yx = getattr(ALL, '_mask_f%s__yx' % l)[-1]
                 # print _f__yx.any(), _f__yx.sum(), len(_f__yx)
                 # print _fmsk__yx.any(), _fmsk__yx.sum(), len(_fmsk__yx)
                 efl_obs__yx = K.zoneToYX(efl_obs__z/K.zoneArea_pix, extensive=False)
-                ALL.append1d_masked('ef%s__yx' % l, np.ravel(efl_obs__yx), np.ravel(efl_obs__yx.mask))
+                ALL.append1d_masked('ef%s__yx' % l, np.ravel(efl_obs__yx), np.ravel(np.ma.getmaskarray(efl_obs__yx)))
                 Ll_obs__yx = K.EL._F_to_L(fl_obs__yx)/L_sun
-                ALL.append1d_masked('L%s__yx' % l, np.ravel(Ll_obs__yx), np.ravel(Ll_obs__yx.mask))
+                ALL.append1d_masked('L%s__yx' % l, np.ravel(Ll_obs__yx), np.ravel(np.ma.getmaskarray(Ll_obs__yx)))
                 SBl_obs__yx = K.zoneToYX(Ll_obs__z/(K.zoneArea_pc2 * 1e-6), extensive=False)
-                ALL.append1d_masked('SB%s__yx' % l, np.ravel(SBl_obs__yx), np.ravel(SBl_obs__yx.mask))
+                ALL.append1d_masked('SB%s__yx' % l, np.ravel(SBl_obs__yx), np.ravel(np.ma.getmaskarray(SBl_obs__yx)))
                 ALL.append1d('integrated_f%s' % l, K.EL.integrated_flux[i])
                 ALL.append1d('integrated_ef%s' % l, K.EL.integrated_eflux[i])
                 ALL.append1d('integrated_L%s' % l, integrated_Ll_obs)
@@ -220,11 +240,15 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
                 if l is lines[lines.index('6563')]:
                     W6563__z = K.EL.EW[i]
                     integrated_W6563 = K.EL.integrated_EW[i]
-                    ALL.append1d_masked('W%s__z' % l, W6563__z, fl_obs__z.mask)
-                    ALL.append1d_masked('W%s__yx' % l, np.ravel(K.zoneToYX(W6563__z, extensive=False)), np.ravel(SBl_obs__yx.mask))
+                    ALL.append1d_masked('W%s__z' % l, W6563__z, np.ma.getmaskarray(fl_obs__z))
+                    ALL.append1d_masked('W%s__yx' % l, np.ravel(K.zoneToYX(W6563__z, extensive=False)), np.ravel(np.ma.getmaskarray(SBl_obs__yx)))
                     ALL.append1d('integrated_W%s' % l, integrated_W6563)
 
     ALL.stack()
+    ALL.ageBase = ageBase
+    ALL.metBase = metBase
+    ALL.tSF__T = tSF__T
+    ALL.N_T = N_T
     # print ALL.get_gal_prop('K0073', ALL.f6563__yx)
     if dump:
         ALL.dump(output_filename)
@@ -241,6 +265,7 @@ if __name__ == '__main__':
         g.append(read_line)
     f.close()
     try:
-        ALL = gather_needed_data(g, dump=True, output_filename=sys.argv[2])
+        output_filename = sys.argv[2]
     except IndexError:
-        ALL = gather_needed_data(g, dump=True)
+        output_filename = 'debug'
+    ALL = gather_needed_data(g, dump=True, output_filename=output_filename)

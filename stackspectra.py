@@ -7,7 +7,7 @@ from CALIFAUtils.scripts import stack_spectra
 from pytu.objects import tupperware_none, readFileArgumentParser
 
 
-classif_labels = ['DIG', 'COMP', 'SF']
+classif_labels = ['HIG', 'LIG', 'SF']
 
 
 def parser_args(default_args_file='default.args'):
@@ -24,15 +24,15 @@ def parser_args(default_args_file='default.args'):
         'rbinini': 0.,
         'rbinfin': 3.,
         'rbinstep': 0.2,
-        'sfth': 15,
-        'digth': 8,
+        'sfth': 14,
+        'higth': 3,
     }
     parser = readFileArgumentParser(fromfile_prefix_chars='@')
     parser.add_argument('--debug', '-D', action='store_true', default=default_args['debug'])
     parser.add_argument('--superfits', '-S', metavar='FILE', type=str, default=default_args['superfits'])
     parser.add_argument('--emlfits', '-E', metavar='FILE', type=str, default=default_args['emlfits'])
     parser.add_argument('--sfth', metavar='FLOAT', type=float, default=default_args['sfth'])
-    parser.add_argument('--digth', metavar='FLOAT', type=float, default=default_args['digth'])
+    parser.add_argument('--higth', metavar='FLOAT', type=float, default=default_args['higth'])
     parser.add_argument('--rbinini', metavar='HLR', type=float, default=default_args['rbinini'])
     parser.add_argument('--rbinfin', metavar='HLR', type=float, default=default_args['rbinfin'])
     parser.add_argument('--rbinstep', metavar='HLR', type=float, default=default_args['rbinstep'])
@@ -84,7 +84,7 @@ def saveFITS(K, outdata, overwrite=False):
     header['NY'] = K.N_y
     header['NX'] = K.N_x
     header['SFTH'] = outdata.sfth
-    header['DIGTH'] = outdata.digth
+    header['higTH'] = outdata.higth
     header.append(fits.Card(keyword='CLABELS', value=len(classif_labels), comment='%s' % classif_labels))
     hdu.append(fits.PrimaryHDU(header=header))
     # Other HDUs
@@ -141,7 +141,7 @@ def create_outdata(args, K):
     outdata.rbinfin = args.rbinfin
     outdata.rbinstep = args.rbinstep
     outdata.sfth = args.sfth
-    outdata.digth = args.digth
+    outdata.higth = args.higth
     outdata.O_rf__lR = {}
     outdata.M_rf__lR = {}
     outdata.err_rf__lR = {}
@@ -192,16 +192,16 @@ if __name__ == '__main__':
             continue
         # classification selections
         sel_classif = {}
-        sel_classif['DIG'] = np.bitwise_and(sel_zones, np.less(W6563__z, args.digth))
-        sel_classif['COMP'] = np.bitwise_and(sel_zones, np.bitwise_and(np.greater_equal(W6563__z, args.digth), np.less(W6563__z, args.sfth)))
+        sel_classif['HIG'] = np.bitwise_and(sel_zones, np.less(W6563__z, args.higth))
+        sel_classif['LIG'] = np.bitwise_and(sel_zones, np.bitwise_and(np.greater_equal(W6563__z, args.higth), np.less(W6563__z, args.sfth)))
         sel_classif['SF'] = np.bitwise_and(sel_zones, np.greater_equal(W6563__z, args.sfth))
         for tmp_cl in classif_labels:
             print Nsel, tmp_cl, sel_classif[tmp_cl].astype('int').sum()
         # Segmented maps with classification
-        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif['DIG']), extensive=False)
-        outdata.classbin_segmap__Ryx['DIG'][iR] = np.invert(segmap_tmp.mask)
-        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif['COMP']), extensive=False)
-        outdata.classbin_segmap__Ryx['COMP'][iR] = np.invert(segmap_tmp.mask)
+        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif['HIG']), extensive=False)
+        outdata.classbin_segmap__Ryx['HIG'][iR] = np.invert(segmap_tmp.mask)
+        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif['LIG']), extensive=False)
+        outdata.classbin_segmap__Ryx['LIG'][iR] = np.invert(segmap_tmp.mask)
         segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif['SF']), extensive=False)
         outdata.classbin_segmap__Ryx['SF'][iR] = np.invert(segmap_tmp.mask)
         for k in classif_labels:

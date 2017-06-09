@@ -1,0 +1,4 @@
+--class_names HIG LIG SF 
+--class_colors brown tomato royalblue 
+--class_linecolors brown tomato royalblue 
+--class_thresholds 3 13
