@@ -96,7 +96,7 @@ def parser_args(args_list, default_args_file='/Users/lacerda/dev/astro/dig/defau
         'rbinini': 0.,
         'rbinfin': 3.,
         'rbinstep': 0.2,
-        'class_names': ['HIG', 'LIG', 'SF'],
+        'class_names': ['HIG', 'MIG', 'SF'],
         'class_colors': ['brown', 'tomato', 'royalblue'],
         'class_linecolors': ['maroon', 'darkred', 'mediumblue'],
         'class_thresholds': [3, 12],
@@ -672,7 +672,7 @@ def fig_maps(args, gals=None, multi=False, suffix='', drawHLR=True, tau_V_histo=
         # cb.set_label(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
         # AXIS 4
         x = W6563__yx
-        im = ax4.imshow(x, vmin=3, vmax=args.class_thresholds[-1], cmap=plt.cm.copper, **dflt_kw_imshow)
+        im = ax4.imshow(x, vmin=3, vmax=args.class_thresholds[-1], cmap='Spectral', **dflt_kw_imshow)
         the_divider = make_axes_locatable(ax4)
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
@@ -735,7 +735,7 @@ def fig_maps(args, gals=None, multi=False, suffix='', drawHLR=True, tau_V_histo=
         plt.close(f)
 
 
-def calc_R_stuff(args, gals):
+def calc_tau_V_neb(args, gals):  #calc_R_stuff
     ALL, sel = args.ALL, args.sel
 
     sel_gals__mt = sel['gals__mt']
@@ -751,12 +751,12 @@ def calc_R_stuff(args, gals):
     radial_mode = 'mean'
 
     if (sel_sample__gz).any():
-        # SYN
+        # # SYN
         tau_V__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-        alogt_flux__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-        alogZ_mass__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
         tau_V_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
+        alogt_flux__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
         alogt_flux_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
+        alogZ_mass__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
         alogZ_mass_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
         # SYN:tSF
         x_Y__cTgr = {k:np.ma.masked_all((N_T, N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
@@ -770,11 +770,15 @@ def calc_R_stuff(args, gals):
         mean_f4861_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
         mean_f6563_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
 
+        mean_f4861__gr = np.ma.masked_all((N_gals, args.N_R_bins))
+        mean_f4861_npts__gr = np.ma.masked_all((N_gals, args.N_R_bins))
+        mean_f6563__gr = np.ma.masked_all((N_gals, args.N_R_bins))
+        mean_f6563_npts__gr = np.ma.masked_all((N_gals, args.N_R_bins))
         tau_V_neb__gr = np.ma.masked_all((N_gals, args.N_R_bins))
-        tau_V_neb_npts__gr = np.ma.masked_all((N_gals, args.N_R_bins))
+        # tau_V_neb_npts__gr = np.ma.masked_all((N_gals, args.N_R_bins))
         tau_V_neb_sumGAL__gr = np.ma.masked_all((N_gals, args.N_R_bins))
         tau_V_neb__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-        tau_V_neb_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
+        # tau_V_neb_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
 
         for i_g, califaID in enumerate(gals):
             if califaID not in ALL.califaID__z:
@@ -791,54 +795,74 @@ def calc_R_stuff(args, gals):
             gal_sample__yx = ALL.get_gal_prop(califaID, sel_sample__gyx).reshape(N_y, N_x)
             f__lz = {'%s' % L: np.ma.masked_array(ALL.get_gal_prop(califaID, 'f%s__z' % L), mask=~gal_sample__z) for L in lines}
             f__lyx = {'%s' % L: np.ma.masked_array(ALL.get_gal_prop(califaID, 'f%s__yx' % L).reshape(N_y, N_x), mask=~gal_sample__yx) for L in lines}
-
-            # radial mean properties
-            # SYN
-            tau_V__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-            alogt_flux__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-            alogZ_mass__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-            tau_V_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-            alogt_flux_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-            alogZ_mass_npts__cgr = {k:np.ma.masked_all((N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-            # SYN:tSF
-            for iT, tSF in enumerate(ALL.tSF__T):
-                for k in args.class_names:
-                x_Y__cTgr = {k:np.ma.masked_all((N_T, N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-                SFRSD__cTgr = {k:np.ma.masked_all((N_T, N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-                x_Y_npts__cTgr = {k:np.ma.masked_all((N_T, N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-                SFRSD_npts__cTgr = {k:np.ma.masked_all((N_T, N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
-
-            # EML
-            mean_f4861__r, mean_f4861_npts__r = radialProfile(prop=f__lyx['4861'], bin_r=args.R_bin__r, x0=x0, y0=y0, pq=pa, ba=ba, rad_scale=HLR_pix, mask=gal_sample__yx, mode='mean', return_npts=True)
-            mean_f6563__r, mean_f6563_npts__r = radialProfile(prop=f__lyx['6563'], bin_r=args.R_bin__r, x0=x0, y0=y0, pq=pa, ba=ba, rad_scale=HLR_pix, mask=gal_sample__yx, mode='mean', return_npts=True)
-            tau_V__gz = np.ma.masked_array(ALL.tau_V__z, mask=~sel_sample__gz)
-            tau_V_neb__gr[i_g] = f_tauVneb(mean_f6563__r, mean_f4861__r)
-            m_aux = np.bitwise_or(~gal_samples__yx, np.bitwise_or(np.ma.getmaskarray(f__lyx['4861']), np.ma.getmaskarray(f__lyx['4861'])))
-            tau_V_neb_npts__gr[i_g] = (~m_aux).astype('int').sum()
-            xm, ym = ma_mask_xyz(f__lyx['6563'], f__lyx['4861'])
-            tau_V_neb_sumGAL__gr[i_g] = f_tauVneb(xm.sum(), ym.sum())  # np.ma.log(xm.sum() / ym.sum() / 2.86) / (q[0] - q[1])
+            tau_V__z = ALL.get_gal_prop(califaID, ALL.tau_V__z)
+            tau_V__yx = ALL.get_gal_prop(califaID, ALL.tau_V__yx).reshape(N_y, N_x)
+            alogt_flux__z = ALL.get_gal_prop(califaID, ALL.at_flux__z)
+            alogZ_mass__z = ALL.get_gal_prop(califaID, ALL.alogZ_mass__z)
+            alogt_flux__yx = ALL.get_gal_prop(califaID, ALL.at_flux__yx).reshape(N_y, N_x)
+            alogZ_mass__yx = ALL.get_gal_prop(califaID, ALL.alogZ_mass__yx).reshape(N_y, N_x)
 
             # get classes division (usually args.class_names is ['HIG', 'LIG', 'SF'])
             sel_classes_gal, _ = get_selections_spaxels(args, ALL, califaID, sel_WHa__c_gyx, sel_sample__gyx)
 
+            # EML
+            mean_f4861__gr[i_g], mean_f4861_npts__gr[i_g] = radialProfile(prop=f__lyx['4861'], bin_r=args.R_bin__r, x0=x0, y0=y0, pa=pa, ba=ba, rad_scale=HLR_pix, mask=gal_sample__yx, mode='mean', return_npts=True)
+            mean_f6563__gr[i_g], mean_f6563_npts__gr[i_g] = radialProfile(prop=f__lyx['6563'], bin_r=args.R_bin__r, x0=x0, y0=y0, pa=pa, ba=ba, rad_scale=HLR_pix, mask=gal_sample__yx, mode='mean', return_npts=True)
+            tau_V_neb__gr[i_g] = f_tauVneb(mean_f6563__gr[i_g], mean_f4861__gr[i_g])
+            # m_aux = np.bitwise_or(~gal_sample__yx, np.bitwise_or(np.ma.getmaskarray(f__lyx['4861']), np.ma.getmaskarray(f__lyx['4861'])))
+            # tau_V_neb_npts__gr[i_g] = (~m_aux).astype('int').sum()
+            xm, ym = ma_mask_xyz(f__lyx['6563'], f__lyx['4861'])
+            tau_V_neb_sumGAL__gr[i_g] = f_tauVneb(xm.sum(), ym.sum())  # np.ma.log(xm.sum() / ym.sum() / 2.86) / (q[0] - q[1])
+            # print califaID
+            # print mean_f4861_npts__gr[i_g]
+            # print mean_f6563_npts__gr[i_g]
+
+            # radial mean properties
             for k in args.class_names:
-                # SYN
-
-
                 # EML
-                mean_f4861__cgr[k][i_g], mean_f4861_npts__cgr[k][i_g] = radialProfile(f__lyx['4861'], bin_r=args.R_bin__r, x0=x0, y0=y0, pq=pa, ba=ba, rad_scale=HLR_pix, mask=sel_classes_gal[k], mode='mean', return_npts=True)
-                mean_f6563__cgr[k][i_g], mean_f6563_npts__cgr[k][i_g] = radialProfile(f__lyx['6563'], bin_r=args.R_bin__r, x0=x0, y0=y0, pq=pa, ba=ba, rad_scale=HLR_pix, mask=sel_classes_gal[k], mode='mean', return_npts=True)
-                tau_V_neb__cgr[k][i_g] = f_tauVneb(mean_f6563__cgr[k][-1], mean_f4861__cgr[k][-1])
-                m_aux = np.bitwise_or(~sel_classes_gal[k], np.bitwise_or(np.ma.getmaskarray(f__lyx['4861']), np.ma.getmaskarray(f__lyx['6563'])))
-                tau_V_neb_npts__cgr[k][i_g] = (~m_aux).astype('int').sum()
+                mean_f4861__cgr[k][i_g], mean_f4861_npts__cgr[k][i_g] = radialProfile(f__lyx['4861'], bin_r=args.R_bin__r, x0=x0, y0=y0, pa=pa, ba=ba, rad_scale=HLR_pix, mask=sel_classes_gal[k], mode='mean', return_npts=True)
+                mean_f6563__cgr[k][i_g], mean_f6563_npts__cgr[k][i_g] = radialProfile(f__lyx['6563'], bin_r=args.R_bin__r, x0=x0, y0=y0, pa=pa, ba=ba, rad_scale=HLR_pix, mask=sel_classes_gal[k], mode='mean', return_npts=True)
+                # print k
+                # print mean_f4861_npts__cgr[k][i_g]
+                # print mean_f6563_npts__cgr[k][i_g]
+                tau_V_neb__cgr[k][i_g] = f_tauVneb(mean_f6563__cgr[k][i_g], mean_f4861__cgr[k][i_g])
+                # m_aux = np.bitwise_or(~sel_classes_gal[k], np.bitwise_or(np.ma.getmaskarray(f__lyx['4861']), np.ma.getmaskarray(f__lyx['6563'])))
+                # tau_V_neb_npts__cgr[k][i_g] = (~m_aux).astype('int').sum()
+
+                # # SYN
+                tau_V__cgr[k][i_g], tau_V_npts__cgr[k][i_g] = radialProfile(tau_V__yx, bin_r=args.R_bin__r, x0=x0, y0=y0, pa=pa, ba=ba, rad_scale=HLR_pix, mask=sel_classes_gal[k], mode='mean', return_npts=True)
+                alogt_flux__cgr[k][i_g], alogt_flux_npts__cgr[k][i_g] = radialProfile(alogt_flux__yx, bin_r=args.R_bin__r, x0=x0, y0=y0, pa=pa, ba=ba, rad_scale=HLR_pix, mask=sel_classes_gal[k], mode='mean', return_npts=True)
+                alogZ_mass__cgr[k][i_g], alogZ_mass_npts__cgr[k][i_g] = radialProfile(alogZ_mass__yx, bin_r=args.R_bin__r, x0=x0, y0=y0, pa=pa, ba=ba, rad_scale=HLR_pix, mask=sel_classes_gal[k], mode='mean', return_npts=True)
+
+                # # SYN:tSF
+                # for iT, tSF in enumerate(ALL.tSF__T):
+                #     x_Y__cTgr = {k:np.ma.masked_all((N_T, N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
+                #     SFRSD__cTgr = {k:np.ma.masked_all((N_T, N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
+                #     x_Y_npts__cTgr = {k:np.ma.masked_all((N_T, N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
+                #     SFRSD_npts__cTgr = {k:np.ma.masked_all((N_T, N_gals, args.N_R_bins), dtype='float') for k in args.class_names}
+
+        ALL.mean_f4861__gr = mean_f4861__gr
+        ALL.mean_f4861_npts__gr = mean_f4861_npts__gr
+        ALL.mean_f6563__gr = mean_f6563__gr
+        ALL.mean_f6563_npts__gr = mean_f6563_npts__gr
+        ALL.tau_V_neb__gr = tau_V_neb__gr
+        # ALL.tau_V_neb_npts__gr = tau_V_neb_npts__gr
+        ALL.tau_V_neb_sumGAL__g = tau_V_neb_sumGAL__gr
 
         ALL.mean_f4861__cgr = mean_f4861__cgr
+        ALL.mean_f4861_npts__cgr = mean_f4861_npts__cgr
         ALL.mean_f6563__cgr = mean_f6563__cgr
-        ALL.tau_V_neb__gr = tau_V_neb
-        ALL.tau_V_neb_npts__gr = tau_V_neb_npts
+        ALL.mean_f6563_npts__cgr = mean_f6563_npts__cgr
         ALL.tau_V_neb__cgr = tau_V_neb__cgr
-        ALL.tau_V_neb_npts__cgr = tau_V_neb_npts__cgr
-        ALL.tau_V_neb_sumGAL__g = tau_V_neb_sumGAL
+        # ALL.tau_V_neb_npts__cgr = tau_V_neb_npts__cgr
+
+        # SYN
+        ALL.tau_V__cgr = tau_V__cgr
+        ALL.tau_V_npts__cgr = tau_V_npts__cgr
+        ALL.alogt_flux__cgr = alogt_flux__cgr
+        ALL.alogt_flux_npts__cgr = alogt_flux_npts__cgr
+        ALL.alogZ_mass__cgr = alogZ_mass__cgr
+        ALL.alogZ_mass_npts__cgr = alogZ_mass_npts__cgr
 
 
 def fig_tauVNeb_histo(args, gals):
@@ -860,11 +884,19 @@ def fig_tauVNeb_histo(args, gals):
 
     Ha, Hb = ma_mask_xyz(ALL.f6563__z, ALL.f4861__z, mask=~sel_sample__gz)
     data__c = {}
+    npts_6563__c = {}
+    npts_4861__c = {}
     mask__c = {}
     for k in args.class_names:
         data__c[k] = np.hstack([np.ma.getdata(x) for x in ALL.tau_V_neb__cgr[k]])
+        npts_6563__c[k] = np.hstack([np.ma.getdata(x) for x in ALL.mean_f6563_npts__cgr[k]])
+        npts_4861__c[k] = np.hstack([np.ma.getdata(x) for x in ALL.mean_f4861_npts__cgr[k]])
         mask__c[k] = np.hstack([np.ma.getmaskarray(x) for x in ALL.tau_V_neb__cgr[k]])
-    delta_tau_SF_LIG = np.ma.masked_array(data__c['SF'] - data__c['LIG'], mask=(mask__c['SF'] | mask__c['LIG']))
+    # k='MIG'
+    # print k, mask__c[k].sum(), ALL.tau_V_neb__cgr[k]
+    # k='SF'
+    # print k, mask__c[k].sum(), ALL.tau_V_neb__cgr[k]
+    delta_tau_SF_MIG = np.ma.masked_array(data__c['SF'] - data__c['MIG'], mask=(mask__c['SF'] | mask__c['MIG']))
     delta_tau_SF_HIG = np.ma.masked_array(data__c['SF'] - data__c['HIG'], mask=(mask__c['SF'] | mask__c['HIG']))
 
     N_cols = 1
@@ -880,15 +912,16 @@ def fig_tauVNeb_histo(args, gals):
     for k in args.class_names:
         sel_aux = np.bitwise_and(sel_WHa['z'][k], sel_sample__gz)
         xDs.append(x[sel_aux].compressed())
-    plot_histo_ax(ax1, x.compressed(), stats_txt=False, histo=False, ini_pos_y=0.9, y_v_space=0.06, ha='left', pos_x=0.02, c='k', first=True)
+    # plot_histo_ax(ax1, x.compressed(), stats_txt=False, histo=False, ini_pos_y=0.9, y_v_space=0.06, ha='left', pos_x=0.02, c='k', first=True)
     _, text_list = plot_histo_ax(ax1, xDs, stats_txt=False, return_text_list=True, y_v_space=0.06, y_h_space=0.25, first=False, c=args.class_colors, kwargs_histo=dict(histtype='step', color=args.class_colors, normed=False, range=range, lw=3))
     x_ini = 0.98
     for j, k in enumerate(args.class_names):
-        pos_y = 0.9
+        pos_y = 0.98
         for txt in text_list[j]:
-            plot_text_ax(ax1, txt, **dict(pos_x=x_ini, pos_y=pos_y, fs=14, va='top', ha='right', c=args.class_colors[0]))
+            print k, txt
+            plot_text_ax(ax1, txt, **dict(pos_x=x_ini, pos_y=pos_y, fs=14, va='top', ha='right', c=args.class_colors[j]))
             pos_y -= 0.06
-            x_ini -= 13
+        x_ini -= 0.25
     ax1.set_xlabel(r'$\tau_V^{neb}$')
     ax1.xaxis.set_minor_locator(minorLocator)
     ax1_top = ax1.twiny()
@@ -900,17 +933,15 @@ def fig_tauVNeb_histo(args, gals):
     plot_text_ax(ax1, 'a)', 0.02, 0.98, 16, 'top', 'left', 'k')
 
     # AXIS 2
-    x = delta_tau_SF_LIG
-    print x.shape
+    x = delta_tau_SF_MIG
     range = DtauVnorm_range
     plot_histo_ax(ax2, x.compressed(), y_v_space=0.06, c='k', first=True, kwargs_histo=dict(normed=False, range=range))
-    ax2.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{SF}\ -\ \tau_V^{LIG}}$')
+    ax2.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{SF}\ -\ \tau_V^{MIG}}$')
     ax2.xaxis.set_minor_locator(minorLocator)
     plot_text_ax(ax2, 'b)', 0.02, 0.98, 16, 'top', 'left', 'k')
 
     # AXIS 3
     x = delta_tau_SF_HIG
-    print x.shape
     range = DtauVnorm_range
     plot_histo_ax(ax3, x.compressed(), y_v_space=0.06, c='k', first=True, kwargs_histo=dict(normed=False, range=range))
     ax3.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{SF}\ -\ \tau_V^{HIG}}$')
@@ -921,38 +952,119 @@ def fig_tauVNeb_histo(args, gals):
     f.savefig('fig_tauVNeb_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
 
 
-# def fig_SFRSD_histograms(args, gals):
+def fig_SFRSD_histograms(args, gals):
+    print '########################'
+    print '# fig_SFRSD_histograms #'
+    print '########################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+    sel_sample__gyx = sel['gals_sample__yx']
+    sel_gals_mt = sel['gals__mt_z']
+    sel_WHa = sel['WHa']
+    N_gals = len(gals)
+
+    Ha, Hb = ma_mask_xyz(ALL.f6563__z, ALL.f4861__z, mask=~sel_sample__gz)
+    data__c = {}
+    npts_6563__c = {}
+    npts_4861__c = {}
+    mask__c = {}
+    for k in args.class_names:
+        data__c[k] = np.hstack([np.ma.getdata(x) for x in ALL.tau_V_neb__cgr[k]])
+        npts_6563__c[k] = np.hstack([np.ma.getdata(x) for x in ALL.mean_f6563_npts__cgr[k]])
+        npts_4861__c[k] = np.hstack([np.ma.getdata(x) for x in ALL.mean_f4861_npts__cgr[k]])
+        mask__c[k] = np.hstack([np.ma.getmaskarray(x) for x in ALL.tau_V_neb__cgr[k]])
+    # k='MIG'
+    # print k, mask__c[k].sum(), ALL.tau_V_neb__cgr[k]
+    # k='SF'
+    # print k, mask__c[k].sum(), ALL.tau_V_neb__cgr[k]
+    delta_tau_SF_MIG = np.ma.masked_array(data__c['SF'] - data__c['MIG'], mask=(mask__c['SF'] | mask__c['MIG']))
+    delta_tau_SF_HIG = np.ma.masked_array(data__c['SF'] - data__c['HIG'], mask=(mask__c['SF'] | mask__c['HIG']))
+
+    N_cols = 1
+    N_rows = 3
+    f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 5, N_rows * 4.8))
+    ax1, ax2, ax3 = axArr
+
+    # AXIS 1
+    x = f_tauVneb(Ha, Hb)
+    # x = (1./(_q[0] - _q[1])) * np.ma.log(SB6563__gz/SB4861__gz/2.86)
+    range = [-2, 2]
+    xDs = []
+    for k in args.class_names:
+        sel_aux = np.bitwise_and(sel_WHa['z'][k], sel_sample__gz)
+        xDs.append(x[sel_aux].compressed())
+    # plot_histo_ax(ax1, x.compressed(), stats_txt=False, histo=False, ini_pos_y=0.9, y_v_space=0.06, ha='left', pos_x=0.02, c='k', first=True)
+    _, text_list = plot_histo_ax(ax1, xDs, stats_txt=False, return_text_list=True, y_v_space=0.06, y_h_space=0.25, first=False, c=args.class_colors, kwargs_histo=dict(histtype='step', color=args.class_colors, normed=False, range=range, lw=3))
+    x_ini = 0.98
+    for j, k in enumerate(args.class_names):
+        pos_y = 0.98
+        for txt in text_list[j]:
+            print k, txt
+            plot_text_ax(ax1, txt, **dict(pos_x=x_ini, pos_y=pos_y, fs=14, va='top', ha='right', c=args.class_colors[j]))
+            pos_y -= 0.06
+        x_ini -= 0.25
+    ax1.set_xlabel(r'$\tau_V^{neb}$')
+    ax1.xaxis.set_minor_locator(minorLocator)
+    ax1_top = ax1.twiny()
+    mn, mx = ax1.get_xlim()
+    unit_converter = lambda x: np.log10(2.86 * np.exp(x * 0.34652))
+    ax1_top.set_xlim(unit_converter(mn), unit_converter(mx))
+    # ax1_top.set_xlim((1/0.34652) * np.log(10**(mn)/2.86), (1/0.34652) * np.log(10**(mx)/2.86))
+    ax1_top.set_xlabel(r'$\log\ H\alpha/H\beta$')
+    plot_text_ax(ax1, 'a)', 0.02, 0.98, 16, 'top', 'left', 'k')
+
+    # AXIS 2
+    x = delta_tau_SF_MIG
+    range = DtauVnorm_range
+    plot_histo_ax(ax2, x.compressed(), y_v_space=0.06, c='k', first=True, kwargs_histo=dict(normed=False, range=range))
+    ax2.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{SF}\ -\ \tau_V^{MIG}}$')
+    ax2.xaxis.set_minor_locator(minorLocator)
+    plot_text_ax(ax2, 'b)', 0.02, 0.98, 16, 'top', 'left', 'k')
+
+    # AXIS 3
+    x = delta_tau_SF_HIG
+    range = DtauVnorm_range
+    plot_histo_ax(ax3, x.compressed(), y_v_space=0.06, c='k', first=True, kwargs_histo=dict(normed=False, range=range))
+    ax3.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{SF}\ -\ \tau_V^{HIG}}$')
+    ax3.xaxis.set_minor_locator(minorLocator)
+    plot_text_ax(ax3, 'b)', 0.02, 0.98, 16, 'top', 'left', 'k')
+
+    f.tight_layout(h_pad=0.05)
+    f.savefig('fig_tauVNeb_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
 
 
 
 if __name__ == '__main__':
     args = parser_args(sys.argv[1:])
 
-    try:
-        sample_choice = [args.SN_type, args.min_SN]
-    except IndexError:
-        sample_choice = ['SN_HaHb', '0']
+    sample_choice = [args.SN_type, args.min_SN]
+
     ALL = stack_gals().load(args.file)
     args.ALL = ALL
 
-    try:
-        # read gals file
+    if os.path.isfile(args.gals):
         with open(args.gals) as f:
             gals = [line.strip() for line in f.xreadlines() if line.strip()[0] != '#']
-    except IOError:
+    else:
         gals = args.gals
-        # _, ind = np.unique(ALL.califaID__z, return_index=True)
-        # gals = ALL.califaID__z[sorted(ind)].tolist()
     if isinstance(gals, str):
         gals = [gals]
+
     gals, sel, sample_choice = samples(args, ALL, sample_choice, gals)
     args.gals = gals
     args.sel = sel
     args.sample_choice = sample_choice
     create_fHa_cumul_per_WHa_bins(args)
     calc_tau_V_neb(args, args.gals)
+
     # sys.exit(1)
     if args.summary: summary(args, ALL, sel, gals, 'SEL %s' % sample_choice)
 
     # fig_maps(args, args.gals, tau_V_histo=True)
-    fig_tauVNeb_histo(args, args.gals)
+    # fig_tauVNeb_histo(args, args.gals)

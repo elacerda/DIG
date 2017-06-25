@@ -405,20 +405,20 @@ def create_fHa_cumul_per_WHa_bins(args):
     sel['gals_sample_Rmid__z'] = sel_gals_sample_Rmid__gz
     sel['gals_sample_Rout__z'] = sel_gals_sample_Rout__gz
     cumulfHa__g_R = {}
+    cumulLHa__g_R = {}
     logWHa_bins = np.linspace(-1, 3, 50)
     for k, v in sel['gals__mt'].iteritems():
         for g in ALL.califaID__g[v]:
-            aux_list = []
-            for sel_R in sels_R:
+            aux_list_fHa = []
+            for i, sel_R in enumerate(sels_R):
                 sel_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
                 sel_R__z = ALL.get_gal_prop(g, sel_R)
                 WHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.W6563__z), mask=~(sel_sample__z & sel_R__z))
                 fHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.f6563__z), mask=~(sel_sample__z & sel_R__z))
-                fHa_tot = np.ma.masked_array(ALL.get_gal_prop(g, ALL.f6563__z), mask=~sel_sample__z).sum()
                 xm, ym = ma_mask_xyz(np.ma.log10(WHa), fHa)
-                fHa_cumul, fHa_tot = cumulfHa_WHabins(ym.compressed(), xm.compressed(), logWHa_bins)  # , fHa_tot)
-                aux_list.append(fHa_cumul)
-            cumulfHa__g_R[g] = aux_list
+                fHa_cumul, fHa_tot = cumul_bins(ym.compressed(), xm.compressed(), logWHa_bins)  # , fHa_tot)
+                aux_list_fHa.append(fHa_cumul)
+            cumulfHa__g_R[g] = aux_list_fHa
     ALL.cumulfHa__gRw = cumulfHa__g_R
     ALL.logWHa_bins__w = logWHa_bins
 
@@ -482,30 +482,30 @@ def summary(args, ALL, sel, gals, mask_name):
         print '\tNtot_spaxels_class: %d | Ntot_spaxels_class_notmasked: %d' % (N_tot[g]['yx'], N_tot_notmasked[g]['yx'])
 
 
-def cumulfHa_WHabins(fHa, WHa, WHa_bins, fHa_tot=None):
-    fHa_cumul = np.zeros_like(WHa_bins)
-    if fHa_tot is None:
-        fHa_tot = fHa.sum()
-    for i, v in enumerate(WHa_bins):
-        m = (WHa < v)
+def cumul_bins(y, x, x_bins, y_tot=None):
+    y_cumul = np.zeros_like(x_bins)
+    if y_tot is None:
+        y_tot = y.sum()
+    for i, v in enumerate(x_bins):
+        m = (x < v)
         if m.astype(int).sum() > 0:
-            fHa_cumul[i] = fHa[m].sum()/fHa_tot
-    return fHa_cumul, fHa_tot
+            y_cumul[i] = y[m].sum()/y_tot
+    return y_cumul, y_tot
 
 
 def plot_text_classes_ax(ax, args, x=0.98, y_ini=0.98, y_spac=0.1, fs=14):
-    plot_text_ax(ax, r'W${}_{H\alpha}$ <= %d $\AA$' % args.class_thresholds[0], x, y_ini, fs, 'top', 'right', args.class_colors[0])
+    plot_text_ax(ax, r'W${}_{H\alpha}$ $\leq$ %d $\AA$' % args.class_thresholds[0], x, y_ini, fs, 'top', 'left', args.class_colors[0])
     n_th = len(args.class_thresholds)
     y = y_ini
     for i, c in enumerate(args.class_names[1:]):
         y -= y_spac
         if i < (n_th - 1):
-            plot_text_ax(ax, r'%d $\AA$ < W${}_{H\alpha}$ <= %d $\AA$' % (args.class_thresholds[i], args.class_thresholds[i+1]), x, y, fs, 'top', 'right', args.class_colors[i+1])
+            plot_text_ax(ax, r'%d $\AA$ $<$ W${}_{H\alpha}$ $\leq$ %d $\AA$' % (args.class_thresholds[i], args.class_thresholds[i+1]), x, y, fs, 'top', 'left', args.class_colors[i+1])
         else:
-            plot_text_ax(ax, r'W${}_{H\alpha}$ > %d $\AA$' % args.class_thresholds[i], x, y, fs, 'top', 'right', args.class_colors[i+1])
+            plot_text_ax(ax, r'W${}_{H\alpha}$ $>$ %d $\AA$' % args.class_thresholds[i], x, y, fs, 'top', 'left', args.class_colors[i+1])
 
 
-def fig2(args):
+def fig_logSBHa_logWHa_histograms(args):
     ALL, sel, gals = args.ALL, args.sel, args.gals
     sel_gals_sample__gz = sel['gals_sample__z']
 
@@ -540,12 +540,12 @@ def fig2(args):
         axH1.yaxis.set_major_locator(MaxNLocator(3))
         axH2.yaxis.set_major_locator(MultipleLocator(0.5))
         axH2.yaxis.set_minor_locator(MultipleLocator(0.1))
-        aux_ax = axH2.twiny()
-        plot_histo_ax(aux_ax, ym.compressed(), stats_txt=False, kwargs_histo=dict(histtype='step', orientation='horizontal', normed=False, range=logSBHa_range, color='k', lw=2, ls='-'))
-        aux_ax.xaxis.set_major_locator(MaxNLocator(3))
-        plt.setp(aux_ax.xaxis.get_majorticklabels(), rotation=270)
-        plot_text_classes_ax(axH1, args, x=0.98, y_ini=0.98, y_spac=0.11, fs=14)
-        plot_text_ax(axH2, r'all zones', 0.98, 0.98, 14, 'top', 'right', 'k')
+        # aux_ax = axH2.twiny()
+        # plot_histo_ax(aux_ax, ym.compressed(), stats_txt=False, kwargs_histo=dict(histtype='step', orientation='horizontal', normed=False, range=logSBHa_range, color='k', lw=2, ls='-'))
+        # aux_ax.xaxis.set_major_locator(MaxNLocator(3))
+        # plt.setp(aux_ax.xaxis.get_majorticklabels(), rotation=270)
+        # plot_text_classes_ax(axH1, args, x=0.98, y_ini=0.98, y_spac=0.11, fs=14)
+        # plot_text_ax(axH2, r'all zones', 0.98, 0.98, 14, 'top', 'right', 'k')
         scater_kwargs = dict(c=zm, s=3, vmax=3, vmin=0, cmap=cmap_R, marker='o', edgecolor='none')
         sc = axS.scatter(xm, ym, **scater_kwargs)
         cbaxes = f.add_axes([0.6, 0.17, 0.12, 0.02])
@@ -564,11 +564,77 @@ def fig2(args):
         for y_prc in y_12sigma:
             axS.plot(bin_center, y_prc, 'k--', lw=2)
         axS.grid()
-        f.savefig('fig2.png', dpi=_dpi_choice, transparent=_transp_choice)
+        f.savefig('fig_logSBHa_logWHa_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
         plt.close(f)
 
 
-def fig_maps(args, gals=None, multi=False, suffix='', drawHLR=True, Hafluxsum=False):
+def fig_logxi_logWHa_histograms(args):
+    ALL, sel, gals = args.ALL, args.sel, args.gals
+    sel_gals_sample__gz = sel['gals_sample__z']
+
+    if (sel_gals_sample__gz).any():
+        W6563__gz = ALL.W6563__z
+        # SB6563__gz = ALL.SB6563__z
+        dist__gz = ALL.zoneDistance_HLR
+        log_L6563__z = np.ma.log10(ALL.L6563__z)
+        log_L6563_expected_HIG__z = ALL.log_L6563_expected_HIG__z
+        xi__z = log_L6563__z - log_L6563_expected_HIG__z
+
+        sel_WHa = {}
+        for c in args.class_names:
+            sel_WHa[c] = np.bitwise_and(sel['WHa']['z'][c], sel_gals_sample__gz)
+
+        x = np.ma.log10(W6563__gz)
+        y = xi__z
+        z = dist__gz
+        xm, ym, zm = ma_mask_xyz(x=x, y=y, z=z, mask=~sel_gals_sample__gz)
+        f = plt.figure(figsize=(8, 8))
+
+        x_ds = [xm[sel_WHa[c]].compressed() for c in args.class_names]
+        y_ds = [ym[sel_WHa[c]].compressed() for c in args.class_names]
+        axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logWHa_range, 50, 50,
+                                             figure=f, c=args.class_colors, scatter=False, s=1,
+                                             ylabel=r'$\log\ \xi^{obs}$',
+                                             xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]', histtype='step')
+        axS.xaxis.set_major_locator(MultipleLocator(0.5))
+        axS.xaxis.set_minor_locator(MultipleLocator(0.1))
+        axS.yaxis.set_major_locator(MultipleLocator(0.5))
+        axS.yaxis.set_minor_locator(MultipleLocator(0.1))
+        axH1.xaxis.set_major_locator(MultipleLocator(0.5))
+        axH1.xaxis.set_minor_locator(MultipleLocator(0.1))
+        axH2.xaxis.set_major_locator(MaxNLocator(3))
+        axH1.yaxis.set_major_locator(MaxNLocator(3))
+        axH2.yaxis.set_major_locator(MultipleLocator(0.5))
+        axH2.yaxis.set_minor_locator(MultipleLocator(0.1))
+        # aux_ax = axH2.twiny()
+        plot_histo_ax(axH2, ym.compressed(), stats_txt=False, kwargs_histo=dict(histtype='step', orientation='horizontal', normed=False, range=logWHa_range, color='k', lw=2, ls='-'))
+        axH2.xaxis.set_major_locator(MaxNLocator(3))
+        plt.setp(axH2.xaxis.get_majorticklabels(), rotation=270)
+        plot_text_classes_ax(axH1, args, x=1.03, y_ini=0.98, y_spac=0.15, fs=14)
+        plot_text_ax(axH2, r'all zones', 0.98, 0.98, 14, 'top', 'right', 'k')
+        scater_kwargs = dict(c=zm, s=3, vmax=3, vmin=0, cmap=cmap_R, marker='o', edgecolor='none')
+        sc = axS.scatter(xm, ym, **scater_kwargs)
+        cbaxes = f.add_axes([0.6, 0.17, 0.12, 0.02])
+        cb = plt.colorbar(sc, cax=cbaxes, ticks=[0, 1, 2, 3], orientation='horizontal')
+        cb.set_label(r'R [HLR]', fontsize=14)
+        axS.axhline(y=np.log10(SF_Zhang_threshold), color='k', linestyle='-.', lw=2)
+        axS.set_xlim(logWHa_range)
+        axS.set_ylim(logWHa_range)
+        axS.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        axS.set_ylabel(r'$\log\ \xi^{obs}$')
+        xbins = np.linspace(logWHa_range[0], logWHa_range[-1], 40)
+        yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), xbins)
+        yMedian = prc[2]
+        y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
+        axS.plot(bin_center, yMedian, 'k-', lw=2)
+        for y_prc in y_12sigma:
+            axS.plot(bin_center, y_prc, 'k--', lw=2)
+        axS.grid()
+        f.savefig('fig_logxi_logWHa_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+        plt.close(f)
+
+
+def fig_maps_Hafluxsum(args, gals=None, multi=False, suffix='', drawHLR=True, Hafluxsum=False):
     ALL, sel = args.ALL, args.sel
 
     if gals is None:
@@ -613,6 +679,7 @@ def fig_maps(args, gals=None, multi=False, suffix='', drawHLR=True, Hafluxsum=Fa
         x0 = ALL.get_gal_prop_unique(califaID, ALL.x0)
         y0 = ALL.get_gal_prop_unique(califaID, ALL.y0)
         f6563__z = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.f6563__z), mask=~gal_sample__z)
+        f4861__z = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.f4861__z), mask=~gal_sample__z)
         W6563__z = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.W6563__z), mask=~gal_sample__z)
         f6563__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.f6563__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
         SB6563__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.SB6563__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
@@ -624,7 +691,7 @@ def fig_maps(args, gals=None, multi=False, suffix='', drawHLR=True, Hafluxsum=Fa
                 (ax1, ax2, ax3, ax4) = axArr[row]
         else:
             N_rows = 1
-            f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 5, N_rows * 5))
+            f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(18, 4))
             if Hafluxsum:
                 ax1, ax2, ax3, ax4, ax5 = axArr
             else:
@@ -668,7 +735,7 @@ def fig_maps(args, gals=None, multi=False, suffix='', drawHLR=True, Hafluxsum=Fa
         # cb.set_label(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
         # AXIS 4
         x = W6563__yx
-        im = ax4.imshow(x, vmin=3, vmax=args.class_thresholds[-1], cmap=plt.cm.copper, **dflt_kw_imshow)
+        im = ax4.imshow(x, vmin=3, vmax=args.class_thresholds[-1], cmap='Spectral', **dflt_kw_imshow)
         the_divider = make_axes_locatable(ax4)
         color_axis = the_divider.append_axes('right', size='5%', pad=0)
         cb = plt.colorbar(im, cax=color_axis)
@@ -694,7 +761,7 @@ def fig_maps(args, gals=None, multi=False, suffix='', drawHLR=True, Hafluxsum=Fa
             ax5.set_title('Cumulative Profiles')
         if drawHLR:
             DrawHLRCircleInSDSSImage(ax1, HLR_pix, pa, ba, lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-            for ax in [ax2, ax3, ax3]:
+            for ax in [ax2, ax3, ax4]:
                 DrawHLRCircle(ax, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
         if row <= 0:
             ax1.set_title('SDSS stamp', fontsize=18)
@@ -707,8 +774,142 @@ def fig_maps(args, gals=None, multi=False, suffix='', drawHLR=True, Hafluxsum=Fa
         if multi:
             row += 1
         else:
-            f.tight_layout(rect=[0, 0.03, 1, 0.95])
-            f.savefig('fig3-%s.png' % califaID, dpi=_dpi_choice, transparent=_transp_choice)
+            f.tight_layout(rect=[0, 0.01, 1, 0.98])
+            # f.subplots_adjust(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.08, wspace=0.3)
+            f.savefig('fig_maps-%s.png' % califaID, dpi=_dpi_choice, transparent=_transp_choice)
+            plt.close(f)
+    if multi:
+        f.subplots_adjust(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.08, wspace=0.3)
+        f.savefig('fig_maps_class%s.png' % suffix, dpi=_dpi_choice, transparent=_transp_choice)
+        plt.close(f)
+
+
+def fig_maps_xi(args, gals=None, multi=False, suffix='', drawHLR=True, xi=False):
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+    sel_sample__gyx = sel['gals_sample__yx']
+
+    cmap = cmap_discrete(colors=args.class_colors)
+    row = -1
+    N_cols = 4
+    N_rows = 1
+    if xi:
+        suffix += '_xi'
+        N_cols = 5
+    if multi:
+        N_rows = len(gals)
+        f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(18, 22))
+        multi = True
+        row = 0
+    elif isinstance(gals, str):
+        gals = [ gals ]
+    if gals is None:
+        gals = args.gals
+    for califaID in gals:
+        if califaID not in ALL.califaID__z:
+            print 'Fig_1: %s not in sample pickle' % califaID
+            continue
+        N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
+        N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
+        N_pixel = N_x * N_y
+        N_zone = ALL.get_gal_prop_unique(califaID, ALL.N_zone)
+        gal_sample__yx = ALL.get_gal_prop(califaID, sel_sample__gyx).reshape(N_y, N_x)
+        gal_sample__z = ALL.get_gal_prop(califaID, sel_sample__gz)
+        HLR_pix = ALL.get_gal_prop_unique(califaID, ALL.HLR_pix)
+        mto = ALL.get_gal_prop_unique(califaID, ALL.mto)
+        pa = ALL.get_gal_prop_unique(califaID, ALL.pa)
+        ba = ALL.get_gal_prop_unique(califaID, ALL.ba)
+        ml_ba = ALL.get_gal_prop_unique(califaID, ALL.ml_ba)
+        x0 = ALL.get_gal_prop_unique(califaID, ALL.x0)
+        y0 = ALL.get_gal_prop_unique(califaID, ALL.y0)
+        f6563__z = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.f6563__z), mask=~gal_sample__z)
+        f4861__z = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.f4861__z), mask=~gal_sample__z)
+        W6563__z = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.W6563__z), mask=~gal_sample__z)
+        f6563__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.f6563__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
+        SB6563__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.SB6563__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
+        W6563__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.W6563__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
+        if multi:
+            if xi:
+                (ax1, ax2, ax3, ax4, ax5) = axArr[row]
+            else:
+                (ax1, ax2, ax3, ax4) = axArr[row]
+        else:
+            N_rows = 1
+            f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(18, 4))
+            if xi:
+                ax1, ax2, ax3, ax4, ax5 = axArr
+            else:
+                ax1, ax2, ax3, ax4 = axArr
+            suptitle = '%s - %s ba:%.2f (ml_ba:%.2f) (%s): %d pixels (%d zones -' % (califaID, mto, ba, ml_ba, get_NEDName_by_CALIFAID(califaID)[0], N_pixel, N_zone)
+            map__yx = create_segmented_map_spaxels(args, ALL, califaID, sel['WHa']['yx'], sel_sample__gyx)
+            tot_class = SB6563__yx.sum()
+            frac_class = {}
+            for i, c in enumerate(args.class_names):
+                aux_sel = map__yx == i+1
+                if aux_sel.sum() > 0:
+                    N = SB6563__yx[aux_sel].sum()
+                else:
+                    N = 0
+                frac_class[c] = 100. * N/tot_class
+                suptitle += ' %s: %.1f' % (c, frac_class[c])
+            suptitle += ')'
+            f.suptitle(suptitle)
+        ax1.set_ylabel('%s' % mto, fontsize=24)
+        # AXIS 1
+        galimg = plt.imread(P.get_image_file(califaID))[::-1, :, :]
+        plt.setp(ax1.get_xticklabels(), visible=False)
+        plt.setp(ax1.get_yticklabels(), visible=False)
+        ax1.imshow(galimg, origin='lower', aspect='equal')
+        txt = 'CALIFA %s' % califaID[1:]
+        plot_text_ax(ax1, txt, 0.02, 0.98, 16, 'top', 'left', color='w')
+        # AXIS 2
+        x = np.ma.log10(SB6563__yx)
+        im = ax2.imshow(x, vmin=logSBHa_range[0], vmax=6.5, cmap=plt.cm.copper_r, **dflt_kw_imshow)
+        the_divider = make_axes_locatable(ax2)
+        color_axis = the_divider.append_axes('right', size='5%', pad=0)
+        cb = plt.colorbar(im, cax=color_axis)
+        # AXIS 3
+        x = np.ma.log10(W6563__yx)
+        im = ax3.imshow(x, vmin=logWHa_range[0], vmax=logWHa_range[1], cmap=plt.cm.copper_r, **dflt_kw_imshow)
+        the_divider = make_axes_locatable(ax3)
+        color_axis = the_divider.append_axes('right', size='5%', pad=0)
+        cb = plt.colorbar(im, cax=color_axis)
+        # AXIS 4
+        x = W6563__yx
+        im = ax4.imshow(x, vmin=3, vmax=args.class_thresholds[-1], cmap='Spectral', **dflt_kw_imshow)
+        the_divider = make_axes_locatable(ax4)
+        color_axis = the_divider.append_axes('right', size='5%', pad=0)
+        cb = plt.colorbar(im, cax=color_axis)
+        if xi:
+            log_L6563__yx = np.ma.masked_array(np.ma.log10(ALL.get_gal_prop(califaID, ALL.L6563__yx).reshape(N_y, N_x)), mask=~gal_sample__yx)
+            log_L6563_expected_HIG__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.log_L6563_expected_HIG__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
+            xi__yx = log_L6563__yx - log_L6563_expected_HIG__yx
+            x = xi__yx
+            im = ax5.imshow(x, cmap=plt.cm.copper_r, vmin=logWHa_range[0], vmax=logWHa_range[1], **dflt_kw_imshow)
+            the_divider = make_axes_locatable(ax5)
+            color_axis = the_divider.append_axes('right', size='5%', pad=0)
+            cb = plt.colorbar(im, cax=color_axis)
+        if drawHLR:
+            DrawHLRCircleInSDSSImage(ax1, HLR_pix, pa, ba, lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
+            for ax in [ax2, ax3, ax4]:
+                DrawHLRCircle(ax, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
+        if row <= 0:
+            ax1.set_title('SDSS stamp', fontsize=18)
+            ax2.set_title(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]', fontsize=18)
+            ax3.set_title(r'$\log$ W${}_{H\alpha}$ [$\AA$]', fontsize=18)
+            ax4.set_title(r'W${}_{H\alpha}$ [$\AA$]', fontsize=18)
+            if xi:
+                ax5.set_title(r'$\log\ \xi$', fontsize=18)
+        if multi:
+            row += 1
+        else:
+            f.tight_layout(rect=[0, 0.01, 1, 0.98])
+            f.savefig('fig_maps-%s.png' % califaID, dpi=_dpi_choice, transparent=_transp_choice)
             plt.close(f)
     if multi:
         f.subplots_adjust(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.08, wspace=0.3)
@@ -755,7 +956,6 @@ def fig_WHa_histograms_per_morftype_and_radius_FO(args, gals):
     sel_sample__gyx = sel['gals_sample__yx']
     sel_gals_mt = sel['gals__mt_z']
 
-    # ba = np.hstack(list(itertools.chain(list(itertools.repeat(ba, ALL.N_zone[i])) for i, ba in enumerate(ALL.ba))))
     ml_ba = np.hstack(list(itertools.chain(list(itertools.repeat(ba, ALL.N_zone[i])) for i, ba in enumerate(ALL.ml_ba))))
 
     colortipo = ['brown', 'red', 'orange', 'green', '#00D0C9', 'blue']
@@ -1407,6 +1607,80 @@ def fig_BPT_per_R(args, gals):
     print 'pixels: N_HIG(K03 & WHa) = %d (%.2f%%)' % (N_HIG_WHa_K03BPT_pixels, 100.*N_HIG_WHa_K03BPT_pixels/sel['WHa']['yx']['HIG'].astype('int').sum())
 
 
+def calcMixingLineOnBPT(N2Ha_1, O3Hb_1, HaHb_1, N2Ha_2, O3Hb_2, HaHb_2, df=0.1):
+    f = np.arange(0.,1.+df,df)
+    N2Ha = f * N2Ha_1 + (1. - f) * N2Ha_2
+    HbHa = f * (1./HaHb_1) + (1. - f) * (1./HaHb_2)
+    HaHb = 1. / HbHa
+    O3Hb = (f * O3Hb_1 / HaHb_1 + (1. - f) * O3Hb_2 / HaHb_2) / (f * (1./HaHb_1) + (1. - f) * (1./HaHb_2))
+
+    return f , N2Ha , O3Hb, HaHb
+
+
+def fig_BPT_mixed(args, gals):
+    print '#################'
+    print '# fig_BPT_mixed #'
+    print '#################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z'] & sel['SN_BPT3']['z']
+    sel_sample__gyx = sel['gals_sample__yx'] & sel['SN_BPT3']['yx']
+
+    N_zone = sel_sample__gz.astype('int').sum()
+    z = ALL.W6563__z
+
+    sel_gals_sample_Rin__gz = sel['gals_sample_Rin__z'] & sel['SN_BPT3']['z']
+    sel_gals_sample_Rmid__gz = sel['gals_sample_Rmid__z'] & sel['SN_BPT3']['z']
+    sel_gals_sample_Rout__gz = sel['gals_sample_Rout__z'] & sel['SN_BPT3']['z']
+    BPTLines = ['4861', '5007', '6563', '6583']
+    f__lgz = {'%s' % l: np.ma.masked_array(getattr(ALL, 'f%s__z' % l), mask=~sel_sample__gz) for l in BPTLines}
+    O3Hb__gz = np.ma.log10(f__lgz['5007']/f__lgz['4861'])
+    N2Ha__gz = np.ma.log10(f__lgz['6583']/f__lgz['6563'])
+
+    f = plt.figure(figsize=(8, 8))
+    ax = f.gca()
+
+    extent = [-1.5, 0.7, -1.2, 1.2]
+
+    m_aux = sel_gals_sample_Rout__gz & sel['WHa']['z']['MIG']
+    xm, ym, zm = ma_mask_xyz(x=N2Ha__gz, y=O3Hb__gz, z=z, mask=~m_aux)
+    scater_kwargs = dict(c=zm, s=8, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
+    sc = ax.scatter(xm, ym, **scater_kwargs)
+    L = Lines()
+    ax.plot(L.x['K01'], L.y['K01'], 'k-', label='K01')
+    ax.plot(L.x['S06'], L.y['S06'], 'k-', label='S06')
+    ax.plot(L.x['K03'], L.y['K03'], 'k-', label='K03')
+    _, N2Ha , O3Hb, _ = calcMixingLineOnBPT(-0.4,-0.7,3.71,-0.1,0.1,2.86,0.2)
+    ax.plot(N2Ha,O3Hb,'ko-')
+    _, N2Ha , O3Hb, _ = calcMixingLineOnBPT(-0.5,-0.3,3.75,-0.1,0.1,2.86,0.2)
+    ax.plot(N2Ha,O3Hb,'ko-')
+    _, N2Ha , O3Hb, _ = calcMixingLineOnBPT(-0.6,0.,3.67,-0.1,0.1,2.86,0.2)
+    ax.plot(N2Ha,O3Hb,'ko-')
+    ax.tick_params(axis='both', which='both', bottom='on', top='on', left='on', right='on', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    ax.xaxis.set_major_locator(MultipleLocator(0.5))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.set_major_locator(MultipleLocator(0.5))
+    ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.set_xlim(extent[0:2])
+    ax.set_ylim(extent[2:4])
+    plot_text_ax(ax, 'S06', 0.32, 0.01, 20, 'bottom', 'left', 'k')
+    plot_text_ax(ax, 'K03', 0.62, 0.01, 20, 'bottom', 'left', 'k')
+    plot_text_ax(ax, 'K01', 0.99, 0.01, 20, 'bottom', 'right', 'k')
+    cbaxes = f.add_axes([0.69, 0.9, 0.25, 0.05])
+    cb = plt.colorbar(sc, cax=cbaxes, orientation='horizontal')  #, ticks=[0, 1, 2, 3])
+    cb.set_label(r'W${}_{H\alpha}$ [$\AA$]', fontsize=14)
+
+    ax.set_xlabel(r'$\log\ [NII]/H\alpha$')
+    ax.set_ylabel(r'$\log\ [OIII]/H\beta$')
+    f.tight_layout()
+    f.savefig('fig_BPT_mixed.png', dpi=_dpi_choice, transparent=_transp_choice)
+
+
 def fig_cumul_fHaWHa_per_morftype_and_R_gals(args, gals):
     print '#######################################'
     print '# fig_cumul_fHaWHa_per_morftype_and_R_gals #'
@@ -1725,9 +1999,9 @@ def fig_WHaSBHa_profile(args, gals=None, multi=False, suffix=''):
         if row <= 0:
             ax1.set_title(r'W${}_{H\alpha}$ profile', fontsize=20, y=1.03)
             ax2.set_title(r'$\Sigma_{H\alpha}$ profile', fontsize=20, y=1.03)
-            cbaxes = add_subplot_axes(ax2, [0.7, 1.19, 0.44, 0.07])
+            cbaxes = add_subplot_axes(ax1, [0.02, 1.19, 0.5, 0.09])
             cb = plt.colorbar(sc, cax=cbaxes, orientation='horizontal')
-            cb.ax.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]', fontsize=12)
+            cb.ax.set_xlabel(r'W${}_{H\alpha}$ [$\AA$]', fontsize=15)
         ax1.set_xlim(0, 2.5)
         ax1.set_ylim(logWHa_range)
         ax2.set_xlim(0, 2.5)
@@ -1770,10 +2044,15 @@ def fig_cumul_fHaWHa_per_morftype(args, gals):
 
     # sels_R = [sel['gals_sample__z'], sel['gals_sample_Rin__z'], sel['gals_sample_Rmid__z'], sel['gals_sample_Rout__z']]
     logWHa_bins = ALL.logWHa_bins__w
-    cumulfHa__g_R = ALL.cumulfHa__gRw
+    cumulfHa__g_R = ALL.cumulLHa__gRw
 
     for i, mt_label in enumerate(mtype_labels):
-        y__gb = np.array([cumulfHa__g_R[g][0] for g in ALL.califaID__g[sel['gals__mt'][mt_label]]])
+        aux = []
+        print mt_label
+        for g in ALL.califaID__g[sel['gals__mt'][mt_label]]:
+            print g
+            aux.append(cumulfHa__g_R[g][0])
+        y__gb = np.array(aux)
         x = np.hstack([logWHa_bins for g in ALL.califaID__g[sel['gals__mt'][mt_label]]])
         # ax.plot(x, np.hstack(y__gb), ls='', marker='o', c=colortipo_lighter[i])
         ax.plot(logWHa_bins, np.median(y__gb, axis=0), ls='-', c=colortipo[i], lw=3)
@@ -1802,7 +2081,7 @@ def fig_cumul_fHaWHa_per_morftype(args, gals):
     # f.subplots_adjust(left=0.open06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
     # f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
     # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
-    f.savefig('fig_cumul_fHaWHa_per_morftype.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_cumul_LHaWHa_per_morftype.png', dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
 
     print '######################################################'
@@ -1922,13 +2201,13 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, gals):
     ax = axes_cols[0][0]
     ax.set_title(r'All radii', fontsize=18, y=1.02)
     m_aux = sel_sample__gz
-    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.f6563__z, mask=~m_aux)
+    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
     tot_Ha = ym.sum()
     fracHa__c = {}
-    for i, k in enumerate(['HIG', 'LIG', 'SF']) :
+    for i, k in enumerate(args.class_names):
         y_pos = 0.98 - (i * 0.16)
         sel_aux = m_aux & sel['WHa']['z'][k]
-        fracHa__c[k] = ALL.f6563__z[sel_aux].sum()/tot_Ha
+        fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
         plot_text_ax(ax, r'$f_{%s}: %.3f$' % (k, fracHa__c[k]), 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
     plot_histo_ax(ax, xm.compressed(), c='k', stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
     for th in args.class_thresholds:
@@ -1939,13 +2218,13 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, gals):
     ax = axes_cols[1][0]
     ax.set_title(r'R $\leq$ 0.5 HLR', fontsize=18, y=1.02)
     m_aux = sel_gals_sample_Rin__gz
-    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.f6563__z, mask=~m_aux)
+    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
     tot_Ha = ym.sum()
     fracHa__c = {}
-    for i, k in enumerate(['HIG', 'LIG', 'SF']) :
+    for i, k in enumerate(args.class_names):
         y_pos = 0.97 - (i * 0.16)
         sel_aux = m_aux & sel['WHa']['z'][k]
-        fracHa__c[k] = ALL.f6563__z[sel_aux].sum()/tot_Ha
+        fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
         plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
     plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
     for th in args.class_thresholds:
@@ -1956,13 +2235,13 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, gals):
     ax = axes_cols[2][0]
     ax.set_title(r'0.5 $<$ R $\leq$ 1 HLR', fontsize=18, y=1.02)
     m_aux = sel_gals_sample_Rmid__gz
-    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.f6563__z, mask=~m_aux)
+    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
     tot_Ha = ym.sum()
     fracHa__c = {}
-    for i, k in enumerate(['HIG', 'LIG', 'SF']) :
+    for i, k in enumerate(args.class_names):
         y_pos = 0.97 - (i * 0.16)
         sel_aux = m_aux & sel['WHa']['z'][k]
-        fracHa__c[k] = ALL.f6563__z[sel_aux].sum()/tot_Ha
+        fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
         plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
     plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
     for th in args.class_thresholds:
@@ -1973,20 +2252,22 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, gals):
     ax = axes_cols[3][0]
     ax.set_title(r'R $>$ 1 HLR', fontsize=18, y=1.02)
     m_aux = sel_gals_sample_Rout__gz
-    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.f6563__z, mask=~m_aux)
+    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
     tot_Ha = ym.sum()
     fracHa__c = {}
-    for i, k in enumerate(['HIG', 'LIG', 'SF']) :
+    for i, k in enumerate(args.class_names):
         y_pos = 0.97 - (i * 0.16)
         sel_aux = m_aux & sel['WHa']['z'][k]
-        fracHa__c[k] = ALL.f6563__z[sel_aux].sum()/tot_Ha
+        fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
         plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
     plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
     for th in args.class_thresholds:
         ax.axvline(x=np.ma.log10(th), c='k', ls='--')
     ax.set_xlim(logWHa_range)
     ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+
     sels_R = [sel_sample__gz, sel_gals_sample_Rin__gz, sel_gals_sample_Rmid__gz, sel_gals_sample_Rout__gz]
+
     for col in range(N_cols):
         for i, mt_label in enumerate(mtype_labels):
             ax = axes_cols[col][i+1]
@@ -1997,16 +2278,16 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, gals):
                     lab = mt_label
                 ax.set_ylabel(lab, rotation=90)
             m_aux = np.bitwise_and(sel_gals_mt[mt_label], sels_R[col])
-            xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.f6563__z, mask=~m_aux)
+            xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
             print mt_label, col
             print ym.count()
             tot_Ha = ym.sum()
             fracHa__c = {}
-            for j, k in enumerate(['HIG', 'LIG', 'SF']) :
+            for j, k in enumerate(args.class_names):
                 y_pos = 0.97 - (j * 0.16)
                 sel_aux = m_aux & sel['WHa']['z'][k]
-                print k, ALL.f6563__z[sel_aux].count()
-                fracHa__c[k] = ALL.f6563__z[sel_aux].sum()/tot_Ha
+                print k, ALL.L6563__z[sel_aux].count()
+                fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
                 plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
             plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, first=False, c=colortipo[i], kwargs_histo=dict(bins=50, histtype='stepfilled', color=colortipo[i], range=logWHa_range, lw=2))
             ax.xaxis.set_major_locator(MaxNLocator(4))
@@ -2017,11 +2298,11 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, gals):
             if i == (len(colortipo) - 1):
                 ax.tick_params(axis='x', which='both', bottom='on', top='off', labelbottom='on')
                 if col == (N_cols - 1):
-                    ax.xaxis.set_major_locator(MaxNLocator(8))
-                    ax.xaxis.set_minor_locator(MaxNLocator(40))
+                    ax.xaxis.set_major_locator(MaxNLocator(4))
+                    ax.xaxis.set_minor_locator(MaxNLocator(20))
                 else:
-                    ax.xaxis.set_major_locator(MaxNLocator(8, prune='upper'))
-                    ax.xaxis.set_minor_locator(MaxNLocator(40))
+                    ax.xaxis.set_major_locator(MaxNLocator(4, prune='upper'))
+                    ax.xaxis.set_minor_locator(MaxNLocator(20))
             else:
                 if not col:
                     ax.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off', labeltop='off')
@@ -2038,26 +2319,691 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, gals):
     return ALL
 
 
+def fig_WHa_histograms_per_morftype_and_radius_cumulLHa(args, gals):
+    print '#######################################################'
+    print '# fig_WHa_histograms_per_morftype_and_radius_cumulFHa #'
+    print '#######################################################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+    sel_sample__gyx = sel['gals_sample__yx']
+    sel_gals_mt = sel['gals__mt_z']
+
+    colortipo = ['brown', 'red', 'orange', 'green', '#00D0C9', 'blue']
+    colortipo_darker = ['maroon', 'darkred', 'orangered', 'darkgreen', '#11C0B3', 'darkblue']
+    colortipo_lighter = ['rosybrown', 'salmon', 'navajowhite', 'lightgreen', '#00D0B9', 'lightblue']
+    mtype_labels = ['E', 'S0+S0a', 'Sa+Sab', 'Sb', 'Sbc', '>= Sc']
+    sel_gals_sample_Rin__gz = sel['gals_sample_Rin__z']
+    sel_gals_sample_Rmid__gz = sel['gals_sample_Rmid__z']
+    sel_gals_sample_Rout__gz = sel['gals_sample_Rout__z']
+    N_rows, N_cols = 7, 4
+    f, axArr = plt.subplots(N_rows, N_cols, figsize=(16, 10))
+    _, ind = np.unique(ALL.califaID__z, return_index=True)
+    N_zone = sel_sample__gz.astype('int').sum()
+    (ax00, ax01, ax02, ax03), (ax10, ax11, ax12, ax13), (ax20, ax21, ax22, ax23), (ax30, ax31, ax32, ax33), (ax40, ax41, ax42, ax43), (ax50, ax51, ax52, ax53), (ax60, ax61, ax62, ax63) = axArr
+    axes_col0 = [ax00, ax10, ax20, ax30, ax40, ax50, ax60]
+    axes_col1 = [ax01, ax11, ax21, ax31, ax41, ax51, ax61]
+    axes_col2 = [ax02, ax12, ax22, ax32, ax42, ax52, ax62]
+    axes_col3 = [ax03, ax13, ax23, ax33, ax43, ax53, ax63]
+
+    axes_cols = [axes_col0, axes_col1, axes_col2, axes_col3]
+    logWHa_range = [-1, 2.5]
+    ax = axes_cols[0][0]
+    ax.set_title(r'All radii', fontsize=18, y=1.02)
+    m_aux = sel_sample__gz
+    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
+    tot_Ha = ym.sum()
+    # y__gb = np.array([ALL.cumulfHa__gRw[g][0] for g in args.gals])
+    # x = np.hstack([logWHa_bins for g in args.gals])
+    # ax.plot(logWHa_bins, np.median(y__gb, axis=0), ls='-', c=colortipo[i], lw=3)
+    for i, k in enumerate(args.class_names):
+        y_pos = 0.98 - (i * 0.16)
+        sel_aux = m_aux & sel['WHa']['z'][k]
+        fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
+        plot_text_ax(ax, r'$f_{%s}: %.3f$' % (k, fracHa__c[k]), 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
+    plot_histo_ax(ax, xm.compressed(), c='k', stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
+    for th in args.class_thresholds:
+        ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+    ax.set_xlim(logWHa_range)
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+
+    ax = axes_cols[1][0]
+    ax.set_title(r'R $\leq$ 0.5 HLR', fontsize=18, y=1.02)
+    m_aux = sel_gals_sample_Rin__gz
+    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
+    tot_Ha = ym.sum()
+    fracHa__c = {}
+    for i, k in enumerate(args.class_names):
+        y_pos = 0.97 - (i * 0.16)
+        sel_aux = m_aux & sel['WHa']['z'][k]
+        fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
+        plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
+    plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
+    for th in args.class_thresholds:
+        ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+    ax.set_xlim(logWHa_range)
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+
+    ax = axes_cols[2][0]
+    ax.set_title(r'0.5 $<$ R $\leq$ 1 HLR', fontsize=18, y=1.02)
+    m_aux = sel_gals_sample_Rmid__gz
+    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
+    tot_Ha = ym.sum()
+    fracHa__c = {}
+    for i, k in enumerate(args.class_names):
+        y_pos = 0.97 - (i * 0.16)
+        sel_aux = m_aux & sel['WHa']['z'][k]
+        fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
+        plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
+    plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
+    for th in args.class_thresholds:
+        ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+    ax.set_xlim(logWHa_range)
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+
+    ax = axes_cols[3][0]
+    ax.set_title(r'R $>$ 1 HLR', fontsize=18, y=1.02)
+    m_aux = sel_gals_sample_Rout__gz
+    xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
+    tot_Ha = ym.sum()
+    fracHa__c = {}
+    for i, k in enumerate(args.class_names):
+        y_pos = 0.97 - (i * 0.16)
+        sel_aux = m_aux & sel['WHa']['z'][k]
+        fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
+        plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
+    plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
+    for th in args.class_thresholds:
+        ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+    ax.set_xlim(logWHa_range)
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+
+    sels_R = [sel_sample__gz, sel_gals_sample_Rin__gz, sel_gals_sample_Rmid__gz, sel_gals_sample_Rout__gz]
+
+    for col in range(N_cols):
+        for i, mt_label in enumerate(mtype_labels):
+            ax = axes_cols[col][i+1]
+            if not col:
+                if (mt_label == mtype_labels[-1]):
+                    lab = r'$\geq$ Sc'
+                else:
+                    lab = mt_label
+                ax.set_ylabel(lab, rotation=90)
+            m_aux = np.bitwise_and(sel_gals_mt[mt_label], sels_R[col])
+            xm, ym = ma_mask_xyz(x=np.ma.log10(ALL.W6563__z), y=ALL.L6563__z, mask=~m_aux)
+            print mt_label, col
+            print ym.count()
+            tot_Ha = ym.sum()
+            fracHa__c = {}
+            for j, k in enumerate(args.class_names):
+                y_pos = 0.97 - (j * 0.16)
+                sel_aux = m_aux & sel['WHa']['z'][k]
+                print k, ALL.L6563__z[sel_aux].count()
+                fracHa__c[k] = ALL.L6563__z[sel_aux].sum()/tot_Ha
+                plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
+            plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, first=False, c=colortipo[i], kwargs_histo=dict(bins=50, histtype='stepfilled', color=colortipo[i], range=logWHa_range, lw=2))
+            ax.xaxis.set_major_locator(MaxNLocator(4))
+            ax.xaxis.set_minor_locator(MaxNLocator(20))
+            ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+            for th in args.class_thresholds:
+                ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+            if i == (len(colortipo) - 1):
+                ax.tick_params(axis='x', which='both', bottom='on', top='off', labelbottom='on')
+                if col == (N_cols - 1):
+                    ax.xaxis.set_major_locator(MaxNLocator(4))
+                    ax.xaxis.set_minor_locator(MaxNLocator(20))
+                else:
+                    ax.xaxis.set_major_locator(MaxNLocator(4, prune='upper'))
+                    ax.xaxis.set_minor_locator(MaxNLocator(20))
+            else:
+                if not col:
+                    ax.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off', labeltop='off')
+                else:
+                    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+            ax.set_xlim(logWHa_range)
+
+    f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    f.savefig('fig_WHa_histograms_per_morftype_and_radius_cumulFHa.png', dpi=_dpi_choice, transparent=_transp_choice)
+    print '######################################################'
+    print '# END ################################################'
+    print '######################################################'
+    return ALL
+
+
+def maps_xi(args, gals):
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+    sel_sample__gyx = sel['gals_sample__yx']
+    for califaID in gals:
+        N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
+        N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
+        gal_sample__yx = ALL.get_gal_prop(califaID, sel_sample__gyx).reshape(N_y, N_x)
+
+
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+
+        # AXIS 1
+        ax1.set_title(r'$\log\ \xi$')
+        log_L6563__yx = np.ma.masked_array(np.ma.log10(ALL.get_gal_prop(califaID, ALL.L6563__yx).reshape(N_y, N_x)), mask=~gal_sample__yx)
+        log_L6563_expected_HIG__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.log_L6563_expected_HIG__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
+        xi = log_L6563__yx - log_L6563_expected_HIG__yx
+        im = ax1.imshow(xi, origin='lower')
+        the_divider = make_axes_locatable(ax1)
+        color_axis = the_divider.append_axes('right', size='5%', pad=0)
+        cb = plt.colorbar(im, cax=color_axis)
+
+        # AXIS 2
+        ax2.set_title(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        log_W6563__yx = np.ma.masked_array(np.ma.log10(ALL.get_gal_prop(califaID, ALL.W6563__yx).reshape(N_y, N_x)), mask=~gal_sample__yx)
+        im = ax2.imshow(log_W6563__yx, origin='lower')
+        the_divider = make_axes_locatable(ax2)
+        color_axis = the_divider.append_axes('right', size='5%', pad=0)
+        cb = plt.colorbar(im, cax=color_axis)
+
+        # AXIS 2
+        ax3.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        ax3.set_ylabel(r'$\log\ \xi$')
+        xm, ym, zm = ma_mask_xyz(log_W6563__yx, xi, )
+        sc = ax3.scatter(log_W6563__yx, origin='lower')
+        the_divider = make_axes_locatable(ax3)
+        color_axis = the_divider.append_axes('right', size='5%', pad=0)
+        cb = plt.colorbar(im, cax=color_axis)
+        f.tight_layout(rect=[0, 0.01, 1, 0.98])
+
+        f.tight_layout(rect=[0, 0.01, 1, 0.98])
+        # f.subplots_adjust(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.08, wspace=0.3)
+        f.savefig('fig_map_xi-%s.png' % califaID, dpi=_dpi_choice, transparent=_transp_choice)
+        plt.close(f)
+
+
+def fig_cumul_fHaSBHa_per_morftype(args, gals):
+    print '##################################'
+    print '# fig_cumul_fHaSBHa_per_morftype #'
+    print '##################################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+
+    N_zone = sel_sample__gz.astype('int').sum()
+    colortipo = ['brown', 'red', 'orange', 'green', '#00D0C9', 'blue']
+    colortipo_darker = ['maroon', 'darkred', 'orangered', 'darkgreen', '#11C0B3', 'darkblue']
+    colortipo_lighter = ['rosybrown', 'salmon', 'navajowhite', 'lightgreen', '#00D0B9', 'lightblue']
+    mtype_labels = ['E', 'S0+S0a', 'Sa+Sab', 'Sb', 'Sbc', '>= Sc']
+
+    f = plt.figure(figsize=(8, 7))
+    # _, ind = np.unique(ALL.califaID__z, return_index=True)
+    ax = f.gca()
+
+    sel_sample__gz = sel['gals_sample__z']
+    cumulfHa__g = {}
+    logSBHa_bins = np.linspace(2.5, 6.5, 50)
+    for k, v in sel['gals__mt'].iteritems():
+        for g in ALL.califaID__g[v]:
+            sel_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
+            SBHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.SB6563__z), mask=~sel_sample__z)
+            fHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.f6563__z), mask=~sel_sample__z)
+            xm, ym = ma_mask_xyz(np.ma.log10(SBHa), fHa)
+            fHa_cumul, fHa_tot = cumul_bins(ym.compressed(), xm.compressed(), logSBHa_bins)  # , fHa_tot)
+            cumulfHa__g[g] = fHa_cumul
+    for i, mt_label in enumerate(mtype_labels):
+        aux = []
+        y__gb = np.array([cumulfHa__g[g] for g in ALL.califaID__g[sel['gals__mt'][mt_label]]])
+        x = np.hstack([logSBHa_bins for g in ALL.califaID__g[sel['gals__mt'][mt_label]]])
+        # ax.plot(x, np.hstack(y__gb), ls='', marker='o', c=colortipo_lighter[i])
+        ax.plot(logSBHa_bins, np.median(y__gb, axis=0), ls='-', c=colortipo[i], lw=3)
+        # ax.plot(logSBHa_bins, np.mean(y__gb, axis=0), ls='--', c=colortipo[i], lw=3)
+        # prc = np.percentile(y__gb, q=[16, 84], axis=0)
+        # ax.plot(logSBHa_bins, prc[1], ls='--', c=colortipo[i], alpha=0.5)
+        # ax.plot(logSBHa_bins, prc[0], ls='--', c=colortipo[i], alpha=0.5)
+        y_pos = 0.99 - (i*0.1)
+        if (i == len(mtype_labels) - 1):
+            plot_text_ax(ax, r'$\geq$ Sc', 0.01, y_pos, 30, 'top', 'left', c=colortipo[i])
+        else:
+            plot_text_ax(ax, mt_label, 0.01, y_pos, 30, 'top', 'left', c=colortipo[i])
+    ax.axvline(x=np.log10(SF_Zhang_threshold), c='k', ls='--')
+    # for th in args.class_thresholds:
+    #     ax.axvline(x=np.log10(th), c='k', ls='--')
+    ax.xaxis.set_major_locator(MultipleLocator(0.5))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.set_major_locator(MultipleLocator(0.2))
+    ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.grid(which='both')
+    # ax.set_title(mt_label, color=colortipo[i])
+    ax.set_xlim(2.5, 6.5)
+    ax.set_ylim(0, 1)
+    # f.subplots_adjust(left=0.06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+    ax.set_xlabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
+    ax.set_ylabel(r'H$\alpha$ flux fraction')
+    # f.subplots_adjust(left=0.open06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+    # f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
+    f.savefig('fig_cumul_fHaSBHa_per_morftype.png', dpi=_dpi_choice, transparent=_transp_choice)
+    plt.close(f)
+
+    print '######################################################'
+    print '# END ################################################'
+    print '######################################################'
+
+
+def fig_WHa_histograms_per_morftype_and_radius_cumulFHamed(args, gals):
+    print '##########################################################'
+    print '# fig_WHa_histograms_per_morftype_and_radius_cumulFHamed #'
+    print '##########################################################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+    sel_sample__gyx = sel['gals_sample__yx']
+    sel_gals_mt = sel['gals__mt_z']
+
+    colortipo = ['brown', 'red', 'orange', 'green', '#00D0C9', 'blue']
+    colortipo_darker = ['maroon', 'darkred', 'orangered', 'darkgreen', '#11C0B3', 'darkblue']
+    colortipo_lighter = ['rosybrown', 'salmon', 'navajowhite', 'lightgreen', '#00D0B9', 'lightblue']
+    mtype_labels = ['E', 'S0+S0a', 'Sa+Sab', 'Sb', 'Sbc', '>= Sc']
+    sel_gals_sample_Rin__gz = sel['gals_sample_Rin__z']
+    sel_gals_sample_Rmid__gz = sel['gals_sample_Rmid__z']
+    sel_gals_sample_Rout__gz = sel['gals_sample_Rout__z']
+    N_rows, N_cols = 7, 4
+    f, axArr = plt.subplots(N_rows, N_cols, figsize=(16, 10))
+    _, ind = np.unique(ALL.califaID__z, return_index=True)
+    N_zone = sel_sample__gz.astype('int').sum()
+    (ax00, ax01, ax02, ax03), (ax10, ax11, ax12, ax13), (ax20, ax21, ax22, ax23), (ax30, ax31, ax32, ax33), (ax40, ax41, ax42, ax43), (ax50, ax51, ax52, ax53), (ax60, ax61, ax62, ax63) = axArr
+    axes_col0 = [ax00, ax10, ax20, ax30, ax40, ax50, ax60]
+    axes_col1 = [ax01, ax11, ax21, ax31, ax41, ax51, ax61]
+    axes_col2 = [ax02, ax12, ax22, ax32, ax42, ax52, ax62]
+    axes_col3 = [ax03, ax13, ax23, ax33, ax43, ax53, ax63]
+
+    axes_cols = [axes_col0, axes_col1, axes_col2, axes_col3]
+
+    logWHa_range = [-1, 2.5]
+    ax = axes_cols[0][0]
+    ax.set_title(r'All radii', fontsize=18, y=1.02)
+    f_SF__g = {}
+    f_MIG__g = {}
+    f_HIG__g = {}
+    for g in gals:
+        x = np.log10(args.class_thresholds[0])
+        y1 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w < x][-1]
+        y2 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w > x][0]
+        x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+        x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+        y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+        f_HIG__g[g] = y_th
+        x = np.log10(args.class_thresholds[1])
+        y1 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w < x][-1]
+        y2 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w > x][0]
+        x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+        x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+        y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+        f_SF__g[g] = 1. - y_th
+        f_MIG__g[g] = 1. - f_SF__g[g] - f_HIG__g[g]
+    f_HIG = np.mean([f_HIG__g[g] for g in gals])
+    f_MIG = np.mean([f_MIG__g[g] for g in gals])
+    f_SF = np.mean([f_SF__g[g] for g in gals])
+    m_aux = sel_sample__gz
+    xm = np.ma.masked_array(np.ma.log10(ALL.W6563__z), mask=~m_aux)
+    plot_text_ax(ax, r'$f_{%s}: %.1f$%%' % ('HIG', (100. * f_HIG)), 0.99, 0.98, 15, 'top', 'right', c=args.dict_colors['HIG']['c'])
+    plot_text_ax(ax, r'$f_{%s}: %.1f$%%' % ('MIG', (100. * f_MIG)), 0.99, 0.82, 15, 'top', 'right', c=args.dict_colors['MIG']['c'])
+    plot_text_ax(ax, r'$f_{%s}: %.1f$%%' % ('SF', (100. * f_SF)), 0.99, 0.66, 15, 'top', 'right', c=args.dict_colors['SF']['c'])
+    plot_histo_ax(ax, xm.compressed(), c='k', stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
+    for th in args.class_thresholds:
+        ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+    ax.set_xlim(logWHa_range)
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+
+    ax = axes_cols[1][0]
+    ax.set_title(r'R $\leq$ 0.5 HLR', fontsize=18, y=1.02)
+    f_SF__g = {}
+    f_MIG__g = {}
+    f_HIG__g = {}
+    for g in gals:
+        x = np.log10(args.class_thresholds[0])
+        y1 = ALL.cumulfHa__gRw[g][1][ALL.logWHa_bins__w < x][-1]
+        y2 = ALL.cumulfHa__gRw[g][1][ALL.logWHa_bins__w > x][0]
+        x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+        x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+        y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+        f_HIG__g[g] = y_th
+        x = np.log10(args.class_thresholds[1])
+        y1 = ALL.cumulfHa__gRw[g][1][ALL.logWHa_bins__w < x][-1]
+        y2 = ALL.cumulfHa__gRw[g][1][ALL.logWHa_bins__w > x][0]
+        x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+        x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+        y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+        f_SF__g[g] = 1. - y_th
+        f_MIG__g[g] = 1. - f_SF__g[g] - f_HIG__g[g]
+    f_HIG = np.mean([f_HIG__g[g] for g in gals])
+    f_MIG = np.mean([f_MIG__g[g] for g in gals])
+    f_SF = np.mean([f_SF__g[g] for g in gals])
+    plot_text_ax(ax, r'$%.1f$%%' % (100. * f_HIG), 0.99, 0.97, 15, 'top', 'right', c=args.dict_colors['HIG']['c'])
+    plot_text_ax(ax, r'$%.1f$%%' % (100. * f_MIG), 0.99, 0.81, 15, 'top', 'right', c=args.dict_colors['MIG']['c'])
+    plot_text_ax(ax, r'$%.1f$%%' % (100. * f_SF), 0.99, 0.65, 15, 'top', 'right', c=args.dict_colors['SF']['c'])
+    m_aux = sel_gals_sample_Rin__gz
+    xm = np.ma.masked_array(np.ma.log10(ALL.W6563__z), mask=~m_aux)
+    plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
+    for th in args.class_thresholds:
+        ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+    ax.set_xlim(logWHa_range)
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+
+    ax = axes_cols[2][0]
+    ax.set_title(r'0.5 $<$ R $\leq$ 1 HLR', fontsize=18, y=1.02)
+    f_SF__g = {}
+    f_MIG__g = {}
+    f_HIG__g = {}
+    for g in gals:
+        x = np.log10(args.class_thresholds[0])
+        y1 = ALL.cumulfHa__gRw[g][2][ALL.logWHa_bins__w < x][-1]
+        y2 = ALL.cumulfHa__gRw[g][2][ALL.logWHa_bins__w > x][0]
+        x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+        x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+        y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+        f_HIG__g[g] = y_th
+        x = np.log10(args.class_thresholds[1])
+        y1 = ALL.cumulfHa__gRw[g][2][ALL.logWHa_bins__w < x][-1]
+        y2 = ALL.cumulfHa__gRw[g][2][ALL.logWHa_bins__w > x][0]
+        x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+        x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+        y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+        f_SF__g[g] = 1. - y_th
+        f_MIG__g[g] = 1. - f_SF__g[g] - f_HIG__g[g]
+    f_HIG = np.mean([f_HIG__g[g] for g in gals])
+    f_MIG = np.mean([f_MIG__g[g] for g in gals])
+    f_SF = np.mean([f_SF__g[g] for g in gals])
+    plot_text_ax(ax, r'$%.1f$%%' % (100. * f_HIG), 0.99, 0.97, 15, 'top', 'right', c=args.dict_colors['HIG']['c'])
+    plot_text_ax(ax, r'$%.1f$%%' % (100. * f_MIG), 0.99, 0.81, 15, 'top', 'right', c=args.dict_colors['MIG']['c'])
+    plot_text_ax(ax, r'$%.1f$%%' % (100. * f_SF), 0.99, 0.65, 15, 'top', 'right', c=args.dict_colors['SF']['c'])
+    m_aux = sel_gals_sample_Rmid__gz
+    xm = np.ma.masked_array(np.ma.log10(ALL.W6563__z), mask=~m_aux)
+    plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
+    for th in args.class_thresholds:
+        ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+    ax.set_xlim(logWHa_range)
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+
+    ax = axes_cols[3][0]
+    ax.set_title(r'R $>$ 1 HLR', fontsize=18, y=1.02)
+    f_SF__g = {}
+    f_MIG__g = {}
+    f_HIG__g = {}
+    for g in gals:
+        x = np.log10(args.class_thresholds[0])
+        y1 = ALL.cumulfHa__gRw[g][3][ALL.logWHa_bins__w < x][-1]
+        y2 = ALL.cumulfHa__gRw[g][3][ALL.logWHa_bins__w > x][0]
+        x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+        x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+        y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+        f_HIG__g[g] = y_th
+        x = np.log10(args.class_thresholds[1])
+        y1 = ALL.cumulfHa__gRw[g][3][ALL.logWHa_bins__w < x][-1]
+        y2 = ALL.cumulfHa__gRw[g][3][ALL.logWHa_bins__w > x][0]
+        x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+        x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+        y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+        f_SF__g[g] = 1. - y_th
+        f_MIG__g[g] = 1. - f_SF__g[g] - f_HIG__g[g]
+    f_HIG = np.mean([f_HIG__g[g] for g in gals])
+    f_MIG = np.mean([f_MIG__g[g] for g in gals])
+    f_SF = np.mean([f_SF__g[g] for g in gals])
+    plot_text_ax(ax, r'$%.1f$%%' % (100. * f_HIG), 0.99, 0.97, 15, 'top', 'right', c=args.dict_colors['HIG']['c'])
+    plot_text_ax(ax, r'$%.1f$%%' % (100. * f_MIG), 0.99, 0.81, 15, 'top', 'right', c=args.dict_colors['MIG']['c'])
+    plot_text_ax(ax, r'$%.1f$%%' % (100. * f_SF), 0.99, 0.65, 15, 'top', 'right', c=args.dict_colors['SF']['c'])
+    m_aux = sel_gals_sample_Rout__gz
+    xm = np.ma.masked_array(np.ma.log10(ALL.W6563__z), mask=~m_aux)
+    plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=logWHa_range, lw=3))
+    for th in args.class_thresholds:
+        ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+    ax.set_xlim(logWHa_range)
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+
+    sels_R = [sel_sample__gz, sel_gals_sample_Rin__gz, sel_gals_sample_Rmid__gz, sel_gals_sample_Rout__gz]
+
+    for col in range(N_cols):
+        for i, mt_label in enumerate(mtype_labels):
+            ax = axes_cols[col][i+1]
+            if not col:
+                if (mt_label == mtype_labels[-1]):
+                    lab = r'$\geq$ Sc'
+                else:
+                    lab = mt_label
+                ax.set_ylabel(lab, rotation=90)
+            m_aux = np.bitwise_and(sel_gals_mt[mt_label], sels_R[col])
+            f_SF__g = {}
+            f_MIG__g = {}
+            f_HIG__g = {}
+            _gals = ALL.califaID__g[sel['gals__mt'][mt_label]]
+            for g in _gals:
+                x = np.log10(args.class_thresholds[0])
+                y1 = ALL.cumulfHa__gRw[g][col][ALL.logWHa_bins__w < x][-1]
+                y2 = ALL.cumulfHa__gRw[g][col][ALL.logWHa_bins__w > x][0]
+                x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+                x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+                y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+                print x, y_th, x1, x2, y1, y2
+                f_HIG__g[g] = y_th
+                x = np.log10(args.class_thresholds[1])
+                y1 = ALL.cumulfHa__gRw[g][col][ALL.logWHa_bins__w < x][-1]
+                y2 = ALL.cumulfHa__gRw[g][col][ALL.logWHa_bins__w > x][0]
+                x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+                x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+                y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+                f_SF__g[g] = 1. - y_th
+                print x, y_th, x1, x2, y1, y2
+                f_MIG__g[g] = 1. - f_SF__g[g] - f_HIG__g[g]
+                print g, f_HIG__g[g], f_MIG__g[g], f_SF__g[g]
+            f_HIG = np.mean([f_HIG__g[g] for g in _gals])
+            f_MIG = np.mean([f_MIG__g[g] for g in _gals])
+            f_SF = np.mean([f_SF__g[g] for g in _gals])
+            plot_text_ax(ax, r'$%.1f$%%' % (100. * f_HIG), 0.99, 0.97, 15, 'top', 'right', c=args.dict_colors['HIG']['c'])
+            plot_text_ax(ax, r'$%.1f$%%' % (100. * f_MIG), 0.99, 0.81, 15, 'top', 'right', c=args.dict_colors['MIG']['c'])
+            plot_text_ax(ax, r'$%.1f$%%' % (100. * f_SF), 0.99, 0.65, 15, 'top', 'right', c=args.dict_colors['SF']['c'])
+            xm = np.ma.masked_array(np.ma.log10(ALL.W6563__z), mask=~m_aux)
+            # plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
+            plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, first=False, c=colortipo[i], kwargs_histo=dict(bins=50, histtype='stepfilled', color=colortipo[i], range=logWHa_range, lw=2))
+            ax.xaxis.set_major_locator(MaxNLocator(4))
+            ax.xaxis.set_minor_locator(MaxNLocator(20))
+            ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+            for th in args.class_thresholds:
+                ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+            if i == (len(colortipo) - 1):
+                ax.tick_params(axis='x', which='both', bottom='on', top='off', labelbottom='on')
+                if col == (N_cols - 1):
+                    ax.xaxis.set_major_locator(MaxNLocator(4))
+                    ax.xaxis.set_minor_locator(MaxNLocator(20))
+                else:
+                    ax.xaxis.set_major_locator(MaxNLocator(4, prune='upper'))
+                    ax.xaxis.set_minor_locator(MaxNLocator(20))
+            else:
+                if not col:
+                    ax.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off', labeltop='off')
+                else:
+                    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+            ax.set_xlim(logWHa_range)
+
+    f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    f.savefig('fig_WHa_histograms_per_morftype_and_radius_cumulFHa.png', dpi=_dpi_choice, transparent=_transp_choice)
+    print '######################################################'
+    print '# END ################################################'
+    print '######################################################'
+    return ALL
+
+
+def get_extraplanar_regions(K, pup, plow):
+    selection = np.zeros(K.N_zone, dtype='bool')
+    for z in range(K.N_zone):
+        yup = np.polyval(pup, K.zonePos[z][0])
+        ylow = np.polyval(plow, K.zonePos[z][0])
+        if (K.zonePos[z][-1] > yup) | (K.zonePos[z][-1] < ylow):
+            selection[z] = True
+    return selection
+
+
+def extraplanar_xi_HIG(args):
+    from CALIFAUtils.scripts import read_one_cube
+    W6563__gz = ALL.W6563__z
+    log_L6563__gz = np.ma.log10(ALL.L6563__z)
+    log_L6563_expected_HIG__gz = ALL.log_L6563_expected_HIG__z
+    xi__gz = log_L6563__gz - log_L6563_expected_HIG__gz
+    xi_extraplanar_HIG = []
+    WHa_extraplanar_HIG = []
+
+    g = 'K0791'
+    K = read_one_cube(g, EL=True, config=-2, debug=True, elliptical=True)
+    xi__z = ALL.get_gal_prop(g, xi__gz)
+    sel_HIG__z = ALL.get_gal_prop(g, sel['gals_sample__z'] & sel['WHa']['z']['HIG'])
+    sel_extrplan__z = get_extraplanar_regions(K, [1.8, -15.], [1.8, -53.])
+    xi_extraplan__z = np.ma.masked_array(xi__z, mask=~(sel_extrplan__z & sel_HIG__z), copy=True)
+    xi_extraplanar_HIG.append(xi_extraplan__z.compressed())
+    WHa__z = ALL.get_gal_prop(g, W6563__gz)
+    WHa_extraplan__z = np.ma.masked_array(WHa__z, mask=~(sel_extrplan__z & sel_HIG__z), copy=True)
+    WHa_extraplanar_HIG.append(WHa_extraplan__z.compressed())
+
+    g = 'K0822'
+    K = read_one_cube(g, EL=True, config=-2, debug=True, elliptical=True)
+    xi__z = ALL.get_gal_prop(g, xi__gz)
+    sel_HIG__z = ALL.get_gal_prop(g, sel['gals_sample__z'] & sel['WHa']['z']['HIG'])
+    sel_extrplan__z = get_extraplanar_regions(K, [0.7, 11.], [0.7, 0.])
+    xi_extraplan__z = np.ma.masked_array(xi__z, mask=~(sel_extrplan__z & sel_HIG__z), copy=True)
+    xi_extraplanar_HIG.append(xi_extraplan__z.compressed())
+    WHa__z = ALL.get_gal_prop(g, W6563__gz)
+    WHa_extraplan__z = np.ma.masked_array(WHa__z, mask=~(sel_extrplan__z & sel_HIG__z), copy=True)
+    WHa_extraplanar_HIG.append(WHa_extraplan__z.compressed())
+
+    g = 'K0077'
+    K = read_one_cube(g, EL=True, config=-2, debug=True, elliptical=True)
+    xi__z = ALL.get_gal_prop(g, xi__gz)
+    sel_HIG__z = ALL.get_gal_prop(g, sel['gals_sample__z'] & sel['WHa']['z']['HIG'])
+    sel_extrplan__z = get_extraplanar_regions(K, [-58./64., 72.], [-58./64., 58.])
+    xi_extraplan__z = np.ma.masked_array(xi__z, mask=~(sel_extrplan__z & sel_HIG__z), copy=True)
+    xi_extraplanar_HIG.append(xi_extraplan__z.compressed())
+    WHa__z = ALL.get_gal_prop(g, W6563__gz)
+    WHa_extraplan__z = np.ma.masked_array(WHa__z, mask=~(sel_extrplan__z & sel_HIG__z), copy=True)
+    WHa_extraplanar_HIG.append(WHa_extraplan__z.compressed())
+
+    g = 'K0936'
+    K = read_one_cube(g, EL=True, config=-2, debug=True, elliptical=True)
+    xi__z = ALL.get_gal_prop(g, xi__gz)
+    sel_HIG__z = ALL.get_gal_prop(g, sel['gals_sample__z'] & sel['WHa']['z']['HIG'])
+    sel_extrplan__z = get_extraplanar_regions(K, [-43./107., 49.], [-43./107., 43.])
+    xi_extraplan__z = np.ma.masked_array(xi__z, mask=~(sel_extrplan__z & sel_HIG__z), copy=True)
+    xi_extraplanar_HIG.append(xi_extraplan__z.compressed())
+    WHa__z = ALL.get_gal_prop(g, W6563__gz)
+    WHa_extraplan__z = np.ma.masked_array(WHa__z, mask=~(sel_extrplan__z & sel_HIG__z), copy=True)
+    WHa_extraplanar_HIG.append(WHa_extraplan__z.compressed())
+
+
+def fig_cumul_fHaWHa_per_morftype_group(args, gals):
+    print '#################################'
+    print '# fig_cumul_fHaWHa_per_morftype_group #'
+    print '#################################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+    sel_sample__gyx = sel['gals_sample__yx']
+
+    N_zone = sel_sample__gz.astype('int').sum()
+    colortipo = ['red', 'green', 'blue']
+    mtype_labels = ['E+S0+S0a', 'Sa+Sab+Sb', '>=Sbc']
+
+    f = plt.figure(figsize=(8, 7))
+    # _, ind = np.unique(ALL.califaID__z, return_index=True)
+    ax = f.gca()
+
+    # sels_R = [sel['gals_sample__z'], sel['gals_sample_Rin__z'], sel['gals_sample_Rmid__z'], sel['gals_sample_Rout__z']]
+    logWHa_bins = ALL.logWHa_bins__w
+    cumulfHa__g_R = ALL.cumulfHa__gRw
+    sel_mt = {
+        'E+S0+S0a': sel['gals__mt']['E'] | sel['gals__mt']['S0+S0a'],
+        'Sa+Sab+Sb': sel['gals__mt']['Sa+Sab'] | sel['gals__mt']['Sb'],
+        '>=Sbc': sel['gals__mt']['Sbc'] | sel['gals__mt']['>= Sc']
+    }
+
+    for i, mt_label in enumerate(mtype_labels):
+        aux = []
+        print mt_label
+        print sel_mt[mt_label].sum()
+        for g in ALL.califaID__g[sel_mt[mt_label]]:
+            print g
+            aux.append(cumulfHa__g_R[g][0])
+        y__gb = np.array(aux)
+        x = np.hstack([logWHa_bins for g in ALL.califaID__g[sel_mt[mt_label]]])
+        # ax.plot(x, np.hstack(y__gb), ls='', marker='o', c=colortipo_lighter[i])
+        ax.plot(logWHa_bins, np.median(y__gb, axis=0), ls='-', c=colortipo[i], lw=3)
+        # ax.plot(logWHa_bins, np.mean(y__gb, axis=0), ls='--', c=colortipo[i], lw=3)
+        # prc = np.percentile(y__gb, q=[16, 84], axis=0)
+        # ax.plot(logWHa_bins, prc[1], ls='--', c=colortipo[i], alpha=0.5)
+        # ax.plot(logWHa_bins, prc[0], ls='--', c=colortipo[i], alpha=0.5)
+        y_pos = 0.99 - (i*0.1)
+        if (i == len(mtype_labels) - 1):
+            plot_text_ax(ax, r'$\geq$ Sbc', 0.01, y_pos, 30, 'top', 'left', c=colortipo[i])
+        else:
+            plot_text_ax(ax, mt_label, 0.01, y_pos, 30, 'top', 'left', c=colortipo[i])
+    for th in args.class_thresholds:
+        ax.axvline(x=np.log10(th), c='k', ls='--')
+    ax.xaxis.set_major_locator(MultipleLocator(0.5))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.set_major_locator(MultipleLocator(0.2))
+    ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.grid(which='both')
+    # ax.set_title(mt_label, color=colortipo[i])
+    ax.set_xlim(-1, 2.5)
+    ax.set_ylim(0, 1)
+    # f.subplots_adjust(left=0.06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+    ax.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    ax.set_ylabel(r'H$\alpha$ flux fraction')
+    # f.subplots_adjust(left=0.open06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+    # f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
+    f.savefig('fig_cumul_fHaWHa_per_morftype_group.png', dpi=_dpi_choice, transparent=_transp_choice)
+    plt.close(f)
+
+    print '######################################################'
+    print '# END ################################################'
+    print '######################################################'
+
+
 if __name__ == '__main__':
     args = parser_args()
 
-    try:
-        sample_choice = [ args.SN_type, args.min_SN ]
-    except IndexError:
-        sample_choice = ['SN_HaHb', '0']
+    sample_choice = [args.SN_type, args.min_SN]
+
     ALL = stack_gals().load(args.file)
     args.ALL = ALL
 
-    try:
-        # read gals file
+    if os.path.isfile(args.gals):
         with open(args.gals) as f:
             gals = [line.strip() for line in f.xreadlines() if line.strip()[0] != '#']
-    except IOError:
+    else:
         gals = args.gals
-        # _, ind = np.unique(ALL.califaID__z, return_index=True)
-        # gals = ALL.califaID__z[sorted(ind)].tolist()
     if isinstance(gals, str):
         gals = [gals]
+
     gals, sel, sample_choice = samples(args, ALL, sample_choice, gals)
     args.gals = gals
     args.sel = sel
@@ -2082,12 +3028,23 @@ if __name__ == '__main__':
     # fig_WHaSBHa_profile(args, gals=['K0886', 'K0073', 'K0813'], multi=True, suffix='faceon_paper')
     # fig_BPT_per_R(args, args.gals)
     # fig_cumul_fHaWHa_per_morftype_and_R(args, args.gals)
-    fig_BPT_per_R(args, args.gals)
+    # fig_BPT_per_R(args, args.gals)
     # print ALL.galDistance_Mpc[sel['gals']].max(), ALL.galDistance_Mpc[sel['gals']].min(), ALL.galDistance_Mpc[sel['gals']].mean(), np.median(ALL.galDistance_Mpc[sel['gals']])
     # print spaxel_size_pc(ALL.galDistance_Mpc[sel['gals']].max()), spaxel_size_pc(ALL.galDistance_Mpc[sel['gals']].max(), 2.5)
     # print spaxel_size_pc(ALL.galDistance_Mpc[sel['gals']].min()), spaxel_size_pc(ALL.galDistance_Mpc[sel['gals']].min(), 2.5)
     # print spaxel_size_pc(ALL.galDistance_Mpc[sel['gals']].mean()), spaxel_size_pc(ALL.galDistance_Mpc[sel['gals']].mean(), 2.5)
     # print spaxel_size_pc(np.median(ALL.galDistance_Mpc[sel['gals']])), spaxel_size_pc(np.median(ALL.galDistance_Mpc[sel['gals']]), 2.5)
+    # fig_maps(args, gals=['K0072', 'K0886', 'K0010', 'K0073', 'K0813', 'K0353'], multi=True, suffix='_faceon_paper')
+    # fig_maps(args, gals=['K0936', 'K0077', 'K0822', 'K0791', 'K0811'], multi=True, suffix='_edgeon_paper', drawHLR=False)
+    # fig_maps(args, gals=['K0857', 'K0151', 'K0274', 'K0867'], multi=True, suffix='_edgeon_paper', drawHLR=False)
+    # maps_xi(args, args.gals)
+    # fig_BPT_mixed(args, args.gals)
     # fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, args.gals)
-    # fig_maps(args, gals=['K0072', 'K0886', 'K0010', 'K0073', 'K0813', 'K0353'], multi=True, suffix='faceon_paper')
-    # fig_maps(args, args.gals)
+    # fig_cumul_fHaWHa_per_morftype(args, args.gals)
+    # fig_WHa_histograms_per_morftype_and_radius_cumulFHamed(args, args.gals)
+    # fig_maps_xi(args, gals=['K0072', 'K0886', 'K0010', 'K0073', 'K0813', 'K0353'], multi=True, suffix='_faceon_paper', xi=True)
+    # fig_logxi_logWHa_histograms(args)
+    # fig_maps_xi(args, gals=args.gals, xi=True)
+    # fig_logSBHa_logWHa_histograms(args)
+    # fig_WHaSBHa_profile(args, gals=['K0886', 'K0073', 'K0813'], multi=True, suffix='faceon_paper')
+    fig_cumul_fHaWHa_per_morftype_group(args, args.gals)
