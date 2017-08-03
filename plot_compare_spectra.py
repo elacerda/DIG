@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 import matplotlib as mpl
@@ -28,14 +29,18 @@ colors_lines_DIG_COMP_SF = ['darkred', 'olive', 'mediumblue']
 # def get_line_continuum(flux, wl_central, left=25, right=25):
 
 
-def plot_bins_HbO3HaN2(data, R_bins_to_plot=None, debug=False, classif_labels=classif_labels):
+def plot_bins_HbO3HaN2(data, R_bins_to_plot=None, debug=False, classif_labels=None):
     critical_bad_ratio_flag = 0.2
     initial_R_bins_to_plot = R_bins_to_plot
+    if classif_labels is None:
+        classif_labels = ['HIG', 'MIG', 'SF']
     for class_key in classif_labels:
         califaID = data._hdu[0].header['CALIFAID']
         wl = data.l_obs
+        OI_window = np.bitwise_and(np.greater(wl, 6300-50), np.less(wl, 6300+50))
         HaN2_window = np.bitwise_and(np.greater(wl, 6563-50), np.less(wl, 6563+50))
         HbO3_window = np.bitwise_and(np.greater(wl, 4861-50), np.less(wl, 5007+50))
+        S2_window = np.bitwise_and(np.greater(wl, 6724-50), np.less(wl, 6724+50))
         R_bin_center__R = data.R_bin_center__R
         rbinstep = data._hdu[0].header['RBINSTEP']
         if initial_R_bins_to_plot is None:
@@ -46,7 +51,7 @@ def plot_bins_HbO3HaN2(data, R_bins_to_plot=None, debug=False, classif_labels=cl
         if N_R_bins_with_data == 0:
             print '%s does not have any %s zones' % (califaID, class_key)
             continue
-        N_cols, N_rows = 2, N_R_bins_with_data
+        N_cols, N_rows = 4, N_R_bins_with_data
         f, axArr = plt.subplots(N_rows, N_cols, figsize=(N_cols * 5, N_rows * 3))
         # f.suptitle(r'%s - %s' % (califaID, class_key))
         # print califaID, class_key, N_R_bins_with_data
@@ -55,15 +60,20 @@ def plot_bins_HbO3HaN2(data, R_bins_to_plot=None, debug=False, classif_labels=cl
             # print iax, iR
             if N_R_bins_with_data == 1:
                 ax_HbO3 = axArr[0]
-                ax_HaN2 = axArr[1]
+                ax_OI = axArr[1]
+                ax_HaN2 = axArr[2]
+                ax_S2 = axArr[3]
             else:
                 ax_HbO3 = axArr[iax, 0]
-                ax_HaN2 = axArr[iax, 1]
+                ax_OI = axArr[iax, 1]
+                ax_HaN2 = axArr[iax, 2]
+                ax_S2 = axArr[iax, 3]
             f_res = data.O_rf__clR[class_key][:, iR] - data.M_rf__clR[class_key][:, iR]
             bad_ratio__l = data.bad_ratio__clR[class_key][:, iR]
             sel_badpix__l = (bad_ratio__l > 0)
             sel_crit_badpix__l = (bad_ratio__l > critical_bad_ratio_flag)
             c = 'b'
+            # Hb OIII
             ax_HbO3.plot(wl, f_res, color=c)
             ax_HbO3.plot(wl[sel_badpix__l], f_res[sel_badpix__l], linestyle='', color='y', marker='+', lw=2)
             ax_HbO3.plot(wl[sel_crit_badpix__l], f_res[sel_crit_badpix__l], linestyle='', color='r', marker='^', lw=2)
@@ -83,6 +93,28 @@ def plot_bins_HbO3HaN2(data, R_bins_to_plot=None, debug=False, classif_labels=cl
             ax2_HbO3.yaxis.set_major_locator(MultipleLocator(0.25))
             ax2_HbO3.yaxis.set_minor_locator(MultipleLocator(0.05))
             ax_HbO3.set_title(r'H$\beta$ - [OIII] (%.2f (i:%d) $\pm$ %.2f HLR)' % (R_bin_center__R[iR], iR, rbinstep))
+
+            # OI
+            ax_OI.plot(wl, f_res, color=c)
+            ax_OI.plot(wl[sel_badpix__l], f_res[sel_badpix__l], linestyle='', color='y', marker='+', lw=2)
+            ax_OI.plot(wl[sel_crit_badpix__l], f_res[sel_crit_badpix__l], linestyle='', color='r', marker='^', lw=2)
+            ax_OI.axvline(x='6300', c='k', ls='--')
+            std_RGB = f_res[OI_window].std()
+            ax_OI.set_ylim([f_res[OI_window].min() - std_RGB, f_res[OI_window].max() + std_RGB])
+            ax_OI.set_xlim([6300-50, 6300+50])
+            ax_OI.xaxis.set_major_locator(MultipleLocator(25))
+            ax_OI.xaxis.set_minor_locator(MultipleLocator(5))
+            ax2_OI = ax_OI.twinx()
+            ax2_OI.plot(wl, bad_ratio__l, color='g')
+            ax2_OI.set_ylim([0, 1])
+            ax2_OI.set_xlim([6300-50, 6300+50])
+            ax2_OI.xaxis.set_major_locator(MultipleLocator(25))
+            ax2_OI.xaxis.set_minor_locator(MultipleLocator(5))
+            ax2_OI.yaxis.set_major_locator(MultipleLocator(0.25))
+            ax2_OI.yaxis.set_minor_locator(MultipleLocator(0.05))
+            ax_OI.set_title(r'[OI] (%.2f (i:%d) $\pm$ %.2f HLR)' % (R_bin_center__R[iR], iR, rbinstep))
+
+            # NII Ha
             ax_HaN2.plot(wl, f_res, color=c)
             ax_HaN2.plot(wl[sel_badpix__l], f_res[sel_badpix__l], linestyle='', color='y', marker='+', lw=2)
             ax_HaN2.plot(wl[sel_crit_badpix__l], f_res[sel_crit_badpix__l], linestyle='', color='r', marker='^', lw=2)
@@ -103,10 +135,31 @@ def plot_bins_HbO3HaN2(data, R_bins_to_plot=None, debug=False, classif_labels=cl
             ax2_HaN2.yaxis.set_major_locator(MultipleLocator(0.25))
             ax2_HaN2.yaxis.set_minor_locator(MultipleLocator(0.05))
             ax_HaN2.set_title(r'H$\alpha$ - [NII] (%.2f (i:%d) $\pm$ %.2f HLR)' % (R_bin_center__R[iR], iR, rbinstep))
+
+            # S2
+            ax_S2.plot(wl, f_res, color=c)
+            ax_S2.plot(wl[sel_badpix__l], f_res[sel_badpix__l], linestyle='', color='y', marker='+', lw=2)
+            ax_S2.plot(wl[sel_crit_badpix__l], f_res[sel_crit_badpix__l], linestyle='', color='r', marker='^', lw=2)
+            ax_S2.axvline(x='6717', c='k', ls='--')
+            ax_S2.axvline(x='6731', c='k', ls='--')
+            std_RGB = f_res[S2_window].std()
+            ax_S2.set_ylim([f_res[S2_window].min() - std_RGB, f_res[S2_window].max() + std_RGB])
+            ax_S2.set_xlim([6724-50, 6724+50])
+            ax_S2.xaxis.set_major_locator(MultipleLocator(25))
+            ax_S2.xaxis.set_minor_locator(MultipleLocator(5))
+            ax2_S2 = ax_S2.twinx()
+            ax2_S2.plot(wl, bad_ratio__l, color='g')
+            ax2_S2.set_ylim([0, 1])
+            ax2_S2.set_xlim([6724-50, 6724+50])
+            ax2_S2.xaxis.set_major_locator(MultipleLocator(25))
+            ax2_S2.xaxis.set_minor_locator(MultipleLocator(5))
+            ax2_S2.yaxis.set_major_locator(MultipleLocator(0.25))
+            ax2_S2.yaxis.set_minor_locator(MultipleLocator(0.05))
+            ax_S2.set_title(r'[SII] (%.2f (i:%d) $\pm$ %.2f HLR)' % (R_bin_center__R[iR], iR, rbinstep))
+
             plot_text_ax(ax_HbO3, '%s: %d zones' % (califaID, data.classNtot__cR[class_key][iR]), pos_x=0.01, pos_y=0.99, fs='11', va='top', ha='left', c='k')
-            plot_text_ax(ax_HaN2, '%d zones' % data.classNtot__cR[class_key][iR], pos_x=0.01, pos_y=0.99, fs='11', va='top', ha='left', c='k')
             if debug:
-                sel_lines = (sel_crit_badpix__l & (HbO3_window | HaN2_window))
+                sel_lines = (sel_crit_badpix__l & (HbO3_window | HaN2_window | OI_window | S2_window))
                 # print zip(wl, sel_crit_badpix__l & HbO3_window)
                 # print np.sum(sel_lines)
                 for l, flux, b in zip(wl[sel_lines], f_res[sel_lines], data.bad_ratio__clR[class_key][sel_lines, iR]):
@@ -231,7 +284,7 @@ def plot_bad_frac_histogram(gals, stdata__g):
     wl = stdata__g[0].l_obs
     sel_Hb = ((wl > 4820) & (wl < 4900))
     sel_O3 = ((wl > 4967) & (wl < 5040))
-    sel_N2Ha = ((wl > 6520) & (wl < 6610))
+    sel_N2Ha = ((wl > 6000) & (wl < 6700))
     sel = sel_Hb | sel_O3 | sel_N2Ha
     N_cols = 1
     N_rows = 3
@@ -292,6 +345,17 @@ if __name__ == '__main__':
                 fitsA = '/Users/lacerda/dev/astro/dig/runs/stackspectra/stack-fits/%s/%s-RadBinStackedSpectra.fits' % (labelA, g)
                 fitsB = '/Users/lacerda/dev/astro/dig/runs/stackspectra/stack-fits/%s/%s-RadBinStackedSpectra.fits' % (labelB, g)
                 compare_plot(fitsA, fitsB, labelA, labelB)
+        elif sys.argv[1] == 'S':
+            plot_bins_HbO3HaN2
+            gals_file = sys.argv[2]
+            fits_dir = sys.argv[3]
+            clabels = ['hDIG', 'mDIG', 'SFc']
+            with open(gals_file) as f:
+                gals = [line.strip() for line in f.xreadlines() if line.strip()[0] != '#']
+            for g in gals:
+                data_file = '%s/%s-RadBinStackedSpectra.fits' % (fits_dir, g)
+                if os.path.isfile(data_file):
+                    plot_bins_HbO3HaN2(readFITS(data_file, classif_labels=clabels), None, debug=True, classif_labels=clabels)
         else:
             fits = sys.argv[1]
             data = readFITS(fits)

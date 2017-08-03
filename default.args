@@ -1,4 +1,4 @@
---class_names HIG MIG SF 
+--class_names hDIG mDIG SFc 
 --class_colors brown olive royalblue
 --class_linecolors brown olive royalblue
 --class_thresholds 3 14

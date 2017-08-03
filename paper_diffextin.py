@@ -52,7 +52,7 @@ distance_range = [0, 3]
 tauVneb_range = [0, 5]
 tauVneb_neg_range = [-1, 5]
 logSBHa_range = [4, 6.5]
-logWHa_range = [-0.5, 2]
+logWHa_range = [-1, 2.5]
 DtauV_range = [-3, 3]
 DeltatauV_range = [-1, 3]
 DtauVnorm_range = [-1, 4]
@@ -96,7 +96,7 @@ def parser_args(args_list, default_args_file='/Users/lacerda/dev/astro/dig/defau
         'rbinini': 0.,
         'rbinfin': 3.,
         'rbinstep': 0.2,
-        'class_names': ['HIG', 'MIG', 'SF'],
+        'class_names': ['hDIG', 'mDIG', 'SFc'],
         'class_colors': ['brown', 'tomato', 'royalblue'],
         'class_linecolors': ['maroon', 'darkred', 'mediumblue'],
         'class_thresholds': [3, 12],
@@ -896,8 +896,8 @@ def fig_tauVNeb_histo(args, gals):
     # print k, mask__c[k].sum(), ALL.tau_V_neb__cgr[k]
     # k='SF'
     # print k, mask__c[k].sum(), ALL.tau_V_neb__cgr[k]
-    delta_tau_SF_MIG = np.ma.masked_array(data__c['SF'] - data__c['MIG'], mask=(mask__c['SF'] | mask__c['MIG']))
-    delta_tau_SF_HIG = np.ma.masked_array(data__c['SF'] - data__c['HIG'], mask=(mask__c['SF'] | mask__c['HIG']))
+    delta_tau_SFc_mDIG = np.ma.masked_array(data__c['SFc'] - data__c['mDIG'], mask=(mask__c['SFc'] | mask__c['mDIG']))
+    delta_tau_SFc_hDIG = np.ma.masked_array(data__c['SFc'] - data__c['hDIG'], mask=(mask__c['SFc'] | mask__c['hDIG']))
 
     N_cols = 1
     N_rows = 3
@@ -933,18 +933,18 @@ def fig_tauVNeb_histo(args, gals):
     plot_text_ax(ax1, 'a)', 0.02, 0.98, 16, 'top', 'left', 'k')
 
     # AXIS 2
-    x = delta_tau_SF_MIG
+    x = delta_tau_SFc_mDIG
     range = DtauVnorm_range
     plot_histo_ax(ax2, x.compressed(), y_v_space=0.06, c='k', first=True, kwargs_histo=dict(normed=False, range=range))
-    ax2.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{SF}\ -\ \tau_V^{MIG}}$')
+    ax2.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{%s}\ -\ \tau_V^{%s}$' % (args.class_names[-1], args.class_names[1]))
     ax2.xaxis.set_minor_locator(minorLocator)
     plot_text_ax(ax2, 'b)', 0.02, 0.98, 16, 'top', 'left', 'k')
 
     # AXIS 3
-    x = delta_tau_SF_HIG
+    x = delta_tau_SFc_hDIG
     range = DtauVnorm_range
     plot_histo_ax(ax3, x.compressed(), y_v_space=0.06, c='k', first=True, kwargs_histo=dict(normed=False, range=range))
-    ax3.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{SF}\ -\ \tau_V^{HIG}}$')
+    ax3.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{%s}\ -\ \tau_V^{%s}}$' % (args.class_names[-1], args.class_names[0]))
     ax3.xaxis.set_minor_locator(minorLocator)
     plot_text_ax(ax3, 'b)', 0.02, 0.98, 16, 'top', 'left', 'k')
 
@@ -983,8 +983,8 @@ def fig_SFRSD_histograms(args, gals):
     # print k, mask__c[k].sum(), ALL.tau_V_neb__cgr[k]
     # k='SF'
     # print k, mask__c[k].sum(), ALL.tau_V_neb__cgr[k]
-    delta_tau_SF_MIG = np.ma.masked_array(data__c['SF'] - data__c['MIG'], mask=(mask__c['SF'] | mask__c['MIG']))
-    delta_tau_SF_HIG = np.ma.masked_array(data__c['SF'] - data__c['HIG'], mask=(mask__c['SF'] | mask__c['HIG']))
+    delta_tau_SFc_mDIG = np.ma.masked_array(data__c['SFc'] - data__c['mDIG'], mask=(mask__c['SFc'] | mask__c['mDIG']))
+    delta_tau_SFc_hDIG = np.ma.masked_array(data__c['SFc'] - data__c['hDIG'], mask=(mask__c['SFc'] | mask__c['hDIG']))
 
     N_cols = 1
     N_rows = 3
@@ -1020,24 +1020,276 @@ def fig_SFRSD_histograms(args, gals):
     plot_text_ax(ax1, 'a)', 0.02, 0.98, 16, 'top', 'left', 'k')
 
     # AXIS 2
-    x = delta_tau_SF_MIG
+    x = delta_tau_SFc_mDIG
     range = DtauVnorm_range
     plot_histo_ax(ax2, x.compressed(), y_v_space=0.06, c='k', first=True, kwargs_histo=dict(normed=False, range=range))
-    ax2.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{SF}\ -\ \tau_V^{MIG}}$')
+    ax2.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{%s}\ -\ \tau_V^{%s}$' % (args.class_names[-1], args.class_names[1]))
     ax2.xaxis.set_minor_locator(minorLocator)
     plot_text_ax(ax2, 'b)', 0.02, 0.98, 16, 'top', 'left', 'k')
 
     # AXIS 3
-    x = delta_tau_SF_HIG
+    x = delta_tau_SFc_hDIG
     range = DtauVnorm_range
     plot_histo_ax(ax3, x.compressed(), y_v_space=0.06, c='k', first=True, kwargs_histo=dict(normed=False, range=range))
-    ax3.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{SF}\ -\ \tau_V^{HIG}}$')
+    ax3.set_xlabel(r'$\Delta \tau\ =\ \tau_V^{%s}\ -\ \tau_V^{%s}$' % (args.class_names[-1], args.class_names[0]))
     ax3.xaxis.set_minor_locator(minorLocator)
     plot_text_ax(ax3, 'b)', 0.02, 0.98, 16, 'top', 'left', 'k')
 
     f.tight_layout(h_pad=0.05)
     f.savefig('fig_tauVNeb_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
 
+
+# def fig_data_histograms_per_morftype_and_radius(args, gals, data, data_range, data_label, data_suffix):
+#     print '###############################################'
+#     print '# fig_data_histograms_per_morftype_and_radius #'
+#     print '###############################################'
+#
+#     ALL, sel = args.ALL, args.sel
+#
+#     if gals is None:
+#         _, ind = np.unique(ALL.califaID__z, return_index=True)
+#         gals = ALL.califaID__z[sorted(ind)]
+#
+#     sel_sample__gz = sel['gals_sample__z']
+#     sel_sample__gyx = sel['gals_sample__yx']
+#     sel_gals_mt = sel['gals__mt_z']
+#
+#     colortipo = ['orange', 'green', '#00D0C9', 'blue']
+#     colortipo_darker = ['orangered', 'darkgreen', '#11C0B3', 'darkblue']
+#     colortipo_lighter = ['navajowhite', 'lightgreen', '#00D0B9', 'lightblue']
+#     mtype_labels = ['Sa+Sab', 'Sb', 'Sbc', '>= Sc']
+#     sel_gals_sample_Rin__gz = sel['gals_sample_Rin__z']
+#     sel_gals_sample_Rmid__gz = sel['gals_sample_Rmid__z']
+#     sel_gals_sample_Rout__gz = sel['gals_sample_Rout__z']
+#     N_rows, N_cols = 5, 4
+#     f, axArr = plt.subplots(N_rows, N_cols, figsize=(16, 10))
+#     _, ind = np.unique(ALL.califaID__z, return_index=True)
+#     N_zone = sel_sample__gz.astype('int').sum()
+#     (ax00, ax01, ax02, ax03), (ax10, ax11, ax12, ax13), (ax20, ax21, ax22, ax23), (ax30, ax31, ax32, ax33), (ax40, ax41, ax42, ax43) = axArr
+#     axes_col0 = [ax00, ax10, ax20, ax30, ax40]
+#     axes_col1 = [ax01, ax11, ax21, ax31, ax41]
+#     axes_col2 = [ax02, ax12, ax22, ax32, ax42]
+#     axes_col3 = [ax03, ax13, ax23, ax33, ax43]
+#
+#     axes_cols = [axes_col0, axes_col1, axes_col2, axes_col3]
+#
+#     # logWHa = np.ma.log10(ALL.W6563__z)
+#     # logWHa_range = [-1, 2.5]
+#     # xlabel = r'$\log$ W${}_{H\alpha}$ [$\AA$]'
+#
+#     ax = axes_cols[0][0]
+#     ax.set_title(r'All radii', fontsize=18, y=1.02)
+#
+#     m_aux = sel_sample__gz
+#     xm = np.ma.masked_array(data, mask=~m_aux)
+#     plot_histo_ax(ax, xm.compressed(), c='k', stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=data_range, lw=3))
+#     ax.set_xlim(data_range)
+#     ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+#
+#     ax = axes_cols[1][0]
+#     ax.set_title(r'R $\leq$ 0.5 HLR', fontsize=18, y=1.02)
+#     m_aux = sel_gals_sample_Rin__gz
+#     xm = np.ma.masked_array(data, mask=~m_aux)
+#     plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=data_range, lw=3))
+#     ax.set_xlim(data_range)
+#     ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+#
+#     ax = axes_cols[2][0]
+#     ax.set_title(r'0.5 $<$ R $\leq$ 1 HLR', fontsize=18, y=1.02)
+#     m_aux = sel_gals_sample_Rmid__gz
+#     xm = np.ma.masked_array(data, mask=~m_aux)
+#     plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=data_range, lw=3))
+#     ax.set_xlim(data_range)
+#     ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+#
+#     ax = axes_cols[3][0]
+#     ax.set_title(r'R $>$ 1 HLR', fontsize=18, y=1.02)
+#     m_aux = sel_gals_sample_Rout__gz
+#     xm = np.ma.masked_array(data, mask=~m_aux)
+#     plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=data_range, lw=3))
+#     ax.set_xlim(data_range)
+#     ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+#
+#     sels_R = [sel_sample__gz, sel_gals_sample_Rin__gz, sel_gals_sample_Rmid__gz, sel_gals_sample_Rout__gz]
+#
+#     for col in range(N_cols):
+#         for i, mt_label in enumerate(mtype_labels):
+#             ax = axes_cols[col][i+1]
+#             if not col:
+#                 if (mt_label == mtype_labels[-1]):
+#                     lab = r'$\geq$ Sc'
+#                 else:
+#                     lab = mt_label
+#                 ax.set_ylabel(lab, rotation=90)
+#             m_aux = np.bitwise_and(sel_gals_mt[mt_label], sels_R[col])
+#             xm = np.ma.masked_array(data, mask=~m_aux)
+#             # plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
+#             plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, first=False, c=colortipo[i], kwargs_histo=dict(bins=50, histtype='stepfilled', color=colortipo[i], range=data_range, lw=2))
+#             ax.xaxis.set_major_locator(MaxNLocator(4))
+#             ax.xaxis.set_minor_locator(MaxNLocator(20))
+#             ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+#             if i == (len(colortipo) - 1):
+#                 ax.tick_params(axis='x', which='both', bottom='on', top='off', labelbottom='on')
+#                 if col == (N_cols - 1):
+#                     ax.xaxis.set_major_locator(MaxNLocator(4))
+#                     ax.xaxis.set_minor_locator(MaxNLocator(20))
+#                 else:
+#                     ax.xaxis.set_major_locator(MaxNLocator(4, prune='upper'))
+#                     ax.xaxis.set_minor_locator(MaxNLocator(20))
+#             else:
+#                 if not col:
+#                     ax.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off', labeltop='off')
+#                 else:
+#                     ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+#             ax.set_xlim(data_range)
+#
+#     f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+#     f.text(0.5, 0.04, data_label, ha='center', fontsize=20)
+#     f.savefig('fig_histograms_per_morftype_and_radius_%s.png' % data_suffix, dpi=_dpi_choice, transparent=_transp_choice)
+#     print '######################################################'
+#     print '# END ################################################'
+#     print '######################################################'
+#     return ALL
+
+
+def fig_data_histograms_per_morftype_and_radius(args, gals, data, data_range, data_label, data_suffix, byclass=False):
+    print '###############################################'
+    print '# fig_data_histograms_per_morftype_and_radius #'
+    print '###############################################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+    sel_sample__gyx = sel['gals_sample__yx']
+    sel_gals_mt = sel['gals__mt_z']
+
+    colortipo = ['orange', 'green', '#00D0C9', 'blue']
+    colortipo_darker = ['orangered', 'darkgreen', '#11C0B3', 'darkblue']
+    colortipo_lighter = ['navajowhite', 'lightgreen', '#00D0B9', 'lightblue']
+    mtype_labels = ['Sa+Sab', 'Sb', 'Sbc', '>= Sc']
+    sel_gals_sample_Rin__gz = sel['gals_sample_Rin__z']
+    sel_gals_sample_Rmid__gz = sel['gals_sample_Rmid__z']
+    sel_gals_sample_Rout__gz = sel['gals_sample_Rout__z']
+    N_rows, N_cols = 5, 4
+    f, axArr = plt.subplots(N_rows, N_cols, figsize=(16, 10))
+    _, ind = np.unique(ALL.califaID__z, return_index=True)
+    N_zone = sel_sample__gz.astype('int').sum()
+    (ax00, ax01, ax02, ax03), (ax10, ax11, ax12, ax13), (ax20, ax21, ax22, ax23), (ax30, ax31, ax32, ax33), (ax40, ax41, ax42, ax43) = axArr
+    axes_col0 = [ax00, ax10, ax20, ax30, ax40]
+    axes_col1 = [ax01, ax11, ax21, ax31, ax41]
+    axes_col2 = [ax02, ax12, ax22, ax32, ax42]
+    axes_col3 = [ax03, ax13, ax23, ax33, ax43]
+
+    axes_cols = [axes_col0, axes_col1, axes_col2, axes_col3]
+
+    # logWHa = np.ma.log10(ALL.W6563__z)
+    # logWHa_range = [-1, 2.5]
+    # xlabel = r'$\log$ W${}_{H\alpha}$ [$\AA$]'
+
+    ax = axes_cols[0][0]
+    ax.set_title(r'All radii', fontsize=18, y=1.02)
+
+    m_aux = sel_sample__gz
+    xm = np.ma.masked_array(data, mask=~m_aux)
+    plot_histo_ax(ax, xm.compressed(), c='k', stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=data_range, lw=3))
+    if byclass:
+        dataset = [np.ma.masked_array(data, mask=~(m_aux & sel['WHa']['z'][c])).compressed() for c in args.class_names]
+        plot_histo_ax(ax, dataset, stats_txt=False, y_v_space=0.06, y_h_space=0.25, first=False, c=args.class_colors, kwargs_histo=dict(bins=50, histtype='step', color=args.class_colors, normed=False, range=data_range, lw=3))
+    ax.set_xlim(data_range)
+    ax.xaxis.set_major_locator(MaxNLocator(6))
+    ax.xaxis.set_minor_locator(MaxNLocator(30))
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+    ax.xaxis.grid()
+
+    ax = axes_cols[1][0]
+    ax.set_title(r'R $\leq$ 0.5 HLR', fontsize=18, y=1.02)
+    m_aux = sel_gals_sample_Rin__gz
+    xm = np.ma.masked_array(data, mask=~m_aux)
+    plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=data_range, lw=3))
+    if byclass:
+        dataset = [np.ma.masked_array(data, mask=~(m_aux & sel['WHa']['z'][c])).compressed() for c in args.class_names]
+        plot_histo_ax(ax, dataset, stats_txt=False, y_v_space=0.06, y_h_space=0.25, first=False, c=args.class_colors, kwargs_histo=dict(bins=50, histtype='step', color=args.class_colors, normed=False, range=data_range, lw=3))
+    ax.set_xlim(data_range)
+    ax.xaxis.set_major_locator(MaxNLocator(6))
+    ax.xaxis.set_minor_locator(MaxNLocator(30))
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+    ax.xaxis.grid()
+
+    ax = axes_cols[2][0]
+    ax.set_title(r'0.5 $<$ R $\leq$ 1 HLR', fontsize=18, y=1.02)
+    m_aux = sel_gals_sample_Rmid__gz
+    xm = np.ma.masked_array(data, mask=~m_aux)
+    plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=data_range, lw=3))
+    if byclass:
+        dataset = [np.ma.masked_array(data, mask=~(m_aux & sel['WHa']['z'][c])).compressed() for c in args.class_names]
+        plot_histo_ax(ax, dataset, stats_txt=False, y_v_space=0.06, y_h_space=0.25, first=False, c=args.class_colors, kwargs_histo=dict(bins=50, histtype='step', color=args.class_colors, normed=False, range=data_range, lw=3))
+    ax.set_xlim(data_range)
+    ax.xaxis.set_major_locator(MaxNLocator(6))
+    ax.xaxis.set_minor_locator(MaxNLocator(30))
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+    ax.xaxis.grid()
+
+    ax = axes_cols[3][0]
+    ax.set_title(r'R $>$ 1 HLR', fontsize=18, y=1.02)
+    m_aux = sel_gals_sample_Rout__gz
+    xm = np.ma.masked_array(data, mask=~m_aux)
+    plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='darkgray', range=data_range, lw=3))
+    if byclass:
+        dataset = [np.ma.masked_array(data, mask=~(m_aux & sel['WHa']['z'][c])).compressed() for c in args.class_names]
+        plot_histo_ax(ax, dataset, stats_txt=False, y_v_space=0.06, y_h_space=0.25, first=False, c=args.class_colors, kwargs_histo=dict(bins=50, histtype='step', color=args.class_colors, normed=False, range=data_range, lw=3))
+    ax.set_xlim(data_range)
+    ax.xaxis.set_major_locator(MaxNLocator(6))
+    ax.xaxis.set_minor_locator(MaxNLocator(30))
+    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+    ax.xaxis.grid()
+
+    sels_R = [sel_sample__gz, sel_gals_sample_Rin__gz, sel_gals_sample_Rmid__gz, sel_gals_sample_Rout__gz]
+
+    for col in range(N_cols):
+        for i, mt_label in enumerate(mtype_labels):
+            ax = axes_cols[col][i+1]
+            if not col:
+                if (mt_label == mtype_labels[-1]):
+                    lab = r'$\geq$ Sc'
+                else:
+                    lab = mt_label
+                ax.set_ylabel(lab, rotation=90)
+            m_aux = np.bitwise_and(sel_gals_mt[mt_label], sels_R[col])
+            xm = np.ma.masked_array(data, mask=~m_aux)
+            # plot_text_ax(ax, r'$%.3f$' % fracHa__c[k], 0.99, y_pos, 15, 'top', 'right', c=args.dict_colors[k]['c'])
+            plot_histo_ax(ax, xm.compressed(), stats_txt=False, ini_pos_y=0.97, fs=10, y_v_space=0.13, first=False, c=colortipo[i], kwargs_histo=dict(bins=50, histtype='stepfilled', color=colortipo[i], range=data_range, lw=2))
+            if byclass:
+                dataset = [np.ma.masked_array(data, mask=~(m_aux & sel['WHa']['z'][c])).compressed() for c in args.class_names]
+                plot_histo_ax(ax, dataset, stats_txt=False, y_v_space=0.06, y_h_space=0.25, first=False, c=args.class_colors, kwargs_histo=dict(bins=50, histtype='step', color=args.class_colors, normed=False, range=data_range, lw=3))
+            ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+            if i == (len(colortipo) - 1):
+                ax.tick_params(axis='x', which='both', bottom='on', top='off', labelbottom='on')
+                if col == (N_cols - 1):
+                    ax.xaxis.set_major_locator(MaxNLocator(6))
+                    ax.xaxis.set_minor_locator(MaxNLocator(30))
+                else:
+                    ax.xaxis.set_major_locator(MaxNLocator(6, prune='upper'))
+                    ax.xaxis.set_minor_locator(MaxNLocator(30))
+            else:
+                ax.xaxis.set_major_locator(MaxNLocator(6))
+                ax.xaxis.set_minor_locator(MaxNLocator(30))
+                if not col:
+                    ax.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off', labeltop='off')
+                else:
+                    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
+            ax.set_xlim(data_range)
+            ax.xaxis.grid()
+    f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+    f.text(0.5, 0.04, data_label, ha='center', fontsize=20)
+    f.savefig('fig_histograms_per_morftype_and_radius_%s.png' % data_suffix, dpi=_dpi_choice, transparent=_transp_choice)
+    print '######################################################'
+    print '# END ################################################'
+    print '######################################################'
+    return ALL
 
 
 if __name__ == '__main__':
@@ -1068,3 +1320,38 @@ if __name__ == '__main__':
 
     # fig_maps(args, args.gals, tau_V_histo=True)
     # fig_tauVNeb_histo(args, args.gals)
+    # fig_logt_histograms_per_morftype_and_radius(args, args.gals)
+    # fig_data_histograms_per_morftype_and_radius(args, gals,
+    #                                             data=ALL.at_flux__z,
+    #                                             data_range=[7, 11],
+    #                                             data_label=r'$\langle\log\ t\rangle_L$ [yr]',
+    #                                             data_suffix='logt')
+    # fig_data_histograms_per_morftype_and_radius(args, gals,
+    #                                             data=np.ma.log10(ALL.SFRSD__Tz[0]) + 6,
+    #                                             data_range=[-4, 1],
+    #                                             data_label=r'$\log\ \Sigma_{SFR}^\star(t_\star)\ [M_\odot yr^{-1} kpc^{-2}]$',
+    #                                             data_suffix='SFRSD')
+    fig_data_histograms_per_morftype_and_radius(args, gals,
+                                                data=np.ma.log10(ALL.W6563__z),
+                                                data_range=logWHa_range,
+                                                data_label=r'$\log$ W${}_{H\alpha}$ [$\AA$]',
+                                                data_suffix='logWHa',
+                                                byclass=False)
+    fig_data_histograms_per_morftype_and_radius(args, gals,
+                                                data=np.ma.log10(ALL.SFRSD__Tz[0]) + 6,
+                                                data_range=[-4, 1],
+                                                data_label=r'$\log\ \Sigma_{SFR}^\star(t_\star)\ [M_\odot yr^{-1} kpc^{-2}]$',
+                                                data_suffix='SFRSD',
+                                                byclass=True)
+    fig_data_histograms_per_morftype_and_radius(args, gals,
+                                                data=ALL.at_flux__z,
+                                                data_range=[7.5, 10.5],
+                                                data_label=r'$\langle\log\ t\rangle_L$ [yr]',
+                                                data_suffix='logt',
+                                                byclass=True)
+    fig_data_histograms_per_morftype_and_radius(args, gals,
+                                                data=ALL.tau_V_neb__z,
+                                                data_range=[-2, 4],
+                                                data_label=r'$\tau_V^{neb}$',
+                                                data_suffix='tauVneb',
+                                                byclass=True)

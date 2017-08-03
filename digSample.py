@@ -64,7 +64,7 @@ def calc_LHa_expected_HIG(K, HIG_ages_interval=None):
     return log_LHa_expected_HIG__z, log_LHa_expected_HIG__yx
 
 
-def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
+def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
     lines = ['3727', '4363', '4861', '4959', '5007', '6300', '6563', '6583', '6717', '6731']
     keys2d = [
         ('x_Y__Tz', N_T), ('SFR__Tz', N_T), ('SFRSD__Tz', N_T), ('integrated_x_Y__T', N_T),
@@ -156,20 +156,24 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
         califaID__yx = np.array([K.califaID for i in range(K.N_y * K.N_x)], dtype='|S5')
         ALL.append1d('califaID__yx', califaID__yx)
         pixels_map__yx = np.array(list(range(K.N_y * K.N_x)), dtype='int')
-        mto = get_morfologia(K.califaID)[0]
+        # mto = get_morfologia(K.califaID)[0]
         ALL.append1d('califaID__g', califaID)
-        ALL.append1d('mto', mto)
-        ALL.append1d('mt', my_morf(mto))
+        ALL.append1d('mto', mto[i_gal])
+        ALL.append1d('mt', mt[i_gal])
         ALL.append1d('pixels_map', pixels_map__yx)
         ALL.append1d('x0', K.x0)
         ALL.append1d('y0', K.y0)
         ALL.append1d('N_x', K.N_x)
         ALL.append1d('N_y', K.N_y)
         ALL.append1d('N_zone', K.N_zone)
-        try:
+        if 'ba' in K.masterListData.keys():
             ALL.append1d('ml_ba', eval(K.masterListData['ba']))
-        except KeyError:
-            ALL.append1d('ml_ba', eval(K.masterListData['gc_ba']))
+        elif 'gc_ba' in K.masterListData.keys():
+            if K.masterListData['gc_ba'] is None:
+                ml_ba = -1
+            else:
+                ml_ba = eval(K.masterListData['gc_ba'])
+            ALL.append1d('ml_ba', ml_ba)
         ALL.append1d('ba', K.ba)
         ALL.append1d('pa', K.pa)
         ALL.append1d('HLR_pix', K.HLR_pix)
@@ -311,14 +315,19 @@ def gather_needed_data(filename, dump=True, output_filename='ALL_HaHb.pkl'):
 if __name__ == '__main__':
     f = open(sys.argv[1], 'r')
     g = []
+    mt = []
+    mto = []
     for line in f.xreadlines():
         read_line = line.strip()
         if read_line[0] == '#':
             continue
-        g.append(read_line)
+        seg_line = read_line.split(':')
+        g.append(seg_line[0])
+        mto.append(seg_line[1])
+        mt.append(seg_line[2])
     f.close()
     try:
         output_filename = sys.argv[2]
     except IndexError:
         output_filename = 'debug'
-    ALL = gather_needed_data(g, dump=True, output_filename=output_filename)
+    ALL = gather_needed_data(g, mto, mt, dump=True, output_filename=output_filename)

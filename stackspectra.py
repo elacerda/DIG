@@ -6,9 +6,7 @@ from pytu.functions import debug_var
 from CALIFAUtils.scripts import stack_spectra
 from pytu.objects import tupperware_none, readFileArgumentParser
 
-
-classif_labels = ['HIG', 'LIG', 'SF']
-
+classif_labels = ['HIG', 'MIG', 'SF']
 
 def parser_args(default_args_file='default.args'):
     '''
@@ -26,6 +24,7 @@ def parser_args(default_args_file='default.args'):
         'rbinstep': 0.2,
         'sfth': 14,
         'higth': 3,
+        'noflag' : False,
     }
     parser = readFileArgumentParser(fromfile_prefix_chars='@')
     parser.add_argument('--debug', '-D', action='store_true', default=default_args['debug'])
@@ -36,6 +35,7 @@ def parser_args(default_args_file='default.args'):
     parser.add_argument('--rbinini', metavar='HLR', type=float, default=default_args['rbinini'])
     parser.add_argument('--rbinfin', metavar='HLR', type=float, default=default_args['rbinfin'])
     parser.add_argument('--rbinstep', metavar='HLR', type=float, default=default_args['rbinstep'])
+    parser.add_argument('--noflag', '-F', action='store_true', default=default_args['noflag'])
     args_list = sys.argv[1:]
     # if exists file default.args, load default args
     print default_args_file
@@ -69,8 +69,10 @@ def print_output(outdata):
                             )
 
 
-def saveFITS(K, outdata, overwrite=False):
+def saveFITS(K, outdata, overwrite=False, classif_labels=None):
     from astropy.io import fits
+    if classif_labels is None:
+        classif_labels = ['HIG', 'MIG', 'SF']
     hdu = fits.HDUList()
     # PrimaryHDU - HEADER
     header = fits.Header()
@@ -84,7 +86,7 @@ def saveFITS(K, outdata, overwrite=False):
     header['NY'] = K.N_y
     header['NX'] = K.N_x
     header['SFTH'] = outdata.sfth
-    header['higTH'] = outdata.higth
+    header['HIGTH'] = outdata.higth
     header.append(fits.Card(keyword='CLABELS', value=len(classif_labels), comment='%s' % classif_labels))
     hdu.append(fits.PrimaryHDU(header=header))
     # Other HDUs
@@ -108,9 +110,11 @@ def saveFITS(K, outdata, overwrite=False):
     hdu.writeto('%s-RadBinStackedSpectra.fits' % K.califaID, clobber=overwrite)
 
 
-def readFITS(fitsfile):
+def readFITS(fitsfile, classif_labels=None):
     from pytu.objects import tupperware_none
     from astropy.io import fits
+    if classif_labels is None:
+        classif_labels = ['HIG', 'MIG', 'SF']
     data = tupperware_none()
     hdu = fits.open(fitsfile)
     data._hdu = hdu
@@ -175,6 +179,9 @@ if __name__ == '__main__':
     args = parser_args()
     K = fitsQ3DataCube(args.superfits)
     K.loadEmLinesDataCube(args.emlfits)
+    print K.califaID, np.unique(K.f_flag), K.header['FLAGS_ID']
+    K.close()
+    sys.exit(1)
     # Set geometry
     K.setGeometry(*K.getEllipseParams())
     wl_of = K.l_obs
@@ -192,18 +199,18 @@ if __name__ == '__main__':
             continue
         # classification selections
         sel_classif = {}
-        sel_classif['HIG'] = np.bitwise_and(sel_zones, np.less(W6563__z, args.higth))
-        sel_classif['LIG'] = np.bitwise_and(sel_zones, np.bitwise_and(np.greater_equal(W6563__z, args.higth), np.less(W6563__z, args.sfth)))
-        sel_classif['SF'] = np.bitwise_and(sel_zones, np.greater_equal(W6563__z, args.sfth))
+        sel_classif[classif_labels[0]] = np.bitwise_and(sel_zones, np.less(W6563__z, args.higth))
+        sel_classif[classif_labels[1]] = np.bitwise_and(sel_zones, np.bitwise_and(np.greater_equal(W6563__z, args.higth), np.less(W6563__z, args.sfth)))
+        sel_classif[classif_labels[2]] = np.bitwise_and(sel_zones, np.greater_equal(W6563__z, args.sfth))
         for tmp_cl in classif_labels:
             print Nsel, tmp_cl, sel_classif[tmp_cl].astype('int').sum()
         # Segmented maps with classification
-        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif['HIG']), extensive=False)
-        outdata.classbin_segmap__Ryx['HIG'][iR] = np.invert(segmap_tmp.mask)
-        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif['LIG']), extensive=False)
-        outdata.classbin_segmap__Ryx['LIG'][iR] = np.invert(segmap_tmp.mask)
-        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif['SF']), extensive=False)
-        outdata.classbin_segmap__Ryx['SF'][iR] = np.invert(segmap_tmp.mask)
+        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif[classif_labels[0]]), extensive=False)
+        outdata.classbin_segmap__Ryx[classif_labels[0]][iR] = np.invert(segmap_tmp.mask)
+        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif[classif_labels[1]]), extensive=False)
+        outdata.classbin_segmap__Ryx[classif_labels[1]][iR] = np.invert(segmap_tmp.mask)
+        segmap_tmp = K.zoneToYX(np.ma.masked_array(K.v_0, mask=~sel_classif[classif_labels[2]]), extensive=False)
+        outdata.classbin_segmap__Ryx[classif_labels[2]][iR] = np.invert(segmap_tmp.mask)
         for k in classif_labels:
             # zone classification selection
             sel = sel_classif[k]
@@ -212,7 +219,7 @@ if __name__ == '__main__':
             if N == 0:  # don't do anything in empty selections
                 continue
             # stack spectra
-            O_rf__l, M_rf__l, err_rf__l, b_rf__l, bad_ratio__l, bindata = stack_spectra(K, sel)  # , outdata.v_0[sel])
+            O_rf__l, M_rf__l, err_rf__l, b_rf__l, bad_ratio__l, bindata = stack_spectra(K, sel, noflag=args.noflag)  # , outdata.v_0[sel])
             # save bindata
             outdata.b_rf__lR[k][:, iR] = b_rf__l
             outdata.bad_ratio__lR[k][:, iR] = bad_ratio__l
