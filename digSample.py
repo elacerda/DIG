@@ -8,7 +8,7 @@ from pycasso.util import getGenFracRadius
 from CALIFAUtils.objects import stack_gals
 from CALIFAUtils.scripts import loop_cubes
 from pystarlight.util.constants import L_sun
-from CALIFAUtils.scripts import try_q055_instead_q054, calc_SFR, my_morf, get_morfologia
+from CALIFAUtils.scripts import try_q055_instead_q054, calc_SFR, my_morf, get_morfologia, prop_Y
 
 
 file_QH = '/Users/lacerda/LOCAL/data/BASE.gstf6e.square.QH_BC03'
@@ -21,6 +21,19 @@ elliptical = True
 # kw_cube = dict(config=config, elliptical=elliptical)
 debug = True
 kw_cube = dict(debug=debug, EL=EL, config=config, elliptical=elliptical)
+
+
+def get_zone_mean(prop, zones):
+    N_zone = zones.max() + 1
+    bins = np.arange(N_zone + 1)
+    zones_flat = zones.ravel()
+    if isinstance(prop, np.ma.MaskedArray):
+        prop = prop.filled(0.0)
+    prop_flat = prop.ravel()
+    prop_mean,_ = np.histogram(zones_flat, weights=prop_flat, bins=bins)
+    zone_area,_ = np.histogram(zones_flat, bins=bins)
+    prop_mean /= zone_area
+    return prop_mean
 
 
 def calc_LHa_expected_HIG(K, HIG_ages_interval=None):
@@ -70,7 +83,7 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         ('x_Y__Tz', N_T), ('SFR__Tz', N_T), ('SFRSD__Tz', N_T), ('integrated_x_Y__T', N_T),
     ]
     keys2d_masked = [
-        ('x_Y__Tyx', N_T)
+        ('x_Y__Tyx', N_T), ('SFRSD__Tyx', N_T)
     ]
     keys1d = [
         'Mini__z', 'Mcor__z', 'McorSD__z', 'tau_V__z',
@@ -82,6 +95,7 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         'pixelDistance__yx', 'pixelDistance_HLR__yx',
         'zoneDistance_pc', 'zoneDistance_HLR', 'zoneDistance_pix',
         'lines', 'CI', 'CI_9050', 'Mtot',
+        'qZones__yx',
         'integrated_tau_V', 'integrated_tau_V_neb', 'integrated_etau_V_neb',
         'integrated_W6563', 'integrated_W4861',
         'integrated_f3727', 'integrated_ef3727', 'integrated_SB3727', 'integrated_L3727',
@@ -94,12 +108,14 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         'integrated_f6583', 'integrated_ef6583', 'integrated_SB6583', 'integrated_L6583',
         'integrated_f6717', 'integrated_ef6717', 'integrated_SB6717', 'integrated_L6717',
         'integrated_f6731', 'integrated_ef6731', 'integrated_SB6731', 'integrated_L6731',
+        'integrated_c6563'
     ]
     keys1d_masked = [
         'log_L6563_expected_HIG__z', 'log_L6563_expected_HIG__yx',
         'at_flux__yx', 'at_mass__yx', 'alogZ_flux__yx', 'alogZ_mass__yx', 'fobs_norm__yx',
         'tau_V__yx', 'tau_V_neb__z', 'etau_V_neb__z', 'tau_V_neb__yx',
         'tau_V_neb_zeros__z', 'tau_V_neb_zeros__yx',
+        'qSn__z', 'qSn__yx',
         'W6563__z', 'W6563__yx', 'W4861__z', 'W4861__yx',
         'f3727__z', 'ef3727__z', 'SB3727__z', 'L3727__z',
         'f4363__z', 'ef4363__z', 'SB4363__z', 'L4363__z',
@@ -121,10 +137,37 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         'f6583__yx', 'ef6583__yx', 'SB6583__yx', 'L6583__yx',
         'f6717__yx', 'ef6717__yx', 'SB6717__yx', 'L6717__yx',
         'f6731__yx', 'ef6731__yx', 'SB6731__yx', 'L6731__yx',
+        'c6563__z', 'c6563__yx',
+        # 'eSB3727__z', 'eL3727__z',
+        # 'eSB4363__z', 'eL4363__z',
+        # 'eSB4861__z', 'eL4861__z',
+        # 'eSB4959__z', 'eL4959__z',
+        # 'eSB5007__z', 'eL5007__z',
+        # 'eSB6300__z', 'eL6300__z',
+        # 'eSB6563__z', 'eL6563__z',
+        # 'eSB6583__z', 'eL6583__z',
+        # 'eSB6717__z', 'eL6717__z',
+        # 'eSB6731__z', 'eL6731__z',
+        # 'eSB3727__yx', 'eL3727__yx',
+        # 'eSB4363__yx', 'eL4363__yx',
+        # 'eSB4861__yx', 'eL4861__yx',
+        # 'eSB4959__yx', 'eL4959__yx',
+        # 'eSB5007__yx', 'eL5007__yx',
+        # 'eSB6300__yx', 'eL6300__yx',
+        # 'eSB6563__yx', 'eL6563__yx',
+        # 'eSB6583__yx', 'eL6583__yx',
+        # 'eSB6717__yx', 'eL6717__yx',
+        # 'eSB6731__yx', 'eL6731__yx',
     ]
     ALL = stack_gals(keys1d=keys1d, keys1d_masked=keys1d_masked, keys2d=keys2d, keys2d_masked=keys2d_masked)
+    # for i_gal, califaID in enumerate(g):
+        # from pycasso import fitsQ3DataCube
+        # K = fitsQ3DataCube('/Users/lacerda/califa/legacy/q057/superfits/px1Bgstf6e/%s_synthesis_eBR_px1_q057.d22a512.ps03.k1.mE.CCM.Bgstf6e.fits' % califaID)
+        # # elliptical-geometry
+        # K.setGeometry(*K.getEllipseParams())
     for i_gal, K in loop_cubes(g, **kw_cube):
         califaID = g[i_gal]
+
         if K is None:
             print 'califaID:', califaID, ' trying another qVersion...'
             K = try_q055_instead_q054(califaID, **kw_cube)
@@ -133,22 +176,29 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
                 # print 'califaID:%s missing fits files...' % califaID
                 print 'SUPERFITS: %s : missing fits file.' % califaID
                 continue
+        # EMLDataCube_file = '/Users/lacerda/califa/legacy/q057/EML/px1Bgstf6e/%s_synthesis_eBR_px1_q057.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits' % califaID
         EMLDataCube_file = '/Users/lacerda/RGB/Bgstf6e/v04/%s_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.EML.MC100.fits' % califaID
         if os.path.isfile(EMLDataCube_file):
             K.loadEmLinesDataCube(EMLDataCube_file)
         else:
+            # print 'EML: %s : missing fits file.' % califaID
+            # continue
             EMLDataCube_file = EMLDataCube_file.replace('q054', 'q055')
             if os.path.isfile(EMLDataCube_file):
                 K.loadEmLinesDataCube(EMLDataCube_file)
             else:
                 print 'EML: %s : missing fits file.' % califaID
                 continue
-
         log_LHa_expected_HIG__z, log_LHa_expected_HIG__yx = calc_LHa_expected_HIG(K, [9.99e7, 1.00e20])
         ALL.append1d_masked('log_L6563_expected_HIG__z', log_LHa_expected_HIG__z, np.ma.getmaskarray(log_LHa_expected_HIG__z))
         ALL.append1d_masked('log_L6563_expected_HIG__yx', np.ravel(log_LHa_expected_HIG__yx), np.ravel(np.ma.getmaskarray(log_LHa_expected_HIG__yx)))
         ageBase = K.ageBase
         metBase = K.metBase
+        # ALL.append1d_masked(k='qZones__yx', val=np.ravel(K.qZones), mask_val=K.qMask)
+        ALL.append1d('qZones__yx', np.ravel(K.qZones))
+        ALL.append1d_masked(k='qSn__yx', val=np.ravel(K.qZonesSnOrig), mask_val=np.ravel(np.ma.getmaskarray(K.qZonesSnOrig)))
+        qSn__z = get_zone_mean(K.qSn, K.qZones)
+        ALL.append1d_masked(k='qSn__z', val=qSn__z, mask_val=np.zeros(K.N_zone, dtype='bool'))
         zones_map__z = np.array(list(range(K.N_zone)), dtype='int')
         ALL.append1d('zones_map', zones_map__z)
         califaID__z = np.array([K.califaID for i in range(K.N_zone)], dtype='|S5')
@@ -204,16 +254,20 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d_masked('alogZ_flux__yx', np.ravel(K.alogZ_flux__yx), np.ravel(np.ma.getmaskarray(K.alogZ_flux__yx)))
         ALL.append1d('alogZ_mass__z', K.alogZ_mass__z)
         ALL.append1d_masked('alogZ_mass__yx', np.ravel(K.alogZ_mass__yx), np.ravel(np.ma.getmaskarray(K.alogZ_mass__yx)))
+        ########################
         # tSF things
         for iT, tSF in enumerate(tSF__T):
             x_Y__z, integrated_x_Y = calc_xY(K, tSF)
             x_Y__yx, _ = calc_xY(tY=tSF, ageBase=K.ageBase, popx=K.popx__tZyx)
-            SFR__z, SFRSD__z = calc_SFR(K, tSF)
             ALL.append2d(k='x_Y__Tz', i=iT, val=x_Y__z)
             ALL.append2d_masked(k='x_Y__Tyx', i=iT, val=np.ravel(x_Y__yx), mask_val=np.ravel(np.ma.getmaskarray(x_Y__yx)))
             ALL.append2d(k='integrated_x_Y__T', i=iT, val=integrated_x_Y)
+            SFR__z, SFRSD__z = calc_SFR(K, tSF)
+            SFRSD__yx = prop_Y(K.MiniSD__tZyx, tSF, K.ageBase)/tSF
             ALL.append2d(k='SFR__Tz', i=iT, val=SFR__z)
             ALL.append2d(k='SFRSD__Tz', i=iT, val=SFRSD__z)
+            ALL.append2d_masked(k='SFRSD__Tyx', i=iT, val=np.ravel(SFRSD__yx), mask_val=np.ravel(np.ma.getmaskarray(SFRSD__yx)))
+        ########################
         '''
         CI: Calc. usando a equacao que ta no paper do Conselice
         - http://iopscience.iop.org/article/10.1086/375001/pdf, pagina 7 -
@@ -243,6 +297,7 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d_masked(k='tau_V_neb_zeros__yx', val=np.ravel(tau_V_neb__yx), mask_val=np.ravel(np.ma.getmaskarray(tau_V_neb__yx)))
         ALL.append1d('integrated_tau_V_neb', K.EL.integrated_tau_V_neb)
         ALL.append1d('integrated_etau_V_neb', K.EL.integrated_tau_V_neb_err)
+        ########################
         for l in lines:
             if l not in K.EL.lines:
                 zeros__z = np.ma.masked_all((K.N_zone))
@@ -284,6 +339,7 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
                 ALL.append1d('integrated_ef%s' % l, K.EL.integrated_eflux[i])
                 ALL.append1d('integrated_L%s' % l, integrated_Ll_obs)
                 ALL.append1d('integrated_SB%s' % l, integrated_SBl_obs)
+        ########################
         l = '4861'
         i = K.EL.lines.index(l)
         W4861__z = K.EL.EW[i]
@@ -292,6 +348,7 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d_masked('W%s__z' % l, W4861__z, np.ma.getmaskarray(W4861__z))
         ALL.append1d_masked('W%s__yx' % l, np.ravel(W4861__yx), np.ravel(np.ma.getmaskarray(W4861__yx)))
         ALL.append1d('integrated_W%s' % l, integrated_W4861)
+        ########################
         l = '6563'
         i = K.EL.lines.index(l)
         W6563__z = K.EL.EW[i]
@@ -300,6 +357,12 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d_masked('W%s__z' % l, W6563__z, np.ma.getmaskarray(W6563__z))
         ALL.append1d_masked('W%s__yx' % l, np.ravel(W6563__yx), np.ravel(np.ma.getmaskarray(W6563__yx)))
         ALL.append1d('integrated_W%s' % l, integrated_W6563)
+        c6563__z = K.EL.baseline[i]
+        c6563__yx = K.zoneToYX(c6563__z/K.zoneArea_pix, extensive=False)
+        integrated_c6563 = K.EL.integrated_baseline[i]
+        ALL.append1d_masked('c%s__z' % l, c6563__z, np.ma.getmaskarray(c6563__z))
+        ALL.append1d_masked('c%s__yx' % l, np.ravel(c6563__yx), np.ravel(np.ma.getmaskarray(c6563__yx)))
+        ALL.append1d('integrated_c%s' % l, integrated_c6563)
 
     ALL.stack()
     ALL.ageBase = ageBase
@@ -323,8 +386,11 @@ if __name__ == '__main__':
             continue
         seg_line = read_line.split(':')
         g.append(seg_line[0])
-        mto.append(seg_line[1])
-        mt.append(seg_line[2])
+        # mto.append(seg_line[1])
+        # mt.append(seg_line[2])
+        mto_tmp = get_morfologia(seg_line[0])[0]
+        mto.append(mto_tmp)
+        mt.append(my_morf(mto_tmp))
     f.close()
     try:
         output_filename = sys.argv[2]

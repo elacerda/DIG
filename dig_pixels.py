@@ -27,7 +27,7 @@ mpl.rcParams['font.serif'] = 'Times New Roman'
 dflt_kw_scatter = dict(cmap='viridis_r', marker='o', s=5, edgecolor='none')
 dflt_kw_runstats = dict(smooth=True, sigma=1.2, debug=True, gs_prc=True, poly1d=True)
 dflt_kw_imshow = dict(origin='lower', interpolation='nearest', aspect='equal', cmap='viridis_r')
-img_dir = '%s/CALIFA/images/' % os.environ['HOME']
+img_dir = '%s/califa/images/' % os.environ['HOME']
 
 
 if __name__ == '__main__':
@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
     califaID = sys.argv[1]
 
-    K = read_one_cube(califaID, EL=True, GP=True)
+    K = read_one_cube(califaID, EL=True, GP=True, config=-1)
 
     print '# califaID:', califaID, ' N_zones:', K.N_zone, ' lines:', K.EL.lines
 
@@ -80,10 +80,14 @@ if __name__ == '__main__':
     sel_x_Y_DIG_label = 'DIG regions ($x_Y$ < %.1f)' % DIG_x_Y_threshold
     sel_x_Y_HII_label = 'HII regions ($x_Y$ >= %.1f)' % DIG_x_Y_threshold
 
-    sel_DIG__z = sel_S06_DIG__z
-    sel_HII__z = sel_S06_HII__z
-    sel_DIG_label = sel_S06_DIG_label
-    sel_HII_label = sel_S06_HII_label
+    # sel_DIG__z = sel_S06_DIG__z
+    sel_DIG__z = sel_EWHa_DIG__z
+    # sel_HII__z = sel_S06_HII__z
+    sel_HII__z = sel_EWHa_HII__z
+    # sel_DIG_label = sel_S06_DIG_label
+    sel_DIG_label = sel_EWHa_DIG_label
+    # sel_HII_label = sel_S06_HII_label
+    sel_HII_label = sel_EWHa_HII_label
 
     # califaID_threshold = {
     #     'K0009': -20.5,

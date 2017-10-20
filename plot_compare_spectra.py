@@ -346,7 +346,7 @@ if __name__ == '__main__':
                 fitsB = '/Users/lacerda/dev/astro/dig/runs/stackspectra/stack-fits/%s/%s-RadBinStackedSpectra.fits' % (labelB, g)
                 compare_plot(fitsA, fitsB, labelA, labelB)
         elif sys.argv[1] == 'S':
-            plot_bins_HbO3HaN2
+            # plot_bins_HbO3HaN2
             gals_file = sys.argv[2]
             fits_dir = sys.argv[3]
             clabels = ['hDIG', 'mDIG', 'SFc']
