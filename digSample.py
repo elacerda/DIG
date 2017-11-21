@@ -325,7 +325,7 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
                 integrated_Ll_obs = K.EL._F_to_L(K.EL.integrated_flux[i])/L_sun
                 ALL.append1d_masked('L%s__z' % l, Ll_obs__z, np.ma.getmaskarray(Ll_obs__z))
                 SBl_obs__z = Ll_obs__z/(K.zoneArea_pc2 * 1e-6)
-                integrated_SBl_obs = integrated_Ll_obs/(K.zoneArea_pc2 * 1e-6)
+                integrated_SBl_obs = integrated_Ll_obs/(K.zoneArea_pc2.sum() * 1e-6)
                 ALL.append1d_masked('SB%s__z' % l, SBl_obs__z, np.ma.getmaskarray(SBl_obs__z))
                 fl_obs__yx = K.zoneToYX(fl_obs__z/K.zoneArea_pix, extensive=False)
                 ALL.append1d_masked('f%s__yx' % l, np.ravel(fl_obs__yx), np.ravel(np.ma.getmaskarray(fl_obs__yx)))
