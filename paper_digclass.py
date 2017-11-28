@@ -513,6 +513,39 @@ def gals_sample_choice(args, ALL, sel, gals, sample_choice):
     return new_gals, sel, sample_choice
 
 
+def cumul_line_flux_per_WHa_bins(args, g, line, sel__z, bins):
+    ALL = args.ALL
+    WHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.W6563__z), mask=~sel__z)
+    line_flux = np.ma.masked_array(ALL.get_gal_prop(g, 'f%s__z' % line), mask=~sel__z)
+    xm, ym = ma_mask_xyz(np.ma.log10(WHa), line_flux)
+    cumul_line_flux, line_flux_tot = cumul_bins(ym.compressed(), xm.compressed(), bins)
+    return cumul_line_flux, line_flux_tot
+
+def cumul_flux_fraction_per_class_interp(cumul_line_flux, bins, class_thresholds):
+    f_hDIG = 0.0
+    f_mDIG = 0.0
+    f_SFc = 0.0
+    x = class_thresholds[0]
+    y1 = cumul_line_flux[bins < x][-1]
+    y2 = cumul_line_flux[bins > x][0]
+    x1 = bins[bins < x][-1]
+    x2 = bins[bins > x][0]
+    y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+    # print x, y_th, x1, x2, y1, y2
+    f_hDIG = y_th
+    x = class_thresholds[1]
+    y1 = cumul_line_flux[bins < x][-1]
+    y2 = cumul_line_flux[bins > x][0]
+    x1 = bins[bins < x][-1]
+    x2 = bins[bins > x][0]
+    y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+    f_SFc = 1. - y_th
+    # print x, y_th, x1, x2, y1, y2
+    f_mDIG = 1. - f_SFc - f_hDIG
+    # print g, f_hDIG, f_mDIG, f_SFc
+    return f_hDIG, f_mDIG, f_SFc
+
+
 def create_fHa_cumul_per_WHa_bins(args):
     ALL, sel = args.ALL, args.sel
     sel_gals = sel['gals']
@@ -544,10 +577,11 @@ def create_fHa_cumul_per_WHa_bins(args):
         for i, sel_R in enumerate(sels_R):
             sel_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
             sel_R__z = ALL.get_gal_prop(g, sel_R)
-            WHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.W6563__z), mask=~(sel_sample__z & sel_R__z))
-            fHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.f6563__z), mask=~(sel_sample__z & sel_R__z))
-            xm, ym = ma_mask_xyz(np.ma.log10(WHa), fHa)
-            fHa_cumul, fHa_tot = cumul_bins(ym.compressed(), xm.compressed(), logWHa_bins)  # , fHa_tot)
+            fHa_cumul, fHa_tot = cumul_line_flux_per_WHa_bins(args, g, 6563, (sel_sample__z & sel_R__z), logWHa_bins)
+            # WHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.W6563__z), mask=~(sel_sample__z & sel_R__z))
+            # fHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.f6563__z), mask=~(sel_sample__z & sel_R__z))
+            # xm, ym = ma_mask_xyz(np.ma.log10(WHa), fHa)
+            # fHa_cumul, fHa_tot = cumul_bins(ym.compressed(), xm.compressed(), logWHa_bins)  # , fHa_tot)
             aux_list_fHa.append(fHa_cumul)
         cumulfHa__g_R[g] = aux_list_fHa
     ALL.cumulfHa__gRw = cumulfHa__g_R
@@ -565,26 +599,36 @@ def create_fHa_cumul_per_WHa_bins(args):
         for g in ALL.califaID__g[v]:
             if not g in gals:
                 continue
-            x = np.log10(args.class_thresholds[0])
-            y1 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w < x][-1]
-            y2 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w > x][0]
-            x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
-            x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
-            y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
-            print x, y_th, x1, x2, y1, y2
-            f_hDIG__g[g] = y_th
-            x = np.log10(args.class_thresholds[1])
-            y1 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w < x][-1]
-            y2 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w > x][0]
-            x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
-            x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
-            y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
-            f_SFc__g[g] = 1. - y_th
-            print x, y_th, x1, x2, y1, y2
-            f_mDIG__g[g] = 1. - f_SFc__g[g] - f_hDIG__g[g]
+
+            tmp_f_hDIG, tmp_f_mDIG, tmp_f_SFc =  cumul_flux_fraction_per_class_interp(ALL.cumulfHa__gRw[g][0],
+                                                                                      ALL.logWHa_bins__w,
+                                                                                      np.log10(args.class_thresholds))
+            f_hDIG__g[g] = tmp_f_hDIG
+            f_mDIG__g[g] = tmp_f_mDIG
+            f_SFc__g[g] = tmp_f_SFc
             f_hDIG.append(f_hDIG__g[g])
             f_mDIG.append(f_mDIG__g[g])
             f_SFc.append(f_SFc__g[g])
+            # x = np.log10(args.class_thresholds[0])
+            # y1 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w < x][-1]
+            # y2 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w > x][0]
+            # x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+            # x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+            # y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+            # print x, y_th, x1, x2, y1, y2
+            # f_hDIG__g[g] = y_th
+            # x = np.log10(args.class_thresholds[1])
+            # y1 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w < x][-1]
+            # y2 = ALL.cumulfHa__gRw[g][0][ALL.logWHa_bins__w > x][0]
+            # x1 = ALL.logWHa_bins__w[ALL.logWHa_bins__w < x][-1]
+            # x2 = ALL.logWHa_bins__w[ALL.logWHa_bins__w > x][0]
+            # y_th = (x2 * y1 - x1 * y2 - x * (y1 - y2)) / (x2 - x1)
+            # f_SFc__g[g] = 1. - y_th
+            # print x, y_th, x1, x2, y1, y2
+            # f_mDIG__g[g] = 1. - f_SFc__g[g] - f_hDIG__g[g]
+            # f_hDIG.append(f_hDIG__g[g])
+            # f_mDIG.append(f_mDIG__g[g])
+            # f_SFc.append(f_SFc__g[g])
             # print g, f_hDIG__g[g], f_mDIG__g[g], f_SFc__g[g]
         # stats per mtype:
         if len(f_hDIG):
@@ -2672,6 +2716,85 @@ def fig_cumul_fHaWHa_per_morftype(args, gals):
     # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
     f.set_tight_layout(True)
     f.savefig('fig_cumul_fHaWHa_per_morftype.pdf', dpi=_dpi_choice, transparent=_transp_choice)
+    plt.close(f)
+
+    print '######################################################'
+    print '# END ################################################'
+    print '######################################################'
+
+
+def fig_cumul_line_flux_WHa_per_morftype(args, gals, line, line_label):
+    print '###################################'
+    print '# fig_cumul_f%sWHa_per_morftype #' % line
+    print '###################################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+    sel_sample__gyx = sel['gals_sample__yx']
+
+    N_zone = sel_sample__gz.astype('int').sum()
+    colortipo = ['brown', 'red', 'orange', 'green', '#00D0C9', 'blue']
+    colortipo_darker = ['maroon', 'darkred', 'orangered', 'darkgreen', '#11C0B3', 'darkblue']
+    colortipo_lighter = ['rosybrown', 'salmon', 'navajowhite', 'lightgreen', '#00D0B9', 'lightblue']
+    mtype_labels = ['E', 'S0+S0a', 'Sa+Sab', 'Sb', 'Sbc', '>= Sc']
+
+    # f = plt.figure(figsize=(8, 7))
+    f = plot_setup(width=latex_column_width, aspect=1)  #1./golden_mean)
+    # _, ind = np.unique(ALL.califaID__z, return_index=True)
+    ax = f.gca()
+
+    # sels_R = [sel['gals_sample__z'], sel['gals_sample_Rin__z'], sel['gals_sample_Rmid__z'], sel['gals_sample_Rout__z']]
+    logWHa_bins = ALL.logWHa_bins__w
+    cumul_line_flux__gw = {}
+    for g in gals:
+        sel_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
+        cumul_line_flux__gw[g] = (cumul_line_flux_per_WHa_bins(args, g, line, sel_sample__z, logWHa_bins)[0])
+
+    for i, mt_label in enumerate(mtype_labels):
+        aux = []
+        print mt_label
+        for g in ALL.califaID__g[sel['gals__mt'][mt_label]]:
+            if not g in args.gals:
+                continue
+            aux.append(cumul_line_flux__gw[g])
+        if len(aux) > 0:
+            y__gb = np.array(aux)
+            x = np.hstack([logWHa_bins for g in ALL.califaID__g[sel['gals__mt'][mt_label]]])
+            # ax.plot(x, np.hstack(y__gb), ls='', marker='o', c=colortipo_lighter[i])
+            ax.plot(logWHa_bins, np.median(y__gb, axis=0), ls='-', c=colortipo[i], lw=2)
+            # ax.plot(logWHa_bins, np.mean(y__gb, axis=0), ls='--', c=colortipo[i], lw=3)
+            # prc = np.percentile(y__gb, q=[16, 84], axis=0)
+            # ax.plot(logWHa_bins, prc[1], ls='--', c=colortipo[i], alpha=0.5)
+            # ax.plot(logWHa_bins, prc[0], ls='--', c=colortipo[i], alpha=0.5)
+            y_pos = 0.98 - (i*0.1)
+            if (i == len(mtype_labels) - 1):
+                plot_text_ax(ax, r'$\geq$ Sc', 0.01, y_pos, 8, 'top', 'left', c=colortipo[i])
+            else:
+                plot_text_ax(ax, mt_label, 0.01, y_pos, 8, 'top', 'left', c=colortipo[i])
+    for th in args.class_thresholds:
+        ax.axvline(x=np.log10(th), c='k', ls='--')
+    ax.xaxis.set_major_locator(MultipleLocator(0.5))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.set_major_locator(MultipleLocator(0.2))
+    ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.grid(which='both')
+    ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    # ax.set_title(mt_label, color=colortipo[i])
+    ax.set_xlim(-1, 2.5)
+    ax.set_ylim(0, 1)
+    # f.subplots_adjust(left=0.06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+    ax.set_xlabel(r'$\log$ W${H\alpha}$ [$\AA$]')
+    ax.set_ylabel(r'%s flux fraction' % line_label)
+    # f.subplots_adjust(left=0.open06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
+    # f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
+    f.set_tight_layout(True)
+    f.savefig('fig_cumul_f%sWHa_per_morftype.pdf' % line, dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
 
     print '######################################################'
@@ -6513,6 +6636,11 @@ if __name__ == '__main__':
     # fig_WHa_histograms_per_morftype_and_radius_cumulFHamed_refreport(args, args.gals)
     # paper 1
     # min_popx = 0.05
+
+    fig_cumul_line_flux_WHa_per_morftype(args, gals, 6563, r'H$\alpha$')
+    fig_cumul_line_flux_WHa_per_morftype(args, gals, 4861, r'H$\beta$')
+    fig_cumul_line_flux_WHa_per_morftype(args, gals, 5007, r'[OIII]')
+    fig_cumul_line_flux_WHa_per_morftype(args, gals, 6583, r'[NII]')
 
     # sel_popx_32 = np.greater_equal(ALL.x_Y__Tz[0], min_popx)
     # sel_popx_32__yx = np.greater_equal(ALL.x_Y__Tyx[0], min_popx)
