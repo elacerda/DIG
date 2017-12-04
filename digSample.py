@@ -97,6 +97,8 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         'lines', 'CI', 'CI_9050', 'Mtot',
         'qZones__yx',
         'integrated_tau_V', 'integrated_tau_V_neb', 'integrated_etau_V_neb',
+        'integrated_alogZ_mass', 'integrated_at_flux', 'integrated_Dn4000',
+        'integrated_vd', 'integrated_v0',
     ]
     keys1d_masked = [
         'log_L6563_expected_HIG__z', 'log_L6563_expected_HIG__yx',
@@ -141,7 +143,7 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         if os.path.isfile(EMLDataCube_file):
             K.loadEmLinesDataCube(EMLDataCube_file)
         else:
-            # print 'EML: %s : missing fits file.' % califaID
+            print 'EML:', califaID, ' trying another qVersion...'
             # continue
             EMLDataCube_file = EMLDataCube_file.replace('q054', 'q055')
             if os.path.isfile(EMLDataCube_file):
@@ -214,6 +216,11 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d_masked('alogZ_flux__yx', np.ravel(K.alogZ_flux__yx), np.ravel(np.ma.getmaskarray(K.alogZ_flux__yx)))
         ALL.append1d('alogZ_mass__z', K.alogZ_mass__z)
         ALL.append1d_masked('alogZ_mass__yx', np.ravel(K.alogZ_mass__yx), np.ravel(np.ma.getmaskarray(K.alogZ_mass__yx)))
+        ALL.append1d('integrated_alogZ_mass', K.integrated_alogZ_mass)
+        ALL.append1d('integrated_at_flux', K.integrated_at_flux)
+        ALL.append1d('integrated_Dn4000', K.integrated_Dn4000)
+        ALL.append1d('integrated_vd', K.integrated_keywords['V_D'])
+        ALL.append1d('integrated_v0', K.integrated_keywords['V_0'])
         ########################
         # tSF things
         for iT, tSF in enumerate(tSF__T):
