@@ -2674,7 +2674,7 @@ def fig_WHaSBHa_profile(args, gals=None, multi=False, size=None, suffix=''):
         y__z = np.ma.log10(mW6563__z)
         y__yx = np.ma.log10(mW6563__yx)
         y__r, npts = radialProfile(y__yx, args.R_bin__r, x0, y0, pa, ba, HLR_pix, None, 'median', True)
-        ax1.scatter(x__z, y__z, c=10**y__z, cmap='Spectral', s=1, vmin=args.class_thresholds[0], vmax=args.class_thresholds[1], **dflt_kw_scatter)
+        ax1.scatter(x__z, y__z, c=10**y__z, cmap='Spectral', vmin=args.class_thresholds[0], vmax=args.class_thresholds[1], **dflt_kw_scatter)
         # ax1.set_xlabel(r'R [HLR]', fontsize=fs+4)
         ax1.set_ylabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
         ax1.grid()
@@ -6622,219 +6622,184 @@ def fig_alogZmass_histograms_per_morftype_and_radius(args, gals, gals_sel=None, 
     return ALL
 
 
-def fig_maps_Hafluxsum_fDIG(args, gals=None, multi=False, suffix='', drawHLR=True, Hafluxsum=False, size=None):
+def fig_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563, line_label=r'$H\alpha$'):
+    print '############################'
+    print '# fig_integrated_fractions #'
+    print '############################'
+
     ALL, sel = args.ALL, args.sel
 
     if gals is None:
         _, ind = np.unique(ALL.califaID__z, return_index=True)
         gals = ALL.califaID__z[sorted(ind)]
+    if gals_sel is None:
+        gals_sel = np.ones_like(gals, dtype='bool')
+    sample_gals = sel['gals'] & gals_sel
 
-    sel_sample__gz = sel['gals_sample__z']
-    sel_sample__gyx = sel['gals_sample__yx']
+    if data_sel is None:
+        data_sel = np.ones_like(sel['gals_sample__z'], dtype='bool')
+    sel_sample__gz = sel['gals_sample__z'] & data_sel
 
-    cmap = cmap_discrete(colors=args.class_colors)
-    row = -1
-    N_cols = 4
-    N_rows = 1
-    if Hafluxsum:
-        suffix += '_Hafluxsum'
-        N_cols = 5
-    if multi:
-        N_rows = len(gals)
-        # f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(N_cols * 4.6, N_rows * 4.3))
-        if size is None:
-            size = (latex_text_width, 1.2)
-        # plt.rcParams.update({'font.family': 'Times New Roman', 'lines.linewidth': 0.5})
-        # f, axArr = plt.subplots(N_rows, N_cols, figsize=size)
-        f = plot_setup(width=size[0], aspect=size[1])
-        gs = gridspec.GridSpec(N_rows, N_cols)
-        row = 0
-    elif isinstance(gals, str):
-        gals = [ gals ]
+    int_props_keys = {
+        'mt' : dict(x=ALL.mt, label=r'morph.', lim=None),
+        'Mtot' : dict(x=np.ma.log10(ALL.Mtot), label=r'$\log\ {\rm M}_\star^{\rm gal}$ [${\rm M}_\odot$]', lim=None),
+        'ba' : dict(x=ALL.ba, label=r'b/a', lim=None),
+        'galDistance_Mpc' : dict(x=ALL.galDistance_Mpc, label='distance [Mpc]', lim=None),
+        'CI_9050' : dict(x=ALL.CI_9050, label=r'${\rm CI}_{50}^{90}$', lim=None),
+        'HLR_pc' : dict(x=ALL.HLR_pc/1e3, label='HLR [kpc]', lim=None),
+        'integrated_W6563' : dict(x=np.ma.log10(ALL.integrated_W6563), label=r'$\log\ W_{H\alpha}$ [$\AA$]', lim=None),
+        'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/$H\alpha$', lim=[-1.5, 0.7]),
+        'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/$H\beta$', lim=[-1, 1]),
+        'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{H\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
+        'integrated_at_flux' : dict(x=ALL.integrated_at_flux, label=r'$\langle \log\ t_{\star} \rangle_L$ [yr]', lim=None),
+        'integrated_alogZ_mass' : dict(x=ALL.integrated_alogZ_mass, label=r'$\langle \log\ Z_{\star} \rangle_L$ [${\rm Z}_\odot$]', lim=None),
+        'integrated_Dn4000' : dict(x=ALL.integrated_Dn4000, label=r'${\rm D}_n 4000$', lim=[1,2]),
+        'integrated_vd' : dict(x=ALL.integrated_vd, label=r'$v_d$ [km/s]', lim=None),
+    }
+
+    cumul_line_flux__gw = {}
+    f_SFc__g = {}
+    f_mDIG__g = {}
+    f_hDIG__g = {}
+    for g in gals:
+        gal_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
+        cumul_line_flux__gw[g], _ = cumul_line_flux_per_WHa_bins(args, g, line, gal_sample__z, ALL.logWHa_bins__w)
+        f_hDIG__g[g], f_mDIG__g[g], f_SFc__g[g] =  cumul_flux_fraction_per_class_interp(cumul_line_flux__gw[g],
+                                                                                        ALL.logWHa_bins__w,
+                                                                                        np.log10(args.class_thresholds))
+    for k, v in int_props_keys.iteritems():
+        f = plot_setup(width=6, aspect=1)
+        gs = gridspec.GridSpec(2, 2)
+        axhDIG = plt.subplot(gs[0])
+        axmDIG = plt.subplot(gs[1])
+        axDIG = plt.subplot(gs[2])
+        axSFc = plt.subplot(gs[3])
+        f.suptitle(r'N_gals: %d - $\lambda$ = %s' % (len(gals), line))
+        x = np.array([ALL.get_gal_prop_unique(g, v['x']) for g in gals])
+        yhDIG = np.array([f_hDIG__g[g] for g in gals])
+        ymDIG = np.array([f_mDIG__g[g] for g in gals])
+        yDIG = yhDIG + ymDIG
+        ySFc = np.array([f_SFc__g[g] for g in gals])
+        axhDIG.scatter(x, yhDIG, s=10, c=args.class_colors[0], **dflt_kw_scatter)
+        axhDIG.set_ylabel(r'$f_{hDIG}$')
+        axmDIG.scatter(x, ymDIG, s=10, c=args.class_colors[1], **dflt_kw_scatter)
+        axmDIG.set_ylabel(r'$f_{mDIG}$')
+        axDIG.scatter(x, yDIG, s=10, c='orange', **dflt_kw_scatter)
+        axDIG.set_ylabel(r'$f_{DIG}$')
+        axSFc.scatter(x, ySFc, s=10, c=args.class_colors[2], **dflt_kw_scatter)
+        axSFc.set_ylabel(r'$f_{SFc}$')
+        for ax, y in zip([axhDIG, axmDIG, axDIG, axSFc], [yhDIG, ymDIG, yDIG, ySFc]):
+            ax.yaxis.grid(which='both')
+            ax.set_ylim(0, 1)
+            if v['lim'] is not None:
+                ax.set_xlim(v['lim'])
+                xbins = np.linspace(v['lim'][0], v['lim'][1], 20)
+            else:
+                xbins = np.linspace(x.min(), x.max(), 20)
+            xm, ym = ma_mask_xyz(x, y)
+            ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+            ax.set_xlabel(v['label'])
+            yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), xbins)
+            yMedian = prc[2]
+            y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
+            ax.plot(bin_center, yMedian, 'k-', lw=1)
+            for y_prc in y_12sigma:
+                ax.plot(bin_center, y_prc, 'k--', lw=1)
+        f.tight_layout(rect=[0, 0.01, 1, 0.95])
+        # gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
+        f.savefig('fig_intfrac_%s_f%s.%s' % (k, line, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
+        plt.close(f)
+    print '############################'
+    print '# END ######################'
+    print '############################'
+    return ALL
+
+
+def compare_integrated_WHa(args, gals, gals_sel=None, data_sel=None):
+    print '##########################'
+    print '# compare_integrated_WHa #'
+    print '##########################'
+
+    ALL, sel = args.ALL, args.sel
+
     if gals is None:
-        gals = args.gals
-    for califaID in gals:
-        if califaID not in ALL.califaID__z:
-            print 'Fig_1: %s not in sample pickle' % califaID
-            continue
-        N_x = ALL.get_gal_prop_unique(califaID, ALL.N_x)
-        N_y = ALL.get_gal_prop_unique(califaID, ALL.N_y)
-        N_pixel = N_x * N_y
-        N_zone = ALL.get_gal_prop_unique(califaID, ALL.N_zone)
-        gal_sample__yx = ALL.get_gal_prop(califaID, sel_sample__gyx).reshape(N_y, N_x)
-        gal_sample__z = ALL.get_gal_prop(califaID, sel_sample__gz)
-        HLR_pix = ALL.get_gal_prop_unique(califaID, ALL.HLR_pix)
-        mto = ALL.get_gal_prop_unique(califaID, ALL.mto)
-        pa = ALL.get_gal_prop_unique(califaID, ALL.pa)
-        ba = ALL.get_gal_prop_unique(califaID, ALL.ba)
-        ml_ba = ALL.get_gal_prop_unique(califaID, ALL.ml_ba)
-        x0 = ALL.get_gal_prop_unique(califaID, ALL.x0)
-        y0 = ALL.get_gal_prop_unique(califaID, ALL.y0)
-        f6563__z = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.f6563__z), mask=~gal_sample__z)
-        f4861__z = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.f4861__z), mask=~gal_sample__z)
-        W6563__z = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.W6563__z), mask=~gal_sample__z)
-        f6563__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.f6563__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
-        SB6563__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.SB6563__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
-        W6563__yx = np.ma.masked_array(ALL.get_gal_prop(califaID, ALL.W6563__yx).reshape(N_y, N_x), mask=~gal_sample__yx)
-        if multi:
-            if Hafluxsum:
-                ax1 = plt.subplot(gs[row, 0])
-                ax2 = plt.subplot(gs[row, 1])
-                ax3 = plt.subplot(gs[row, 2])
-                ax4 = plt.subplot(gs[row, 3])
-                ax5 = plt.subplot(gs[row, 4])
-                # (ax1, ax2, ax3, ax4, ax5) = axArr[row]
-            else:
-                ax1 = plt.subplot(gs[row, 0])
-                ax2 = plt.subplot(gs[row, 1])
-                ax3 = plt.subplot(gs[row, 2])
-                ax4 = plt.subplot(gs[row, 3])
-                # (ax1, ax2, ax3, ax4) = axArr[row]
-        else:
-            N_rows = 1
-            # plt.rcParams.update({'font.family': 'Times New Roman', 'lines.linewidth': 0.5})
-            # f, axArr = plt.subplots(N_rows, N_cols, dpi=200, figsize=(18, 4))
-            f = plot_setup(width=latex_text_width, aspect=1./golden_mean)
-            gs = gridspec.GridSpec(N_rows, N_cols)
-            if Hafluxsum:
-                ax1 = plt.subplot(gs[0])
-                ax2 = plt.subplot(gs[1])
-                ax3 = plt.subplot(gs[2])
-                ax4 = plt.subplot(gs[3])
-                ax5 = plt.subplot(gs[4])
-                # ax1, ax2, ax3, ax4, ax5 = axArr
-            else:
-                ax1 = plt.subplot(gs[0])
-                ax2 = plt.subplot(gs[1])
-                ax3 = plt.subplot(gs[2])
-                ax4 = plt.subplot(gs[3])
-                # ax1, ax2, ax3, ax4 = axArr
-            nedname = get_NEDName_by_CALIFAID(califaID)
-            if nedname:
-                nedname = nedname[0]
-            else:
-                fname = '/Users/lacerda/califa/legacy/q054/superfits/Bgstf6e/%s_synthesis_eBR_v20_q054.d22a512.ps03.k1.mE.CCM.Bgstf6e.fits' % califaID
-                if os.path.isfile(fname):
-                    nedname = fitsQ3DataCube(fname).galaxyName
-                else:
-                    fname = '/Users/lacerda/califa/legacy/q054/superfits/Bgstf6e/%s_synthesis_eBR_v20_q055.d22a512.ps03.k1.mE.CCM.Bgstf6e.fits' % califaID
-                    if os.path.isfile(fname):
-                        nedname = fitsQ3DataCube(fname).galaxyName
-                    else:
-                        nedname = 'not found'
-            suptitle = '%s - %s ba:%.2f (ml_ba:%.2f) (%s): %d pixels (%d zones -' % (califaID, mto, ba, ml_ba, nedname, N_pixel, N_zone)
-            map__yx = create_segmented_map_spaxels(args, ALL, califaID, sel['WHa']['yx'], sel_sample__gyx)
-            tot_class = SB6563__yx.sum()
-            frac_class = {}
-            for i, c in enumerate(args.class_names):
-                aux_sel = map__yx == i+1
-                if aux_sel.sum() > 0:
-                    N = SB6563__yx[aux_sel].sum()
-                else:
-                    N = 0
-                frac_class[c] = 100. * N/tot_class
-                # print c, frac_class[c]
-                suptitle += ' %s: %.1f' % (c, frac_class[c])
-            suptitle += ')'
-            f.suptitle(suptitle)
-        ax1.set_ylabel('%s' % mto, fontsize=10)
-        # AXIS 1
-        galimg = plt.imread(P.get_image_file(califaID))[::-1, :, :]
-        print galimg.shape[0:-1]
-        plt.setp(ax1.get_xticklabels(), visible=False)
-        plt.setp(ax1.get_yticklabels(), visible=False)
-        ax1.imshow(galimg, origin='lower', aspect='equal')
-        # txt = 'CALIFA %s' % califaID[1:]
-        txt = get_NEDName_by_CALIFAID(califaID)[0]
-        plot_text_ax(ax1, txt, 0.02, 0.98, 10, 'top', 'left', color='w')
-        ax1.xaxis.set_major_locator(MaxNLocator(4))
-        ax1.xaxis.set_minor_locator(MaxNLocator(8))
-        ax1.yaxis.set_major_locator(MaxNLocator(4))
-        ax1.yaxis.set_minor_locator(MaxNLocator(8))
-        ax1.tick_params(axis='both', which='both', direction='in', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-        # AXIS 2
-        x = np.ma.log10(SB6563__yx)
-        im = ax2.imshow(x, vmin=logSBHa_range[0], vmax=6.5, cmap=plt.cm.copper_r, **dflt_kw_imshow)
-        the_divider = make_axes_locatable(ax2)
-        color_axis = the_divider.append_axes('right', size='5%', pad=0)
-        cb = plt.colorbar(im, cax=color_axis)
-        ax2.xaxis.set_major_locator(MaxNLocator(4))
-        ax2.xaxis.set_minor_locator(MaxNLocator(8))
-        ax2.yaxis.set_major_locator(MaxNLocator(4))
-        ax2.yaxis.set_minor_locator(MaxNLocator(8))
-        ax2.tick_params(axis='both', which='both', direction='in', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-        # cb.set_label(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
-        # AXIS 3
-        x = np.ma.log10(W6563__yx)
-        im = ax3.imshow(x, vmin=logWHa_range[0], vmax=logWHa_range[1], cmap=plt.cm.copper_r, **dflt_kw_imshow)
-        the_divider = make_axes_locatable(ax3)
-        color_axis = the_divider.append_axes('right', size='5%', pad=0)
-        cb = plt.colorbar(im, cax=color_axis)
-        ax3.xaxis.set_major_locator(MaxNLocator(4))
-        ax3.xaxis.set_minor_locator(MaxNLocator(8))
-        ax3.yaxis.set_major_locator(MaxNLocator(4))
-        ax3.yaxis.set_minor_locator(MaxNLocator(8))
-        ax3.tick_params(axis='both', which='both', direction='in', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-        # cb.set_label(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
-        # AXIS 4
-        x = W6563__yx
-        im = ax4.imshow(x, vmin=3, vmax=args.class_thresholds[-1], cmap='Spectral', **dflt_kw_imshow)
-        the_divider = make_axes_locatable(ax4)
-        color_axis = the_divider.append_axes('right', size='5%', pad=0)
-        cb = plt.colorbar(im, cax=color_axis)
-        ax4.xaxis.set_major_locator(MaxNLocator(4))
-        ax4.xaxis.set_minor_locator(MaxNLocator(8))
-        ax4.yaxis.set_major_locator(MaxNLocator(4))
-        ax4.yaxis.set_minor_locator(MaxNLocator(8))
-        ax4.tick_params(axis='both', which='both', direction='in', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-        # cb.set_label(r'W${}_{H\alpha}$ [$\AA$]')
-        if Hafluxsum:
-            # iS = np.argsort(W6563__z)
-            # xm, ym = ma_mask_xyz(W6563__z, f6563__z, mask=~gal_sample__z)
-            # ytot = ym.sum()
-            # ymcumsum = ym[iS].compressed().cumsum()
-            ax5.plot(ALL.logWHa_bins__w, ALL.cumulfHa__gRw[califaID][0])
-            # ax5.plot(np.ma.log10(xm[iS].compressed()), ymcumsum/ytot)
-            ax5.set_ylim([0, 1])
-            ax5.set_xlim([-0.5, 2])
-            ax5.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
-            ax5.set_ylabel(r'frac. F(H$\alpha$)')
-            for th in args.class_thresholds:
-                ax5.axvline(x=np.log10(th), c='k', ls='--')
-            ax5.xaxis.set_major_locator(MultipleLocator(0.5))
-            ax5.xaxis.set_minor_locator(MultipleLocator(0.1))
-            ax5.yaxis.set_major_locator(MultipleLocator(0.2))
-            ax5.yaxis.set_minor_locator(MultipleLocator(0.1))
-            ax5.yaxis.grid(which='both')
-            ax5.set_title('Cumulative Profiles')
-            ax5.xaxis.set_major_locator(MaxNLocator(4))
-            ax5.xaxis.set_minor_locator(MaxNLocator(8))
-            ax5.yaxis.set_major_locator(MaxNLocator(4))
-            ax5.yaxis.set_minor_locator(MaxNLocator(8))
-            ax5.tick_params(axis='both', which='both', direction='in', bottom='on', top='on', left='on', right='on', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-        if drawHLR:
-            DrawHLRCircleInSDSSImage(ax1, HLR_pix, pa, ba, lw=0.5, bins=[0.5, 1, 1.5, 2, 2.5, 3])  #, center_coord=(y0, x0))
-            for ax in [ax2, ax3, ax4]:
-                DrawHLRCircle(ax, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=0.5, bins=[0.5, 1, 1.5, 2, 2.5, 3])
-        if row <= 0:
-            ax1.set_title('SDSS stamp', fontsize=10)
-            # ax2.set_title(r'$\log$ W${}_{H\alpha}$ map')
-            # ax3.set_title(r'$\log\ \Sigma_{H\alpha}$ map')
-            ax2.set_title(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]', fontsize=10)
-            ax3.set_title(r'$\log$ W${}_{H\alpha}$ [$\AA$]', fontsize=10)
-            ax4.set_title(r'W${}_{H\alpha}$ [$\AA$]', fontsize=10)
-            # ax4.set_title(r'classification map', fontsize=18)
-        if multi:
-            row += 1
-        else:
-            f.tight_layout(rect=[0, 0.01, 1, 0.98])
-            # f.subplots_adjust(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.08, wspace=0.3)
-            f.savefig('fig_maps-%s.%s' % (califaID, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
-            plt.close(f)
-    if multi:
-        # f.subplots_adjust(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.08, wspace=0.35)
-        gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
-        f.savefig('fig_maps_class%s.%s' % (suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+    if gals_sel is None:
+        gals_sel = np.ones_like(gals, dtype='bool')
+    sample_gals = sel['gals'] & gals_sel
+
+    if data_sel is None:
+        data_sel = np.ones_like(sel['gals_sample__z'], dtype='bool')
+    sel_sample__gz = sel['gals_sample__z'] & data_sel
+    resolved_WHa__g = np.zeros_like(ALL.integrated_W6563)
+    for i, g in enumerate(gals):
+        gal_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
+        WHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.W6563__z), mask=~gal_sample__z)
+        fHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.f6563__z), mask=~gal_sample__z)
+        cHa = np.ma.masked_array(ALL.get_gal_prop(g, ALL.c6563__z), mask=~gal_sample__z)
+        resolved_WHa__g[i] = fHa.sum()/cHa.sum()
+        print g, ':'
+        print '\tint_WHa = ', ALL.get_gal_prop_unique(g, ALL.integrated_W6563)
+        print '\tsum fHa/sum cHa = ', fHa.sum()/cHa.sum()
+        print '\tmean WHa = ', WHa.mean()
+
+    f = plot_setup(width=latex_column_width, aspect=1.)  #1./golden_mean)
+    x = np.array([ALL.get_gal_prop_unique(g, ALL.integrated_W6563) for g in gals])
+    y = resolved_WHa__g
+    ax = f.gca()
+    ax.set_xlabel(r'$W_{H\alpha}$ (integrated) [$\AA$]')
+    ax.set_ylabel(r'$W_{H\alpha}$ (resolved) [$\AA$]')
+    ax.scatter(x, y, s=5, c='b', **dflt_kw_scatter)
+    ax.plot(ax.get_xlim(), ax.get_xlim(), ls='--', c='k')
+    f.tight_layout(rect=[0, 0.01, 1, 0.98])
+    # gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
+    f.savefig('fig_WHacompare.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
+    plt.close(f)
+
+
+def compare_integrated_WHb(args, gals, gals_sel=None, data_sel=None):
+    print '##########################'
+    print '# compare_integrated_WHb #'
+    print '##########################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+    if gals_sel is None:
+        gals_sel = np.ones_like(gals, dtype='bool')
+    sample_gals = sel['gals'] & gals_sel
+
+    if data_sel is None:
+        data_sel = np.ones_like(sel['gals_sample__z'], dtype='bool')
+
+    sel_sample__gz = sel['gals_sample__z'] & data_sel
+    resolved_WHb__g = np.zeros_like(ALL.integrated_W4861)
+    for i, g in enumerate(gals):
+        gal_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
+        WHb = np.ma.masked_array(ALL.get_gal_prop(g, ALL.W4861__z), mask=~gal_sample__z)
+        fHb = np.ma.masked_array(ALL.get_gal_prop(g, ALL.f4861__z), mask=~gal_sample__z)
+        cHb = np.ma.masked_array(ALL.get_gal_prop(g, ALL.c4861__z), mask=~gal_sample__z)
+        resolved_WHb__g[i] = fHb.sum()/cHb.sum()
+        print g, ':'
+        print '\tint_WHb = ', ALL.get_gal_prop_unique(g, ALL.integrated_W4861)
+        print '\tsum fHb/sum cHb = ', fHb.sum()/cHb.sum()
+        print '\tmean WHb = ', WHb.mean()
+
+    f = plot_setup(width=latex_column_width, aspect=1.)  #1./golden_mean)
+    x = np.array([ALL.get_gal_prop_unique(g, ALL.integrated_W4861) for g in gals])
+    y = resolved_WHb__g
+    ax = f.gca()
+    ax.set_xlabel(r'$W_{H\beta}$ (integrated) [$\AA$]')
+    ax.set_ylabel(r'$W_{H\beta}$ (resolved) [$\AA$]')
+    ax.scatter(x, y, s=5, c='b', **dflt_kw_scatter)
+    ax.plot(ax.get_xlim(), ax.get_xlim(), ls='--', c='k')
+    f.tight_layout(rect=[0, 0.01, 1, 0.98])
+    # gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
+    f.savefig('fig_WHbcompare.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
+    plt.close(f)
 
 
 if __name__ == '__main__':
@@ -6946,18 +6911,32 @@ if __name__ == '__main__':
     # paper 1
     # min_popx = 0.05
 
-    fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_6563', drawHLR=True, cumul_line_flux=True, line=6563, line_name=r'{\rm H}\alpha')
-    fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_5007', drawHLR=True, cumul_line_flux=True, line=5007, line_name=r'[OIII]')
-    fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_4861', drawHLR=True, cumul_line_flux=True, line=4861, line_name=r'{\rm H}\beta')
-    fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_6583', drawHLR=True, cumul_line_flux=True, line=6583, line_name=r'[NII]')
-    fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_3727', drawHLR=True, cumul_line_flux=True, line=3727, line_name=r'[OII]')
-    fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_6717', drawHLR=True, cumul_line_flux=True, line=6717, line_name=r'6717')
-    fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_6731', drawHLR=True, cumul_line_flux=True, line=6731, line_name=r'6731')
+    # fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_6563', drawHLR=True, cumul_line_flux=True, line=6563, line_name=r'{\rm H}\alpha')
+    # fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_5007', drawHLR=True, cumul_line_flux=True, line=5007, line_name=r'[OIII]')
+    # fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_4861', drawHLR=True, cumul_line_flux=True, line=4861, line_name=r'{\rm H}\beta')
+    # fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_6583', drawHLR=True, cumul_line_flux=True, line=6583, line_name=r'[NII]')
+    # fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_3727', drawHLR=True, cumul_line_flux=True, line=3727, line_name=r'[OII]')
+    # fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_6717', drawHLR=True, cumul_line_flux=True, line=6717, line_name=r'6717')
+    # fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_6731', drawHLR=True, cumul_line_flux=True, line=6731, line_name=r'6731')
+
+    # compare_integrated_WHa(args, gals)
+    compare_integrated_WHb(args, gals)
+
+    main_lines = ['3727', '4861', '5007', '6563', '6583', '6717', '6731']
+    lines_labels = [r'[OII]', r'{\rm H}\beta', r'[OIII]', r'{\rm H}\alpha', r'[NII]', r'6717', r'6731']
+
+    for l, l_label in zip(main_lines, lines_labels):
+        f__gz = getattr(ALL, 'f%s__z' % l)
+        ef__gz = getattr(ALL, 'ef%s__z' % l)
+        SN__gz = f__gz/ef__gz
+        data_sel = ((SN__gz).filled(0.) >= 1)
+        fig_integrated_fractions(args, gals, data_sel=data_sel, line=l, line_label=l_label)
 
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 6563, r'H$\alpha$')
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 4861, r'H$\beta$')
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 5007, r'[OIII]')
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 6583, r'[NII]')
+
 
     # sel_popx_32 = np.greater_equal(ALL.x_Y__Tz[0], min_popx)
     # sel_popx_32__yx = np.greater_equal(ALL.x_Y__Tyx[0], min_popx)
