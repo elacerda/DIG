@@ -491,6 +491,7 @@ def gals_sample_choice(args, ALL, sel, gals, sample_choice):
 
     ALL.ba_bins = ba_bins
     ALL.mt_keys = mt_keys
+    ALL.mt__gz = mt
     ALL.ba_keys = ba_keys
     sel['gals__mt'] = sel_mt
     sel['gals__mt_z'] = sel_gals_mt
@@ -6647,7 +6648,7 @@ def fig_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563
         'galDistance_Mpc' : dict(x=ALL.galDistance_Mpc, label='distance [Mpc]', lim=None),
         'CI_9050' : dict(x=ALL.CI_9050, label=r'${\rm CI}_{50}^{90}$', lim=None),
         'HLR_pc' : dict(x=ALL.HLR_pc/1e3, label='HLR [kpc]', lim=None),
-        'integrated_W6563' : dict(x=np.ma.log10(ALL.integrated_W6563), label=r'$\log\ W_{H\alpha}$ [$\AA$]', lim=None),
+        'integrated_W6563' : dict(x=ALL.integrated_W6563, label=r'$W_{H\alpha}$ [$\AA$]', lim=None),
         'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/$H\alpha$', lim=[-1.5, 0.7]),
         'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/$H\beta$', lim=[-1, 1]),
         'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{H\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
@@ -6712,6 +6713,116 @@ def fig_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563
     print '############################'
     print '# END ######################'
     print '############################'
+    return ALL
+
+
+def fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563, line_label=r'$H\alpha$', suffix='', int_props_keys=None):
+    print '##############################################'
+    print '# fig_correl_devfDIGWHa_integrated_fractions #'
+    print '##############################################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals_sel is None:
+        gals_sel = np.ones_like(gals, dtype='bool')
+    sample_gals = sel['gals'] & gals_sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    new_gals = []
+    for i, g in enumerate(gals):
+        if sample_gals[i]:
+            new_gals.append(g)
+
+    gals = new_gals
+
+    if data_sel is None:
+        data_sel = np.ones_like(sel['gals_sample__z'], dtype='bool')
+    sel_sample__gz = sel['gals_sample__z'] & data_sel
+
+    if int_props_keys is None:
+        int_props_keys = {
+            'mt' : dict(x=ALL.mt, label=r'morph.', lim=None),
+            'Mtot' : dict(x=np.ma.log10(ALL.Mtot), label=r'$\log\ {\rm M}_\star^{\rm gal}$ [${\rm M}_\odot$]', lim=None),
+            'ba' : dict(x=ALL.ba, label=r'b/a', lim=None),
+            'galDistance_Mpc' : dict(x=ALL.galDistance_Mpc, label='distance [Mpc]', lim=None),
+            'CI_9050' : dict(x=ALL.CI_9050, label=r'${\rm CI}_{50}^{90}$', lim=None),
+            'HLR_pc' : dict(x=ALL.HLR_pc/1e3, label='HLR [kpc]', lim=None),
+            'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/$H\alpha$', lim=[-1.5, 0.7]),
+            'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/$H\beta$', lim=[-1, 1]),
+            'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{H\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
+            'integrated_at_flux' : dict(x=ALL.integrated_at_flux, label=r'$\langle \log\ t_{\star} \rangle_L$ [yr]', lim=None),
+            'integrated_alogZ_mass' : dict(x=ALL.integrated_alogZ_mass, label=r'$\langle \log\ Z_{\star} \rangle_L$ [${\rm Z}_\odot$]', lim=None),
+            'integrated_Dn4000' : dict(x=ALL.integrated_Dn4000, label=r'${\rm D}_n 4000$', lim=[1,2]),
+            'integrated_vd' : dict(x=ALL.integrated_vd, label=r'$v_d$ [km/s]', lim=None),
+        }
+
+    cumul_line_flux__gw = {}
+    f_SFc__g = {}
+    f_mDIG__g = {}
+    f_hDIG__g = {}
+    for g in gals:
+        gal_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
+        cumul_line_flux__gw[g], _ = cumul_line_flux_per_WHa_bins(args, g, line, gal_sample__z, ALL.logWHa_bins__w)
+        f_hDIG__g[g], f_mDIG__g[g], f_SFc__g[g] =  cumul_flux_fraction_per_class_interp(cumul_line_flux__gw[g],
+                                                                                        ALL.logWHa_bins__w,
+                                                                                        np.log10(args.class_thresholds))
+    for k, v in int_props_keys.iteritems():
+        f = plot_setup(width=6, aspect=1)
+        gs = gridspec.GridSpec(2, 2)
+        axhDIG = plt.subplot(gs[0])
+        axmDIG = plt.subplot(gs[1])
+        axDIG = plt.subplot(gs[2])
+        axSFc = plt.subplot(gs[3])
+        f.suptitle(r'N_gals: %d - $\lambda$ = %s' % (len(gals), line))
+        x = np.array([ALL.get_gal_prop_unique(g, v['x']) for g in gals])
+        yhDIG = np.array([f_hDIG__g[g] for g in gals])
+        ymDIG = np.array([f_mDIG__g[g] for g in gals])
+        yDIG = yhDIG + ymDIG
+        ySFc = np.array([f_SFc__g[g] for g in gals])
+        # axhDIG.scatter(x, yhDIG, s=10, c=args.class_colors[0], **dflt_kw_scatter)
+        # axhDIG.set_ylabel(r'$f_{hDIG}$')
+        # axmDIG.scatter(x, ymDIG, s=10, c=args.class_colors[1], **dflt_kw_scatter)
+        # axmDIG.set_ylabel(r'$f_{mDIG}$')
+        # axDIG.scatter(x, yDIG, s=10, c='orange', **dflt_kw_scatter)
+        # axDIG.set_ylabel(r'$f_{DIG}$')
+        # axSFc.scatter(x, ySFc, s=10, c=args.class_colors[2], **dflt_kw_scatter)
+        # axSFc.set_ylabel(r'$f_{SFc}$')
+        int_W6563 = np.array([ALL.get_gal_prop_unique(g, 'integrated_W6563') for g in gals])
+        int_W6563_bins = np.linspace(int_W6563.min(), int_W6563.max(), 30)
+        for ax, y, label in zip([axhDIG, axmDIG, axDIG, axSFc], [yhDIG, ymDIG, yDIG, ySFc], [r'$\Delta(f_{hDIG})_{W_{H\alpha}}$', r'$\Delta(f_{mDIG})_{W_{H\alpha}}$', r'$\Delta(f_{DIG})_{W_{H\alpha}}$', r'$\Delta(f_{SFc})_{W_{H\alpha}}$']):
+            ax.yaxis.grid(which='both')
+            ax.set_ylim(-1, 1)
+            xm, ym = ma_mask_xyz(int_W6563, y)
+            yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), int_W6563_bins)
+            yMedian = prc[2]
+            yInterp = np.interp(int_W6563, xp=bin_center, fp=yMedian)
+            ydev = y - yInterp
+            ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+            ax.set_xlabel(v['label'])
+            ax.scatter(x, ydev, s=10, c=args.class_colors[0], **dflt_kw_scatter)
+            if v['lim'] is not None:
+                ax.set_xlim(v['lim'])
+                xbins = np.linspace(v['lim'][0], v['lim'][1], 20)
+            else:
+                xbins = np.linspace(x.min(), x.max(), 20)
+            xm, ym = ma_mask_xyz(x, ydev)
+            yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), xbins)
+            yMedian = prc[2]
+            y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
+            ax.plot(bin_center, yMedian, 'k-', lw=1)
+            for y_prc in y_12sigma:
+                ax.plot(bin_center, y_prc, 'k--', lw=1)
+            ax.set_ylabel(label)
+        f.tight_layout(rect=[0, 0.01, 1, 0.95])
+        # gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
+        f.savefig('fig_correl_devfDIGWHa_intfrac_%s_f%s%s.%s' % (k, line, suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
+        plt.close(f)
+    print '##############################################'
+    print '# END ########################################'
+    print '##############################################'
     return ALL
 
 
@@ -6920,17 +7031,21 @@ if __name__ == '__main__':
     # fig_maps_cumul_line_flux(args, gals='K0073', multi=False, suffix='_6731', drawHLR=True, cumul_line_flux=True, line=6731, line_name=r'6731')
 
     # compare_integrated_WHa(args, gals)
-    compare_integrated_WHb(args, gals)
+    # compare_integrated_WHb(args, gals)
 
-    main_lines = ['3727', '4861', '5007', '6563', '6583', '6717', '6731']
-    lines_labels = [r'[OII]', r'{\rm H}\beta', r'[OIII]', r'{\rm H}\alpha', r'[NII]', r'6717', r'6731']
-
-    for l, l_label in zip(main_lines, lines_labels):
-        f__gz = getattr(ALL, 'f%s__z' % l)
-        ef__gz = getattr(ALL, 'ef%s__z' % l)
-        SN__gz = f__gz/ef__gz
-        data_sel = ((SN__gz).filled(0.) >= 1)
-        fig_integrated_fractions(args, gals, data_sel=data_sel, line=l, line_label=l_label)
+    # main_lines = ['3727', '4861', '5007', '6563', '6583', '6717', '6731']
+    # lines_labels = [r'[OII]', r'{\rm H}\beta', r'[OIII]', r'{\rm H}\alpha', r'[NII]', r'6717', r'6731']
+    #
+    # for l, l_label in zip(main_lines, lines_labels):
+    #     f__gz = getattr(ALL, 'f%s__z' % l)
+    #     ef__gz = getattr(ALL, 'ef%s__z' % l)
+    #     SN__gz = f__gz/ef__gz
+    #     data_sel = ((SN__gz).filled(0.) >= 1)
+    #     # fig_integrated_fractions(args, gals, data_sel=data_sel, line=l, line_label=l_label)
+    #     fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=(ALL.mt >= 0), data_sel=data_sel, line=l, line_label=l_label, suffix='_noElipt')
+    #     # fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=(ALL.mt >= 0), data_sel=data_sel, line=l, line_label=l_label, suffix='_noElipt',
+    #                                                # int_props_keys=dict(x=ALL.ba, label=r'b/a', lim=None))
+    #
 
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 6563, r'H$\alpha$')
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 4861, r'H$\beta$')
