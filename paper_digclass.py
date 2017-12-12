@@ -8,6 +8,8 @@ import numpy as np
 import matplotlib as mpl
 from pytu.lines import Lines
 from pycasso import fitsQ3DataCube
+from scipy.optimize import curve_fit
+from scipy.special import erf
 from matplotlib import pyplot as plt
 from pycasso.util import radialProfile
 import matplotlib.gridspec as gridspec
@@ -515,6 +517,29 @@ def gals_sample_choice(args, ALL, sel, gals, sample_choice):
 
     print 'gals_sample_choice() time: %.2f' % (time.time() - t_init)
     return new_gals, sel, sample_choice
+
+
+def my_gauss(x, mu, sigma):
+    return np.exp(-(x-mu)**2./2. / sigma**2.)
+
+
+def my_gauss_A(x, mu, sigma, A):
+    return A * np.exp(-(x-mu)**2./2. / sigma**2.)
+
+
+def bimodal(x, *p):
+    mu1,sigma1,A1,mu2,sigma2,A2 = p
+    # mu1 = 0.15
+    return gauss(x, mu1, sigma1, A1) + gauss(x, mu2, sigma2, A2)
+
+
+def my_erf(x, mu, sigma):
+    u = (x - mu)/(sigma*(2**0.5))
+    return (1+erf(u))/2
+
+
+def my_erfc(x, mu, sigma):
+    return 1 - my_erf(x, mu, sigma)
 
 
 def cumul_line_flux_per_WHa_bins(args, g, line, sel__z, bins):
@@ -1426,14 +1451,6 @@ def fig_maps_xi(args, gals=None, multi=False, suffix='', drawHLR=True, xi=False)
 def fig_model_WHa_bimodal_distrib(args):
     from scipy.optimize import curve_fit
     ALL, sel, gals = args.ALL, args.sel, args.gals
-
-    def gauss(x, mu, sigma, A):
-        return A * np.exp(-(x-mu)**2./2. / sigma**2.)
-
-    def bimodal(x, *p):
-        mu1,sigma1,A1,mu2,sigma2,A2 = p
-        # mu1 = 0.15
-        return gauss(x, mu1, sigma1, A1) + gauss(x, mu2, sigma2, A2)
 
     xm = np.ma.masked_array(np.ma.log10(ALL.W6563__z), mask=~sel['gals_sample__z'])
     histo, bin_edges = np.histogram(xm.compressed(), bins=50, range=[-3, 3])
@@ -6676,7 +6693,8 @@ def fig_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563
         axDIG = plt.subplot(gs[2])
         axSFc = plt.subplot(gs[3])
         f.suptitle(r'N_gals: %d - $\lambda$ = %s' % (len(gals), line))
-        x = np.array([ALL.get_gal_prop_unique(g, v['x']) for g in gals])
+        aux = [ALL.get_gal_prop_unique(g, v['x']) for g in gals]
+        x = np.ma.masked_array(aux, mask=np.isnan(aux))
         yhDIG = np.array([f_hDIG__g[g] for g in gals])
         ymDIG = np.array([f_mDIG__g[g] for g in gals])
         yDIG = yhDIG + ymDIG
@@ -6777,7 +6795,8 @@ def fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=None, data_s
         axDIG = plt.subplot(gs[2])
         axSFc = plt.subplot(gs[3])
         f.suptitle(r'N_gals: %d - $\lambda$ = %s' % (len(gals), line))
-        x = np.array([ALL.get_gal_prop_unique(g, v['x']) for g in gals])
+        aux = [ALL.get_gal_prop_unique(g, v['x']) for g in gals]
+        x = np.ma.masked_array(aux, mask=np.isnan(aux))
         yhDIG = np.array([f_hDIG__g[g] for g in gals])
         ymDIG = np.array([f_mDIG__g[g] for g in gals])
         yDIG = yhDIG + ymDIG
@@ -6819,6 +6838,207 @@ def fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=None, data_s
         f.tight_layout(rect=[0, 0.01, 1, 0.95])
         # gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
         f.savefig('fig_correl_devfDIGWHa_intfrac_%s_f%s%s.%s' % (k, line, suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
+        plt.close(f)
+    print '##############################################'
+    print '# END ########################################'
+    print '##############################################'
+    return ALL
+
+# from scipy import special
+#
+# def erf(x, mean, sigma):
+#     u = (x - mean)/(sigma*np.sqrt(2))
+#     return special.erf(u)
+
+
+def fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563, line_label=r'$H\alpha$', suffix='', int_props_keys=None):
+    print '#####################################################'
+    print '# fig_correl_devfDIGWHa_fiterf_integrated_fractions #'
+    print '#####################################################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals_sel is None:
+        gals_sel = np.ones_like(gals, dtype='bool')
+    sample_gals = sel['gals'] & gals_sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    new_gals = []
+    for i, g in enumerate(gals):
+        if sample_gals[i]:
+            new_gals.append(g)
+
+    gals = new_gals
+
+    if data_sel is None:
+        data_sel = np.ones_like(sel['gals_sample__z'], dtype='bool')
+    sel_sample__gz = sel['gals_sample__z'] & data_sel
+
+    if int_props_keys is None:
+        int_props_keys = {
+            'mt' : dict(x=ALL.mt, label=r'morph.', lim=None),
+            'Mtot' : dict(x=np.ma.log10(ALL.Mtot), label=r'$\log\ {\rm M}_\star^{\rm gal}$ [${\rm M}_\odot$]', lim=None),
+            'ba' : dict(x=ALL.ba, label=r'b/a', lim=None),
+            'galDistance_Mpc' : dict(x=ALL.galDistance_Mpc, label='distance [Mpc]', lim=None),
+            'CI_9050' : dict(x=ALL.CI_9050, label=r'${\rm CI}_{50}^{90}$', lim=None),
+            'HLR_pc' : dict(x=ALL.HLR_pc/1e3, label='HLR [kpc]', lim=None),
+            'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/$H\alpha$', lim=[-1.5, 0.7]),
+            'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/$H\beta$', lim=[-1, 1]),
+            'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{H\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
+            'integrated_at_flux' : dict(x=ALL.integrated_at_flux, label=r'$\langle \log\ t_{\star} \rangle_L$ [yr]', lim=None),
+            'integrated_alogZ_mass' : dict(x=ALL.integrated_alogZ_mass, label=r'$\langle \log\ Z_{\star} \rangle_L$ [${\rm Z}_\odot$]', lim=None),
+            'integrated_Dn4000' : dict(x=ALL.integrated_Dn4000, label=r'${\rm D}_n 4000$', lim=[1,2]),
+            'integrated_vd' : dict(x=ALL.integrated_vd, label=r'$v_d$ [km/s]', lim=None),
+        }
+
+    cumul_line_flux__gw = {}
+    f_SFc__g = {}
+    f_mDIG__g = {}
+    f_hDIG__g = {}
+    zones_tot = 0
+    N_gals = 0
+    for g in gals:
+        gal_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
+        N_zones_OK = gal_sample__z.astype('int').sum()
+        zones_tot += N_zones_OK
+        cumul_line_flux__gw[g], _ = cumul_line_flux_per_WHa_bins(args, g, line, gal_sample__z, ALL.logWHa_bins__w)
+        f_hDIG__g[g], f_mDIG__g[g], f_SFc__g[g] =  cumul_flux_fraction_per_class_interp(cumul_line_flux__gw[g],
+                                                                                        ALL.logWHa_bins__w,
+                                                                                        np.log10(args.class_thresholds))
+        if (N_zones_OK == 0):
+            print g, ': N_zones_OK is zero.'
+    # plot fit
+    f = plot_setup(width=latex_text_width, aspect=1./golden_mean)
+    gs = gridspec.GridSpec(2, 3)
+    axhDIG = plt.subplot(gs[0])
+    axmDIG1 = plt.subplot(gs[1])
+    axmDIG2 = plt.subplot(gs[2])
+    axSFc = plt.subplot(gs[3])
+    axDIG = plt.subplot(gs[4])
+    axmDIGSFc = plt.subplot(gs[5])
+    f.suptitle(r'N_gals: %d (N_zones: %d)- $\lambda$ = %s' % (len(gals), N_zones_OK, line))
+    yhDIG = np.array([f_hDIG__g[g] for g in gals])
+    ymDIG = np.array([f_mDIG__g[g] for g in gals])
+    yDIG = yhDIG + ymDIG
+    ySFc = np.array([f_SFc__g[g] for g in gals])
+    ymDIGSFc = ymDIG + ySFc
+    int_logW6563 = np.log10(np.array([ALL.get_gal_prop_unique(g, 'integrated_W6563') for g in gals]))
+    int_logW6563_bins = np.linspace(int_logW6563.min(), int_logW6563.max(), 30)
+    y_arr = [yhDIG,
+             ymDIG,
+             ymDIG,
+             ySFc,
+             yDIG,
+             ymDIGSFc]
+    ax_arr = [axhDIG,
+              axmDIG1,
+              axmDIG2,
+              axSFc,
+              axDIG,
+              axmDIGSFc]
+    lab_arr = [r'$f_{hDIG}$',
+               r'$f_{mDIG}$',
+               r'$f_{mDIG}$',
+               r'$f_{SFc}$',
+               r'$f_{hDIG}\ +\ f_{mDIG}$',
+               r'$f_{mDIG}\ +\ f_{SFc}$',]
+    curvefit_arr = [(my_erfc, 2),
+                    (my_gauss, 2),
+                    (my_gauss_A, 3),
+                    (my_erf, 2),
+                    (my_erfc, 2),
+                    (my_erf, 2)]
+    y_colors_arr = [args.class_colors[0],
+                    args.class_colors[1],
+                    args.class_colors[1],
+                    args.class_colors[2],
+                    'orange',
+                    'purple',
+    ]
+    p_arr = [r'$x_0$', r'$\sigma$', 'A']
+    p0_arr = []
+    x = int_logW6563
+    xS = np.sort(x)
+    for ax, y, label, (f_fit, nP), c in zip(ax_arr, y_arr, lab_arr, curvefit_arr, y_colors_arr):
+        ax.yaxis.grid(which='both')
+        xm, ym = ma_mask_xyz(x, y)
+        p0, _ = curve_fit(f_fit, x, y)
+        p0_arr.append(p0)
+        yfit = f_fit(xS, *p0)
+        # yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), int_logW6563_bins)
+        # yMedian = prc[2]
+        # yInterp = np.interp(int_logW6563, xp=bin_center, fp=yMedian)
+        # ydev = y - yInterp
+        ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+        ax.set_xlabel(r'$\log\ W_{H\alpha}$ [$\AA$]')
+        ax.set_ylabel(label)
+        ax.scatter(x, y, s=3, c=c, **dflt_kw_scatter)
+        ax.plot(xS, yfit, 'k-', lw=1)
+        y_pos_ini = 0.58
+        y_spac = 0.08
+        for p in range(nP):
+            y_pos = y_pos_ini - (y_spac * p)
+            plot_text_ax(ax, r'%s: %.4f' % (p_arr[p], p0[p]), .98, y_pos, 6, 'top', 'right', 'k')
+        ax.set_ylim(0, 1)
+        ax.set_xlim(-1., 2.5)
+    f.tight_layout(rect=[0, 0.01, 1, 0.95])
+    # gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
+    f.savefig('fig_intfrac_logW6563_f%s_curvefit%s.%s' % (line, suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
+    plt.close(f)
+
+    for k, v in int_props_keys.iteritems():
+        f = plot_setup(width=latex_text_width, aspect=1./golden_mean)
+        gs = gridspec.GridSpec(2, 3)
+        axhDIG = plt.subplot(gs[0])
+        axmDIG1 = plt.subplot(gs[1])
+        axmDIG2 = plt.subplot(gs[2])
+        axSFc = plt.subplot(gs[3])
+        axDIG = plt.subplot(gs[4])
+        axmDIGSFc = plt.subplot(gs[5])
+        f.suptitle(r'N_gals: %d - $\lambda$ = %s' % (len(gals), line))
+        aux = [ALL.get_gal_prop_unique(g, v['x']) for g in gals]
+        x = np.ma.masked_array(aux, mask=np.isnan(aux))
+        ax_arr = [axhDIG,
+                  axmDIG1,
+                  axmDIG2,
+                  axSFc,
+                  axDIG,
+                  axmDIGSFc]
+        lab_arr = [r'$\Delta(W_{H\alpha})_{f_{hDIG}}$',
+                   r'$\Delta(W_{H\alpha})_{f_{mDIG}}$',
+                   r'$\Delta(W_{H\alpha})_{f_{mDIG}}$',
+                   r'$\Delta(W_{H\alpha})_{f_{SFc}}$',
+                   r'$\Delta(W_{H\alpha})_{f_{hDIG}\ +\ f_{mDIG}}$',
+                   r'$\Delta(W_{H\alpha})_{f_{mDIG}\ +\ f_{SFc}}$']
+        for ax, y, label, (f_fit, nP), p0 in zip(ax_arr, y_arr, lab_arr, curvefit_arr, p0_arr):
+            ax.yaxis.grid(which='both')
+            ax.set_ylim(-1, 1)
+            xm, ym = ma_mask_xyz(int_logW6563, y)
+            ydev = y - f_fit(int_logW6563, *p0)
+            ydev_rms = ydev.std()
+            ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+            ax.set_xlabel(v['label'])
+            ax.scatter(x, ydev, s=10, c=args.class_colors[0], **dflt_kw_scatter)
+            if v['lim'] is not None:
+                ax.set_xlim(v['lim'])
+                xbins = np.linspace(v['lim'][0], v['lim'][1], 20)
+            else:
+                xbins = np.linspace(x.min(), x.max(), 20)
+            xm, ym = ma_mask_xyz(x, ydev)
+            yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), xbins)
+            yMedian = prc[2]
+            y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
+            ax.plot(bin_center, yMedian, 'k-', lw=1)
+            for y_prc in y_12sigma:
+                ax.plot(bin_center, y_prc, 'k--', lw=1)
+            plot_text_ax(ax, r'rms: %.3f' % ydev_rms, 0.98, 0.98, 6, 'top', 'right', 'k')
+            ax.set_ylabel(label)
+        f.tight_layout(rect=[0, 0.01, 1, 0.95])
+        # gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
+        f.savefig('fig_correl_devfDIGWHa_fiterf_intfrac_%s_f%s%s.%s' % (k, line, suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
         plt.close(f)
     print '##############################################'
     print '# END ########################################'
@@ -7033,8 +7253,8 @@ if __name__ == '__main__':
     # compare_integrated_WHa(args, gals)
     # compare_integrated_WHb(args, gals)
 
-    # main_lines = ['3727', '4861', '5007', '6563', '6583', '6717', '6731']
-    # lines_labels = [r'[OII]', r'{\rm H}\beta', r'[OIII]', r'{\rm H}\alpha', r'[NII]', r'6717', r'6731']
+    main_lines = ['3727', '4861', '5007', '6563', '6583', '6717', '6731']
+    lines_labels = [r'[OII]', r'{\rm H}\beta', r'[OIII]', r'{\rm H}\alpha', r'[NII]', r'6717', r'6731']
     #
     # for l, l_label in zip(main_lines, lines_labels):
     #     f__gz = getattr(ALL, 'f%s__z' % l)
@@ -7046,6 +7266,19 @@ if __name__ == '__main__':
     #     # fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=(ALL.mt >= 0), data_sel=data_sel, line=l, line_label=l_label, suffix='_noElipt',
     #                                                # int_props_keys=dict(x=ALL.ba, label=r'b/a', lim=None))
     #
+
+    for l, l_label in zip(main_lines, lines_labels):
+        f__gz = getattr(ALL, 'f%s__z' % l)
+        ef__gz = getattr(ALL, 'ef%s__z' % l)
+        SN__gz = f__gz/ef__gz
+        data_sel = ((SN__gz).filled(0.) >= 1)
+        int_f = getattr(ALL, 'integrated_f%s' % l)
+        gals_sel = (int_f > 0)
+        fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=gals_sel, data_sel=data_sel, line=l, line_label=l_label)
+        gals_sel = (int_f > 0) & (ALL.mt >= 0)
+        fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=gals_sel, data_sel=data_sel, line=l, line_label=l_label, suffix='_noElipt')
+        # fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=(ALL.mt >= 0), data_sel=data_sel, line=l, line_label=l_label, suffix='_noElipt',
+                                                   # int_props_keys=dict(x=ALL.ba, label=r'b/a', lim=None))
 
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 6563, r'H$\alpha$')
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 4861, r'H$\beta$')
