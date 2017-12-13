@@ -527,12 +527,6 @@ def my_gauss_A(x, mu, sigma, A):
     return A * np.exp(-(x-mu)**2./2. / sigma**2.)
 
 
-def bimodal(x, *p):
-    mu1,sigma1,A1,mu2,sigma2,A2 = p
-    # mu1 = 0.15
-    return gauss(x, mu1, sigma1, A1) + gauss(x, mu2, sigma2, A2)
-
-
 def my_erf(x, mu, sigma):
     u = (x - mu)/(sigma*(2**0.5))
     return (1+erf(u))/2
@@ -540,6 +534,12 @@ def my_erf(x, mu, sigma):
 
 def my_erfc(x, mu, sigma):
     return 1 - my_erf(x, mu, sigma)
+
+
+def bimodal(x, *p):
+    mu1,sigma1,A1,mu2,sigma2,A2 = p
+    # mu1 = 0.15
+    return gauss(x, mu1, sigma1, A1) + gauss(x, mu2, sigma2, A2)
 
 
 def cumul_line_flux_per_WHa_bins(args, g, line, sel__z, bins):
@@ -6927,65 +6927,37 @@ def fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=None,
     ymDIGSFc = ymDIG + ySFc
     int_logW6563 = np.log10(np.array([ALL.get_gal_prop_unique(g, 'integrated_W6563') for g in gals]))
     int_logW6563_bins = np.linspace(int_logW6563.min(), int_logW6563.max(), 30)
-    y_arr = [yhDIG,
-             ymDIG,
-             ymDIG,
-             ySFc,
-             yDIG,
-             ymDIGSFc]
-    ax_arr = [axhDIG,
-              axmDIG1,
-              axmDIG2,
-              axSFc,
-              axDIG,
-              axmDIGSFc]
-    lab_arr = [r'$f_{hDIG}$',
-               r'$f_{mDIG}$',
-               r'$f_{mDIG}$',
-               r'$f_{SFc}$',
-               r'$f_{hDIG}\ +\ f_{mDIG}$',
-               r'$f_{mDIG}\ +\ f_{SFc}$',]
-    curvefit_arr = [(my_erfc, 2),
-                    (my_gauss, 2),
-                    (my_gauss_A, 3),
-                    (my_erf, 2),
-                    (my_erfc, 2),
-                    (my_erf, 2)]
-    y_colors_arr = [args.class_colors[0],
-                    args.class_colors[1],
-                    args.class_colors[1],
-                    args.class_colors[2],
-                    'orange',
-                    'purple',
-    ]
+    y_arr = [yhDIG, ymDIG, ymDIG, ySFc, yDIG, ymDIGSFc]
+    ax_arr = [axhDIG, axmDIG1, axmDIG2, axSFc, axDIG, axmDIGSFc]
+    lab_arr = [r'$f_{hDIG}$', r'$f_{mDIG}$', r'$f_{mDIG}$', r'$f_{SFc}$', r'$f_{hDIG}\ +\ f_{mDIG}$', r'$f_{mDIG}\ +\ f_{SFc}$',]
+    curvefit_arr = [(my_erfc, 2), (my_gauss, 2), (my_gauss_A, 3), (my_erf, 2), (my_erfc, 2), (my_erf, 2)]
+    y_colors_arr = [args.class_colors[0], args.class_colors[1], args.class_colors[1], args.class_colors[2], 'orange', 'purple',]
     p_arr = [r'$x_0$', r'$\sigma$', 'A']
     p0_arr = []
     x = int_logW6563
-    xS = np.sort(x)
+    y_fit = []
     for ax, y, label, (f_fit, nP), c in zip(ax_arr, y_arr, lab_arr, curvefit_arr, y_colors_arr):
         ax.yaxis.grid(which='both')
         xm, ym = ma_mask_xyz(x, y)
         p0, _ = curve_fit(f_fit, x, y)
         p0_arr.append(p0)
-        yfit = f_fit(xS, *p0)
-        # yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), int_logW6563_bins)
-        # yMedian = prc[2]
-        # yInterp = np.interp(int_logW6563, xp=bin_center, fp=yMedian)
-        # ydev = y - yInterp
+        yfit = f_fit(x, *p0)
+        y_fit.append(yfit)
         ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
         ax.set_xlabel(r'$\log\ W_{H\alpha}$ [$\AA$]')
         ax.set_ylabel(label)
         ax.scatter(x, y, s=3, c=c, **dflt_kw_scatter)
-        ax.plot(xS, yfit, 'k-', lw=1)
+        iS = np.argsort(x)
+        ax.plot(x[iS], yfit[iS], 'k-', lw=1)
         y_pos_ini = 0.58
         y_spac = 0.08
         for p in range(nP):
             y_pos = y_pos_ini - (y_spac * p)
             plot_text_ax(ax, r'%s: %.4f' % (p_arr[p], p0[p]), .98, y_pos, 6, 'top', 'right', 'k')
+        plot_text_ax(ax, r'rms: %.4f' % (y - yfit).std(), 0.98, y_pos - y_spac, 6, 'top', 'right', 'k')
         ax.set_ylim(0, 1)
         ax.set_xlim(-1., 2.5)
     f.tight_layout(rect=[0, 0.01, 1, 0.95])
-    # gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
     f.savefig('fig_intfrac_logW6563_f%s_curvefit%s.%s' % (line, suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
 
@@ -7007,18 +6979,17 @@ def fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=None,
                   axSFc,
                   axDIG,
                   axmDIGSFc]
-        lab_arr = [r'$\Delta(W_{H\alpha})_{f_{hDIG}}$',
-                   r'$\Delta(W_{H\alpha})_{f_{mDIG}}$',
-                   r'$\Delta(W_{H\alpha})_{f_{mDIG}}$',
-                   r'$\Delta(W_{H\alpha})_{f_{SFc}}$',
-                   r'$\Delta(W_{H\alpha})_{f_{hDIG}\ +\ f_{mDIG}}$',
-                   r'$\Delta(W_{H\alpha})_{f_{mDIG}\ +\ f_{SFc}}$']
-        for ax, y, label, (f_fit, nP), p0 in zip(ax_arr, y_arr, lab_arr, curvefit_arr, p0_arr):
+        lab_arr = [r'$\Delta f_{hDIG} (W_{H\alpha})$',
+                   r'$\Delta f_{mDIG} (W_{H\alpha})$',
+                   r'$\Delta f_{mDIG} (W_{H\alpha})$',
+                   r'$\Delta f_{SFc} (W_{H\alpha})$',
+                   r'$\Delta [f_{hDIG}\ +\ f_{mDIG}] (W_{H\alpha})$',
+                   r'$\Delta [f_{mDIG}\ +\ f_{SFc}] (W_{H\alpha})$']
+        for ax, y, label, yfit in zip(ax_arr, y_arr, lab_arr, y_fit):
             ax.yaxis.grid(which='both')
             ax.set_ylim(-1, 1)
             xm, ym = ma_mask_xyz(int_logW6563, y)
-            ydev = y - f_fit(int_logW6563, *p0)
-            ydev_rms = ydev.std()
+            ydev = y - yfit
             ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
             ax.set_xlabel(v['label'])
             ax.scatter(x, ydev, s=10, c=args.class_colors[0], **dflt_kw_scatter)
@@ -7034,7 +7005,6 @@ def fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=None,
             ax.plot(bin_center, yMedian, 'k-', lw=1)
             for y_prc in y_12sigma:
                 ax.plot(bin_center, y_prc, 'k--', lw=1)
-            plot_text_ax(ax, r'rms: %.3f' % ydev_rms, 0.98, 0.98, 6, 'top', 'right', 'k')
             ax.set_ylabel(label)
         f.tight_layout(rect=[0, 0.01, 1, 0.95])
         # gs.update(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.02, wspace=0.35)
@@ -7267,6 +7237,7 @@ if __name__ == '__main__':
     #                                                # int_props_keys=dict(x=ALL.ba, label=r'b/a', lim=None))
     #
 
+    # for l, l_label in zip(['6563'], [r'{\rm H}\alpha']):
     for l, l_label in zip(main_lines, lines_labels):
         f__gz = getattr(ALL, 'f%s__z' % l)
         ef__gz = getattr(ALL, 'ef%s__z' % l)
