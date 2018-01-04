@@ -89,8 +89,8 @@ dflt_kw_scatter = dict(marker='o', edgecolor='none')
 dflt_kw_runstats = dict(smooth=True, sigma=1.2, frac=0.07, debug=True)  # , tendency=True)
 dflt_kw_imshow = dict(origin='lower', interpolation='nearest', aspect='equal')
 
-# img_suffix = 'pdf'
-img_suffix = 'png'
+img_suffix = 'pdf'
+# img_suffix = 'png'
 
 
 def parser_args(default_args_file='/Users/lacerda/dev/astro/dig/default.args'):
@@ -2908,6 +2908,71 @@ def fig_cumul_line_flux_WHa_per_morftype(args, gals, line, line_label):
     # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
     f.set_tight_layout(True)
     f.savefig('fig_cumul_f%sWHa_per_morftype.%s' % (line, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
+    plt.close(f)
+
+    print '######################################################'
+    print '# END ################################################'
+    print '######################################################'
+
+def fig_cumul_lines_fluxes_WHa_mtype(args, gals, mt_label):
+    print '####################################'
+    print '# fig_cumul_lines_fluxes_WHa_mtype #'
+    print '####################################'
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z']
+    sel_sample__gyx = sel['gals_sample__yx']
+
+    N_zone = sel_sample__gz.astype('int').sum()
+    # colortipo = ['red', 'orange', 'green', '#00D0C9', 'blue']
+    colortipo = ['magenta', 'blue', 'green', 'black', 'red']
+    lines = ['3727', '4861', '5007', '6563', '6583']
+    l_labels = [r'[OII]', r'${\rm H}\beta$', r'[OIII]', r'${\rm H}\alpha$', r'[NII]']
+
+    f = plot_setup(width=latex_column_width, aspect=1)  #1./golden_mean)
+    ax = f.gca()
+
+    logWHa_bins = ALL.logWHa_bins__w
+    cumul_line_flux__Lgw = {}
+    for l in lines:
+        cumul_line_flux__Lgw[l] = {}
+        print l
+        for g in gals:
+            sel_sample__z = ALL.get_gal_prop(g, sel_sample__gz)
+            cumul_line_flux__Lgw[l][g] = (cumul_line_flux_per_WHa_bins(args, g, l, sel_sample__z, logWHa_bins)[0])
+
+    for i, l_label in enumerate(l_labels):
+        aux = []
+        l = lines[i]
+        for g in ALL.califaID__g[sel['gals__mt'][mt_label]]:
+            if not g in args.gals:
+                continue
+            aux.append(cumul_line_flux__Lgw[l][g])
+        if len(aux) > 0:
+            y__gb = np.array(aux)
+            x = np.hstack([logWHa_bins for g in ALL.califaID__g[sel['gals__mt'][mt_label]]])
+            ax.plot(logWHa_bins, np.median(y__gb, axis=0), ls='-', c=colortipo[i], lw=2)
+            y_pos = 0.98 - (i*0.1)
+            plot_text_ax(ax, l_label, 0.08, y_pos, 8, 'top', 'left', c=colortipo[i])
+    for th in args.class_thresholds:
+        ax.axvline(x=np.log10(th), c='k', ls='--')
+    ax.xaxis.set_major_locator(MultipleLocator(0.5))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.set_major_locator(MultipleLocator(0.2))
+    ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.grid(which='both')
+    ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    ax.set_xlim(0.4, 1.5)
+    ax.set_ylim(0, 1)
+    ax.set_xlabel(r'$\log$ W${H\alpha}$ [$\AA$]')
+    ax.set_ylabel(r'flux fraction')
+    f.set_tight_layout(True)
+    f.savefig('fig_cumul_fluxes_WHa_mtype_%s.%s' % (mt_label, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
 
     print '######################################################'
@@ -7251,11 +7316,12 @@ if __name__ == '__main__':
         # fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=(ALL.mt >= 0), data_sel=data_sel, line=l, line_label=l_label, suffix='_noElipt',
                                                    # int_props_keys=dict(x=ALL.ba, label=r'b/a', lim=None))
 
-    # fig_cumul_line_flux_WHa_per_morftype(args, gals, 6563, r'H$\alpha$')
+    # fig_cumul_line_flux_WHa_per_morftype(args, gals, 3727, r'[OII]')
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 4861, r'H$\beta$')
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 5007, r'[OIII]')
+    # fig_cumul_line_flux_WHa_per_morftype(args, gals, 6563, r'H$\alpha$')
     # fig_cumul_line_flux_WHa_per_morftype(args, gals, 6583, r'[NII]')
-
+    # fig_cumul_lines_fluxes_WHa_mtype(args, gals, 'Sb')
 
     # sel_popx_32 = np.greater_equal(ALL.x_Y__Tz[0], min_popx)
     # sel_popx_32__yx = np.greater_equal(ALL.x_Y__Tyx[0], min_popx)
