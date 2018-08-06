@@ -89,8 +89,8 @@ dflt_kw_scatter = dict(marker='o', edgecolor='none')
 dflt_kw_runstats = dict(smooth=True, sigma=1.2, frac=0.07, debug=True)  # , tendency=True)
 dflt_kw_imshow = dict(origin='lower', interpolation='nearest', aspect='equal')
 
-# img_suffix = 'pdf'
-img_suffix = 'png'
+img_suffix = 'pdf'
+# img_suffix = 'png'
 
 
 def parser_args(default_args_file='/Users/lacerda/dev/astro/dig/default.args'):
@@ -515,6 +515,20 @@ def gals_sample_choice(args, ALL, sel, gals, sample_choice):
     sel['gals_sample__z'][np.where((ALL.califaID__z == 'K0339') & (ALL.zones_map == 1077))] = False
     sel['gals_sample__z'][np.where((ALL.califaID__z == 'K0815') & (ALL.zones_map == 603))] = False
 
+    sel_radius_inside = (ALL.zoneDistance_HLR <= 0.5)
+    sel_radius_middle = (ALL.zoneDistance_HLR > 0.5) & (ALL.zoneDistance_HLR <= 1)
+    sel_radius_outside = (ALL.zoneDistance_HLR > 1)
+    sel_gals_sample_Rin__gz = np.bitwise_and(sel_radius_inside, sel_gals_sample__gz)
+    sel_gals_sample_Rmid__gz = np.bitwise_and(sel_radius_middle, sel_gals_sample__gz)
+    sel_gals_sample_Rout__gz = np.bitwise_and(sel_radius_outside, sel_gals_sample__gz)
+
+    sel['radius_inside'] = sel_radius_inside
+    sel['radius_middle'] = sel_radius_middle
+    sel['radius_outside'] = sel_radius_outside
+    sel['gals_sample_Rin__z'] = sel_gals_sample_Rin__gz
+    sel['gals_sample_Rmid__z'] = sel_gals_sample_Rmid__gz
+    sel['gals_sample_Rout__z'] = sel_gals_sample_Rout__gz
+
     print 'gals_sample_choice() time: %.2f' % (time.time() - t_init)
     return new_gals, sel, sample_choice
 
@@ -539,7 +553,7 @@ def my_erfc(x, mu, sigma):
 def bimodal(x, *p):
     mu1,sigma1,A1,mu2,sigma2,A2 = p
     # mu1 = 0.15
-    return gauss(x, mu1, sigma1, A1) + gauss(x, mu2, sigma2, A2)
+    return my_gauss_A(x, mu1, sigma1, A1) + my_gauss_A(x, mu2, sigma2, A2)
 
 
 def cumul_line_flux_per_WHa_bins(args, g, line, sel__z, bins):
@@ -581,20 +595,10 @@ def create_fHa_cumul_per_WHa_bins(args):
     gals = args.gals
 
     sel_sample__gz = sel['gals_sample__z']
-    sel_radius_inside = (ALL.zoneDistance_HLR <= 0.5)
-    sel_radius_middle = (ALL.zoneDistance_HLR > 0.5) & (ALL.zoneDistance_HLR <= 1)
-    sel_radius_outside = (ALL.zoneDistance_HLR > 1)
-    sel_gals_sample_Rin__gz = np.bitwise_and(sel_radius_inside, sel_sample__gz)
-    sel_gals_sample_Rmid__gz = np.bitwise_and(sel_radius_middle, sel_sample__gz)
-    sel_gals_sample_Rout__gz = np.bitwise_and(sel_radius_outside, sel_sample__gz)
+    sel_gals_sample_Rin__gz = sel['gals_sample_Rin__z']
+    sel_gals_sample_Rmid__gz = sel['gals_sample_Rmid__z']
+    sel_gals_sample_Rout__gz = sel['gals_sample_Rout__z']
     sels_R = [sel_sample__gz, sel_gals_sample_Rin__gz, sel_gals_sample_Rmid__gz, sel_gals_sample_Rout__gz]
-
-    sel['radius_inside'] = sel_radius_inside
-    sel['radius_middle'] = sel_radius_middle
-    sel['radius_outside'] = sel_radius_outside
-    sel['gals_sample_Rin__z'] = sel_gals_sample_Rin__gz
-    sel['gals_sample_Rmid__z'] = sel_gals_sample_Rmid__gz
-    sel['gals_sample_Rout__z'] = sel_gals_sample_Rout__gz
 
     cumulfHa__g_R = {}
     logWHa_bins = np.linspace(-1, 3, 50)
@@ -921,15 +925,15 @@ def cumul_bins(y, x, x_bins, y_tot=None):
 
 
 def plot_text_classes_ax(ax, args, x=0.98, y_ini=0.98, y_spac=0.1, fs=14):
-    plot_text_ax(ax, r'W${}_{H\alpha}$ $\leq$ %d $\AA$' % args.class_thresholds[0], x, y_ini, fs, 'top', 'left', args.class_colors[0])
+    plot_text_ax(ax, r'W${}_{{\rm H}\alpha}$ $\leq$ %d $\AA$' % args.class_thresholds[0], x, y_ini, fs, 'top', 'left', args.class_colors[0])
     n_th = len(args.class_thresholds)
     y = y_ini
     for i, c in enumerate(args.class_names[1:]):
         y -= y_spac
         if i < (n_th - 1):
-            plot_text_ax(ax, r'%d $\AA$ $<$ W${}_{H\alpha}$ $\leq$ %d $\AA$' % (args.class_thresholds[i], args.class_thresholds[i+1]), x, y, fs, 'top', 'left', args.class_colors[i+1])
+            plot_text_ax(ax, r'%d $\AA$ $<$ W${}_{{\rm H}\alpha}$ $\leq$ %d $\AA$' % (args.class_thresholds[i], args.class_thresholds[i+1]), x, y, fs, 'top', 'left', args.class_colors[i+1])
         else:
-            plot_text_ax(ax, r'W${}_{H\alpha}$ $>$ %d $\AA$' % args.class_thresholds[i], x, y, fs, 'top', 'left', args.class_colors[i+1])
+            plot_text_ax(ax, r'W${}_{{\rm H}\alpha}$ $>$ %d $\AA$' % args.class_thresholds[i], x, y, fs, 'top', 'left', args.class_colors[i+1])
 
 
 def fig_logSBHa_logWHa_histograms(args):
@@ -950,49 +954,65 @@ def fig_logSBHa_logWHa_histograms(args):
         z = dist__gz
         xm, ym, zm = ma_mask_xyz(x=x, y=y, z=z, mask=~sel_gals_sample__gz)
         # f = plot_setup(width=latex_column_width, aspect=1)
-        f = plt.figure(figsize=(8, 8))
-
+        f = plot_setup(width=latex_column_width, aspect=1)
+        gs = gridspec.GridSpec(4, 4, left=0.15, bottom=0.15, right=0.98, wspace=0., hspace=0.)
+        axH1 = plt.subplot(gs[0, 0:3])
+        axH2 = plt.subplot(gs[1:, -1])
+        axS = plt.subplot(gs[1:, 0:-1])
+        ylim = 0.57
+        axS.axvspan(logWHa_range[0], np.log10(args.class_thresholds[0]), ymin=ylim, facecolor=args.class_colors[0], alpha=0.3)  #, hatch=''
+        axS.axvspan(np.log10(args.class_thresholds[-1]), logWHa_range[-1], ymax=ylim, facecolor=args.class_colors[-1], alpha=0.3)  #, hatch='*', alpha=0.3)
+        # logSBHa_range = [3, 6.5]
+        fs = 6
         x_ds = [xm[sel_WHa[c]].compressed() for c in args.class_names]
         y_ds = [ym[sel_WHa[c]].compressed() for c in args.class_names]
+
         axS, axH1, axH2 = plot_scatter_histo(x_ds, y_ds, logWHa_range, logSBHa_range, 50, 50,
-                                             figure=f, c=args.class_colors, scatter=False, s=1,
-                                             ylabel=r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]',
-                                             xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]', histtype='step')
+                                             axScatter=axS, axHistx=axH1, axHisty=axH2,
+                                             figure=f, c=args.class_colors, scatter=False, s=0.2,
+                                             ylabel=r'$\log\ \Sigma_{{\rm H}\alpha}$ [L${}_\odot/$kpc${}^2$]',
+                                             xlabel=r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', histtype='step')
+
         axS.xaxis.set_major_locator(MultipleLocator(0.5))
         axS.xaxis.set_minor_locator(MultipleLocator(0.1))
         axS.yaxis.set_major_locator(MultipleLocator(0.5))
         axS.yaxis.set_minor_locator(MultipleLocator(0.1))
+
         axH1.xaxis.set_major_locator(MultipleLocator(0.5))
         axH1.xaxis.set_minor_locator(MultipleLocator(0.1))
-        axH2.xaxis.set_major_locator(MaxNLocator(3))
-        axH1.yaxis.set_major_locator(MaxNLocator(3))
+        axH1.yaxis.set_major_locator(MaxNLocator(3, prune='lower'))
+        axH1.yaxis.set_minor_locator(MaxNLocator(6))
+
+        axH2.xaxis.set_major_locator(MaxNLocator(3, prune='lower'))
+        axH2.xaxis.set_minor_locator(MaxNLocator(6))
         axH2.yaxis.set_major_locator(MultipleLocator(0.5))
         axH2.yaxis.set_minor_locator(MultipleLocator(0.1))
-        # aux_ax = axH2.twiny()
-        # plot_histo_ax(aux_ax, ym.compressed(), stats_txt=False, kwargs_histo=dict(histtype='step', orientation='horizontal', normed=False, range=logSBHa_range, color='k', lw=2, ls='-'))
-        # aux_ax.xaxis.set_major_locator(MaxNLocator(3))
-        # plt.setp(aux_ax.xaxis.get_majorticklabels(), rotation=270)
-        # plot_text_classes_ax(axH1, args, x=0.98, y_ini=0.98, y_spac=0.11, fs=14)
-        # plot_text_ax(axH2, r'all zones', 0.98, 0.98, 14, 'top', 'right', 'k')
-        scater_kwargs = dict(c=zm, s=3, vmax=3, vmin=0, cmap=cmap_R, marker='o', edgecolor='none')
+
+        scater_kwargs = dict(rasterized=True, c=zm, s=1, vmax=3, vmin=0, cmap=cmap_R, marker='o', edgecolor='none')
         sc = axS.scatter(xm, ym, **scater_kwargs)
-        cbaxes = f.add_axes([0.6, 0.17, 0.12, 0.02])
-        cb = plt.colorbar(sc, cax=cbaxes, ticks=[0, 1, 2, 3], orientation='horizontal')
-        cb.set_label(r'R [HLR]', fontsize=14)
-        axS.axhline(y=np.log10(SFc_Zhang_threshold), color='k', linestyle='-.', lw=2)
+        cbaxes = f.add_axes([0.79, 0.91, 0.18, 0.04])
+        cb = plt.colorbar(sc, cax=cbaxes, ticks=[0., 1., 2., 3.], orientation='horizontal')
+        cb.set_label(r'$R$ [HLR]', fontsize=fs+2)
         axS.set_xlim(logWHa_range)
         axS.set_ylim(logSBHa_range)
-        axS.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
-        axS.set_ylabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
+        axS.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
+        axS.set_ylabel(r'$\log\ \Sigma_{{\rm H}\alpha}$ [L${}_\odot/$kpc${}^2$]')
+        # for th in args.class_thresholds:
+        #     axS.axvline(x=np.log10(th), c='grey', ls='--', lw=1.)
+        axS.axhline(y=np.log10(SFc_Zhang_threshold), c='w', ls=':', lw=2)
         xbins = np.linspace(logWHa_range[0], logWHa_range[-1], 40)
-        yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), xbins)
+        yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), xbins, prc=[5, 25, 50, 75, 95])
         yMedian = prc[2]
-        y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
-        axS.plot(bin_center, yMedian, 'k-', lw=2)
+#        y_12sigma = [prc[0], prc[1], prc[3], prc[4]]
+        y_12sigma = [prc[1], prc[3]]
+        axS.plot(bin_center, yMedian, 'w-', lw=1)
         for y_prc in y_12sigma:
-            axS.plot(bin_center, y_prc, 'k--', lw=2)
+            axS.plot(bin_center, y_prc, 'w--', lw=1)
         axS.grid()
-        f.savefig('fig_logSBHa_logWHa_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+        axS.tick_params(axis='both', which='both', direction='in', bottom='on', top='on', left='on', right='on', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+        axH1.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='off', labeltop='off', labelleft='on', labelright='off')
+        axH2.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='off', labelright='off')
+        f.savefig('fig_logSBHa_logWHa_histograms.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
         plt.close(f)
 
 
@@ -1031,7 +1051,7 @@ def fig_logxi_logWHa_histograms(args):
                                              axScatter=axS, axHistx=axH1, axHisty=axH2,
                                              figure=f, c=args.class_colors, scatter=False, s=0.2,
                                              ylabel=r'$\log\ \xi^{obs}$',
-                                             xlabel=r'$\log$ W${}_{H\alpha}$ [$\AA$]', histtype='step')
+                                             xlabel=r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', histtype='step')
 
         axS.xaxis.set_major_locator(MultipleLocator(0.5))
         axS.xaxis.set_minor_locator(MultipleLocator(0.1))
@@ -1062,7 +1082,7 @@ def fig_logxi_logWHa_histograms(args):
         # axS.axhline(y=np.log10(SFc_Zhang_threshold), color='k', linestyle='-.', lw=2)
         axS.set_xlim(logWHa_range)
         axS.set_ylim(logWHa_range)
-        axS.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        axS.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
         axS.set_ylabel(r'$\log\ \xi$')
         xbins = np.linspace(logWHa_range[0], logWHa_range[-1], 40)
         yMean, prc, bin_center, npts = stats_med12sigma(xm.compressed(), ym.compressed(), xbins)
@@ -1226,7 +1246,7 @@ def fig_maps_cumul_line_flux(args, gals=None, multi=False, suffix='', drawHLR=Tr
         ax2.yaxis.set_major_locator(MaxNLocator(4))
         ax2.yaxis.set_minor_locator(MaxNLocator(8))
         ax2.tick_params(axis='both', which='both', direction='in', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-        # cb.set_label(r'W${}_{H\alpha}$ [$\AA$]')
+        # cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]')
         # AXIS 3
         x = np.ma.log10(SBline__yx)
         im = ax3.imshow(x, cmap=plt.cm.copper_r, **dflt_kw_imshow)  # vmin=logSBHa_range[0], vmax=6.5,
@@ -1238,7 +1258,7 @@ def fig_maps_cumul_line_flux(args, gals=None, multi=False, suffix='', drawHLR=Tr
         ax3.yaxis.set_major_locator(MaxNLocator(4))
         ax3.yaxis.set_minor_locator(MaxNLocator(8))
         ax3.tick_params(axis='both', which='both', direction='in', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-        # cb.set_label(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
+        # cb.set_label(r'$\log\ \Sigma_{{\rm H}\alpha}$ [L${}_\odot/$kpc${}^2$]')
         # AXIS 4
         x = np.ma.log10(Wline__yx)
         im = ax4.imshow(x, vmin=0, vmax=1.5, cmap=plt.cm.copper_r, **dflt_kw_imshow)  # vmin=logWHa_range[0], vmax=logWHa_range[1],
@@ -1250,7 +1270,7 @@ def fig_maps_cumul_line_flux(args, gals=None, multi=False, suffix='', drawHLR=Tr
         ax4.yaxis.set_major_locator(MaxNLocator(4))
         ax4.yaxis.set_minor_locator(MaxNLocator(8))
         ax4.tick_params(axis='both', which='both', direction='in', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-        # cb.set_label(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        # cb.set_label(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
         if cumul_line_flux:
             cumul_line_f, _ = cumul_line_flux_per_WHa_bins(args, califaID, line, gal_sample__z, ALL.logWHa_bins__w)
             # iS = np.argsort(W6563__z)
@@ -1261,7 +1281,7 @@ def fig_maps_cumul_line_flux(args, gals=None, multi=False, suffix='', drawHLR=Tr
             # ax5.plot(np.ma.log10(xm[iS].compressed()), ymcumsum/ytot)
             ax5.set_ylim([0, 1])
             ax5.set_xlim([-0.5, 2])
-            ax5.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+            ax5.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
             ax5.set_ylabel(r'%s flux fraction' % line_name)
             for th in args.class_thresholds:
                 ax5.axvline(x=np.log10(th), c='k', ls='--')
@@ -1282,11 +1302,11 @@ def fig_maps_cumul_line_flux(args, gals=None, multi=False, suffix='', drawHLR=Tr
                 DrawHLRCircle(ax, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=0.5, bins=[0.5, 1, 1.5, 2, 2.5, 3])
         if row <= 0:
             ax1.set_title('SDSS stamp', fontsize=10)
-            # ax3.set_title(r'$\log$ W${}_{H\alpha}$ map')
-            # ax4.set_title(r'$\log\ \Sigma_{H\alpha}$ map')
+            # ax3.set_title(r'$\log$ W${}_{{\rm H}\alpha}$ map')
+            # ax4.set_title(r'$\log\ \Sigma_{{\rm H}\alpha}$ map')
             ax3.set_title(r'$\log\ \Sigma_{%s}$ [L${}_\odot/$kpc${}^2$]' % line_name, fontsize=10)
             ax4.set_title(r'$\log$ W${}_{%s}$ [$\AA$]' % line_name, fontsize=10)
-            ax2.set_title(r'W${}_{H\alpha}$ [$\AA$]', fontsize=10)
+            ax2.set_title(r'W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=10)
             # ax4.set_title(r'classification map', fontsize=18)
         if multi:
             row += 1
@@ -1431,20 +1451,20 @@ def fig_maps_xi(args, gals=None, multi=False, suffix='', drawHLR=True, xi=False)
                 DrawHLRCircle(ax, a=HLR_pix, pa=pa, ba=ba, x0=x0, y0=y0, color='k', lw=1, bins=[0.5, 1, 1.5, 2, 2.5, 3])
         if row <= 0:
             ax1.set_title('SDSS stamp', fontsize=18)
-            ax2.set_title(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]', fontsize=18)
-            ax3.set_title(r'$\log$ W${}_{H\alpha}$ [$\AA$]', fontsize=18)
-            ax4.set_title(r'W${}_{H\alpha}$ [$\AA$]', fontsize=18)
+            ax2.set_title(r'$\log\ \Sigma_{{\rm H}\alpha}$ [L${}_\odot/$kpc${}^2$]', fontsize=18)
+            ax3.set_title(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=18)
+            ax4.set_title(r'W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=18)
             if xi:
                 ax5.set_title(r'$\log\ \xi$', fontsize=18)
         if multi:
             row += 1
         else:
             f.tight_layout(rect=[0, 0.01, 1, 0.98])
-            f.savefig('fig_maps-%s.png' % califaID, dpi=_dpi_choice, transparent=_transp_choice)
+            f.savefig('fig_maps-%s.%s' % (califaID, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
             plt.close(f)
     if multi:
         f.subplots_adjust(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.08, wspace=0.3)
-        f.savefig('fig_maps_class%s.png' % suffix, dpi=_dpi_choice, transparent=_transp_choice)
+        f.savefig('fig_maps_class%s.%s' % (suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
         plt.close(f)
 
 
@@ -1458,19 +1478,212 @@ def fig_model_WHa_bimodal_distrib(args):
 
     coeff, _ = curve_fit(bimodal, bin_center, histo, p0 = [0, 0.5, 20000, 1, 0.5, 55000], maxfev=5000)
     f = plot_setup(latex_column_width, 1./golden_mean)
-    ax = plot_histo_ax(f.gca(), xm.compressed(), stats_txt=False, fs=15, va='top', ha='left', pos_x=0.01, ini_pos_y=0.79, first=True, c='k', kwargs_histo=dict(bins=50, histtype='stepfilled', color='grey', range=[-3, 3], lw=3))
+    ax = plot_histo_ax(f.gca(), xm.compressed(), stats_txt=False, fs=15, va='top', ha='left', pos_x=0.01, ini_pos_y=0.79, first=True, c='k', kwargs_histo=dict(bins=50, histtype='stepfilled', color='grey', range=[-3, 3], lw=2))
     ax.plot(bin_center, bimodal(bin_center, *coeff))
     ax.set_xlim(-1, 2.5)
     print r'$\langle x \rangle_1$:%.2f, $\sigma_1$:%.2f, $A_1$:%d' % (coeff[0], coeff[1], coeff[2])
     print r'$\langle x \rangle_1$:%.2f, $\sigma_1$:%.2f, $A_1$:%d' % (coeff[3], coeff[4], coeff[5])
+    ax.axvline(x=coeff[0], ymax=0.65, ls='--', c='k')
+    ax.axvline(x=coeff[3], ymax=0.95, ls='--', c='k')
     plot_text_ax(plt.gca(), r'$\langle x \rangle_1$:%.2f, $\sigma_1$:%.2f, $A_1$:%d' % (coeff[0], coeff[1], coeff[2]), pos_x=0.01, pos_y=0.99, va='top', ha='left', fs=8)
     plot_text_ax(plt.gca(), r'$\langle x \rangle_2$:%.2f, $\sigma_2$:%.2f, $A_2$:%d' % (coeff[3], coeff[4], coeff[5]), pos_x=0.01, pos_y=0.89, va='top', ha='left', fs=8)
     ax.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='off', right='off', labelbottom='on', labeltop='off', labelleft='off', labelright='off')
     ax.xaxis.set_major_locator(MaxNLocator(4))
     ax.xaxis.set_minor_locator(MaxNLocator(20))
-    ax.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    ax.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
     f.tight_layout(rect=[0, 0.01, 1, 0.98])
     f.savefig('bimodalWHa_model.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
+
+
+def fig_distances_distrib(args):
+    ALL, sel, gals = args.ALL, args.sel, args.gals
+
+    y = np.zeros_like(ALL.mt)
+    for i, k in enumerate(ALL.mt_keys):
+        y[sel['gals__mt'][k]] = i
+        # print k, ALL.califaID__g[sel['gals__mt'][k]]
+        # if k == 'E':
+        #     tmp_califaID = ALL.califaID__g[sel['gals__mt'][k]]
+        #     tmp_dist = ALL.galDistance_Mpc[sel['gals__mt'][k]]
+        #     tmp_intW6563 = ALL.integrated_W6563[sel['gals__mt'][k]]
+        #     i_gal = np.argmin(tmp_dist)
+        #     print tmp_califaID[i_gal]
+        #     print tmp_intW6563[i_gal]
+
+    mt_colors = ['brown', 'red', 'orange', 'green', '#00D0C9', 'blue']
+
+    xm, ym, zm = ma_mask_xyz(ALL.galDistance_Mpc, y, ALL.integrated_W6563, mask=~sel['gals'])
+    # histo, bin_edges = np.histogram(xm.compressed(), bins=30, range=[0, 150])
+    # bin_center = (bin_edges[:-1] + bin_edges[1:])/2.
+    f = plot_setup(latex_column_width, 1.)  # /golden_mean)
+    ax = f.gca()
+    sc = ax.scatter(xm, ym, c=zm, s=50, marker='o', rasterized=True, cmap='Spectral', edgecolor='none', vmax=14, vmin=3)
+    the_divider = make_axes_locatable(ax)
+    color_axis = the_divider.append_axes('right', size='5%', pad=0)
+    cb = plt.colorbar(sc, cax=color_axis)
+    cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]')
+    # ax = plot_histo_ax(f.gca(), xm.compressed(), stats_txt=True, fs=15, va='top', ha='left', pos_x=0.01, ini_pos_y=0.79, first=True, c='k', kwargs_histo=dict(bins=15, histtype='stepfilled', color='grey', range=[0, 150], lw=2))
+    # ax.set_xlim(20, 120)
+    yticks = np.arange(0,len(ALL.mt_keys))
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(ALL.mt_keys)
+    ax.yaxis.set_ticks_position('none')
+    #ax.tick_params(axis='both', which='major', labelsize=12)
+    # for i, l in enumerate(ax.get_yticklabels()):
+    #     l.set_color(mt_colors[i])
+    ax.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    ax.xaxis.set_major_locator(MaxNLocator(4))
+    ax.xaxis.set_minor_locator(MaxNLocator(20))
+    ax.set_xlabel(r'galaxy distance [Mpc]')
+    f.tight_layout(rect=[0, 0.01, 1, 0.98])
+    f.savefig('galdist_mt_WHa.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
+
+
+def fig_sample_tese(args, gals):
+    ALL, sel, gals = args.ALL, args.sel, args.gals
+
+    f = plot_setup(latex_text_width, 1.)  # /golden_mean)
+    gs = gridspec.GridSpec(2, 2, left=0.1, bottom=0.1, right=0.9, wspace=0.25, hspace=0.15)
+    ax1 = plt.subplot(gs[0, 0])
+    ax2 = plt.subplot(gs[0, 1])
+    ax3 = plt.subplot(gs[1, 0])
+    ax4 = plt.subplot(gs[1, 1])
+
+    xm = np.ma.masked_array(np.ma.log10(ALL.McorSD__z), mask=~sel['gals_sample__z'])
+    ax1 = plot_histo_ax(ax1, xm.compressed(), stats_txt=False, first=True, kwargs_histo=dict(bins=15, histtype='stepfilled', color='grey', lw=2, range=[0, 5]))
+    ax2.set_xlim(0, 5)
+    ax1.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    # ax2.xaxis.set_major_locator(MaxNLocator(4))
+    # ax2.xaxis.set_minor_locator(MaxNLocator(20))
+    ax1.set_xlabel(r'$\log$ $\mu_\star$ [M$_\odot$ pc$^{-2}$]')
+
+    xm = np.ma.masked_array(ALL.redshift, mask=~sel['gals'])
+    ax2 = plot_histo_ax(ax2, xm.compressed(), stats_txt=False, first=True, kwargs_histo=dict(bins=15, histtype='stepfilled', color='grey', range=[0.002, 0.032], lw=2))
+    ax2.set_xlim(0.002, 0.032)
+    ax2.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    # ax2.xaxis.set_major_locator(MaxNLocator(4))
+    # ax2.xaxis.set_minor_locator(MaxNLocator(20))
+    ax2.set_xlabel(r'galaxy redshift')
+
+    xm = np.ma.masked_array(np.ma.log10(ALL.Mtot), mask=~sel['gals'])
+    ax3 = plot_histo_ax(ax3, xm.compressed(), stats_txt=False, first=True, kwargs_histo=dict(bins=15, histtype='stepfilled', color='grey', lw=2))  # , range=[0.002, 0.032]))
+    # ax3.set_xlim(0.002, 0.032)
+    ax3.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    # ax3.xaxis.set_major_locator(MaxNLocator(4))
+    # ax3.xaxis.set_minor_locator(MaxNLocator(20))
+    ax3.set_xlabel(r'$\log$ M$_\star$ [M$_\odot$]')
+
+    y = np.zeros_like(ALL.mt)
+    for i, k in enumerate(ALL.mt_keys):
+        y[sel['gals__mt'][k]] = i
+    mt_colors = ['brown', 'red', 'orange', 'green', '#00D0C9', 'blue']
+    xm, ym, zm = ma_mask_xyz(ALL.galDistance_Mpc, y, ALL.integrated_W6563, mask=~sel['gals'])
+    sc = ax4.scatter(xm, ym, c=zm, s=50, marker='o', rasterized=True, cmap='Spectral', edgecolor='none', vmax=14, vmin=3)
+    the_divider = make_axes_locatable(ax4)
+    color_axis = the_divider.append_axes('right', size='5%', pad=0)
+    cb = plt.colorbar(sc, cax=color_axis)
+    cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]')
+    yticks = np.arange(0,len(ALL.mt_keys))
+    ax4.set_yticks(yticks)
+    ax4.set_yticklabels(ALL.mt_keys)
+    ax4.yaxis.set_ticks_position('none')
+    ax4.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    ax4.xaxis.set_major_locator(MaxNLocator(4))
+    ax4.xaxis.set_minor_locator(MaxNLocator(20))
+    ax4.set_xlabel(r'galaxy distance [Mpc]')
+
+
+    f.tight_layout(rect=[0, 0.01, 1, 0.98])
+    f.savefig('fig_sample_tese.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
+
+
+def autolabel(ax, rects):
+    """
+    Attach a text label above each bar displaying its height
+    """
+    for rect in rects:
+        height = rect.get_height()
+        ax.text(rect.get_x() + rect.get_width()/2., 1.05*height, '%d' % int(height), ha='center', va='bottom')
+    return ax
+
+
+def fig_sample_tese2(args, gals):
+    ALL, sel, gals = args.ALL, args.sel, args.gals
+
+    f = plot_setup(latex_text_width, 1.+1/6.)  # /golden_mean)
+    gs = gridspec.GridSpec(3, 2, left=0.1, bottom=0.05, right=0.95, wspace=0.25, hspace=0.25)
+    ax1 = plt.subplot(gs[0, 0])
+    ax2 = plt.subplot(gs[0, 1])
+    ax3 = plt.subplot(gs[1, 0])
+    ax4 = plt.subplot(gs[1, 1])
+    ax5 = plt.subplot(gs[2, :])
+
+    xm = np.ma.masked_array(ALL.redshift, mask=~sel['gals'])
+    print xm.max(), xm.min()
+    ax1 = plot_histo_ax(ax1, xm.compressed(), stats_txt=False, first=True, kwargs_histo=dict(bins=20, histtype='stepfilled', color='blue', edgecolor='k', range=[0.002, 0.032], lw=2))
+    ax1.set_xlim(0.002, 0.032)
+    ax1.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    # ax1.xaxis.set_major_locator(MaxNLocator(4))
+    # ax1.xaxis.set_minor_locator(MaxNLocator(20))
+    ax1.set_xlabel(r'galaxy redshift')
+
+    xm = np.ma.masked_array(np.ma.log10(ALL.Mtot), mask=~sel['gals'])
+    print xm.max(), xm.min(), np.mean(xm.compressed()), np.median(xm.compressed()), np.std(xm.compressed())
+    ax2 = plot_histo_ax(ax2, xm.compressed(), stats_txt=False, first=True, kwargs_histo=dict(bins=20, histtype='stepfilled', color='blue', edgecolor='k', lw=2, range=[8, 12]))
+    ax2.set_xlim(8, 12)
+    ax2.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    # ax2.xaxis.set_major_locator(MaxNLocator(4))
+    # ax2.xaxis.set_minor_locator(MaxNLocator(20))
+    ax2.set_xlabel(r'$\log$ M$_\star$ [M$_\odot$]')
+
+    xm = np.ma.masked_array(np.ma.log10(ALL.W6563__z), mask=~sel['gals_sample__z'])
+    print xm.max(), xm.min(), np.mean(xm.compressed()), np.median(xm.compressed()), np.std(xm.compressed())
+    ax3 = plot_histo_ax(ax3, xm.compressed(), stats_txt=False, first=True, kwargs_histo=dict(bins=50, histtype='stepfilled', color='blue', edgecolor='k', lw=2, range=[-1.5, 2.5]))
+    ax3.set_xlim(-1.5, 2.5)
+    ax3.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    # ax3.xaxis.set_major_locator(MaxNLocator(4))
+    # ax3.xaxis.set_minor_locator(MaxNLocator(20))
+    ax3.set_xlabel(r'W${}_{{\rm H}\alpha}$ [$\AA$]')
+
+    xm = np.ma.masked_array(np.ma.log10(ALL.McorSD__z), mask=~sel['gals_sample__z'])
+    print xm.max(), xm.min(), np.mean(xm.compressed()), np.median(xm.compressed()), np.std(xm.compressed())
+    ax4 = plot_histo_ax(ax4, xm.compressed(), stats_txt=False, first=True, kwargs_histo=dict(bins=50, histtype='stepfilled', color='blue', edgecolor='k', lw=2, range=[1, 5]))
+    ax4.set_xlim(1, 5)
+    ax4.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    # ax4.xaxis.set_major_locator(MaxNLocator(4))
+    # ax4.xaxis.set_minor_locator(MaxNLocator(20))
+    ax4.set_xlabel(r'$\log$ $\mu_\star$ [M$_\odot$ pc$^{-2}$]')
+
+    mt_colors = ['brown', 'red', 'orange', 'green', '#00D0C9', 'blue']
+    for i, (k, c) in enumerate(zip(ALL.mt_keys, mt_colors)):
+        N = len(ALL.califaID__g[sel['gals__mt'][k]])
+        rects = ax5.bar(i, N, color=c, edgecolor='k')
+        print len(rects)
+        for rect in rects:
+            height = rect.get_height()
+            plot_text_ax(ax5, '%d' % int(height), rect.get_x() + rect.get_width()/2., 0.8*height, 15, 'bottom', 'center', c='k', **dict(transform=False))
+            # ax5.text(rect.get_x() + rect.get_width()/2., 0.9*height, 0.9*height, '%d' % int(height), ha='center', va='bottom')
+    ax5.set_xticks(np.arange(0, len(mt_colors)))
+    ax5.set_xticklabels(ALL.mt_keys)
+    ax5.set_xlabel(r'tipo morfol$\acute{\rm o}$gico')
+
+    # xm, ym, zm = ma_mask_xyz(ALL.galDistance_Mpc, y, ALL.integrated_W6563, mask=~sel['gals'])
+    # sc = ax4.scatter(xm, ym, c=zm, s=50, marker='o', rasterized=True, cmap='Spectral', edgecolor='none', vmax=14, vmin=3)
+    # the_divider = make_axes_locatable(ax4)
+    # color_axis = the_divider.append_axes('right', size='5%', pad=0)
+    # cb = plt.colorbar(sc, cax=color_axis)
+    # cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]')
+    # yticks = np.arange(0,len(ALL.mt_keys))
+    # ax4.set_yticks(yticks)
+    # ax4.set_yticklabels(ALL.mt_keys)
+    # ax4.yaxis.set_ticks_position('none')
+    # ax4.tick_params(axis='both', which='both', direction='in', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    # ax4.xaxis.set_major_locator(MaxNLocator(4))
+    # ax4.xaxis.set_minor_locator(MaxNLocator(20))
+    # ax4.set_xlabel(r'galaxy distance [Mpc]')
+
+    f.tight_layout(rect=[0, 0.01, 1, 0.98])
+    f.savefig('fig_sample_tese2.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
 
 
 def fig_WHa_histograms_per_morftype_and_radius_FO(args, gals):
@@ -1542,7 +1755,7 @@ def fig_WHa_histograms_per_morftype_and_radius_FO(args, gals):
     m_aux = m_aux & sel_ba_FO
     plot_histo_ax(ax, np.ma.masked_array(xm, mask=~m_aux).compressed(), dataset_names='ba > 0.7', pos_x=0.02, ha='left', c='k', first=True, stats_txt=True, ini_pos_y=0.97, fs=10, y_v_space=0.13, kwargs_histo=dict(bins=50, histtype='stepfilled', color='gray', range=logWHa_range, lw=3))
     for th in args.class_thresholds:
-        ax.axvline(x=np.ma.log10(th), c='k', ls='--')
+        ax.axvline(x=np.ma.galdistlog10(th), c='k', ls='--')
     ax.set_xlim(logWHa_range)
     ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
 
@@ -1610,8 +1823,8 @@ def fig_WHa_histograms_per_morftype_and_radius_FO(args, gals):
             ax.set_xlim(logWHa_range)
 
     f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
-    f.savefig('fig_WHa_histograms_per_morftype_and_radius_FO.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    f.savefig('fig_WHa_histograms_per_morftype_and_radius_FO.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -1757,7 +1970,7 @@ def fig_SBHaWHa_scatter_per_morftype_and_ba(args, gals):
             plot_text_ax(ax, mt_label, 0.98, 0.01, 20, 'bottom', 'right', c=colortipo[i])
             if i == (len(colortipo) - 1):
                 ax.tick_params(axis='x', which='both', bottom='on', top='off', labelbottom='on')
-                ax.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+                ax.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
                 ax.set_xticks([-1, 0, 1, 2, 3])
             else:
                 if not col:
@@ -1768,9 +1981,9 @@ def fig_SBHaWHa_scatter_per_morftype_and_ba(args, gals):
             ax.set_ylim(logSBHa_range)
             ax.grid()
 
-    ax00.set_ylabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
+    ax00.set_ylabel(r'$\log\ \Sigma_{{\rm H}\alpha}$ [L${}_\odot/$kpc${}^2$]')
     f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    f.savefig('fig_SBHaWHa_scatter_per_morftype_and_ba.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_SBHaWHa_scatter_per_morftype_and_ba.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
 
     print '######################################################'
     print '# END ################################################'
@@ -1855,7 +2068,7 @@ def fig_BPT_per_morftype_and_R(args, gals):
     sc = ax.scatter(xm, ym, **scater_kwargs)
     cbaxes = f.add_axes([0.8, 0.96, 0.12, 0.02])
     cb = plt.colorbar(sc, cax=cbaxes, orientation='horizontal')  #, ticks=[0, 1, 2, 3])
-    cb.set_label(r'W${}_{H\alpha}$ [$\AA$]', fontsize=14)
+    cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=14)
     ax.xaxis.set_minor_locator(minorLocator)
     ax.yaxis.set_minor_locator(minorLocator)
     ax.set_xlim(extent[0:2])
@@ -1918,8 +2131,8 @@ def fig_BPT_per_morftype_and_R(args, gals):
                     ax.tick_params(axis='x', which='both', bottom='on', top='off', labelbottom='on')
                 else:
                     ax.tick_params(axis='both', which='both', bottom='on', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-                # ax.set_xlabel(r'$\log\ [NII]/H\alpha$')
-                # ax.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+                # ax.set_xlabel(r'$\log\ [NII]/{\rm H}\alpha$')
+                # ax.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
                 ax.set_xticks([-1, 0, 1, 2, 3])
             else:
                 if not col:
@@ -1937,17 +2150,17 @@ def fig_BPT_per_morftype_and_R(args, gals):
             ax.plot(L.x['S06'], L.y['S06'], 'k-', label='S06')
             ax.plot(L.x['K03'], L.y['K03'], 'k-', label='K03')
 
-    # ax00.set_ylabel(r'$\log\ [OIII]/H\beta$')
+    # ax00.set_ylabel(r'$\log\ [OIII]/{\rm H}\beta$')
     plot_text_ax(ax00, 'S06', 0.30, 0.02, 20, 'bottom', 'left', 'k')
     plot_text_ax(ax00, 'K03', 0.55, 0.02, 20, 'bottom', 'left', 'k')
     plot_text_ax(ax00, 'K03', 0.85, 0.02, 20, 'bottom', 'left', 'k')
 
     f.subplots_adjust(left=0.06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
 
-    f.text(0.5, 0.04, r'$\log\ [NII]/H\alpha$', ha='center', fontsize=20)
-    f.text(0.01, 0.5, r'$\log\ [OIII]/H\beta$', va='center', rotation='vertical', fontsize=20)
+    f.text(0.5, 0.04, r'$\log\ [NII]/{\rm H}\alpha$', ha='center', fontsize=20)
+    f.text(0.01, 0.5, r'$\log\ [OIII]/{\rm H}\beta$', va='center', rotation='vertical', fontsize=20)
 
-    f.savefig('fig_BPT_per_morftype_and_R.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_BPT_per_morftype_and_R.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
 
     print '######################################################'
     print '# END ################################################'
@@ -1980,73 +2193,59 @@ def fig_BPT_per_R(args, gals):
     N2Ha__gz = np.ma.log10(f__lgz['6583']/f__lgz['6563'])
 
     N_rows, N_cols = 4, 4
-    f, axArr = plt.subplots(N_rows, N_cols, figsize=(15, 15))
-    _, ind = np.unique(ALL.califaID__z, return_index=True)
-    ax00, ax01, ax02, ax03 = axArr[0]
-    ((ax10, ax11, ax12, ax13), (ax20, ax21, ax22, ax23), (ax30, ax31, ax32, ax33)) = axArr[1:]
+
+    f = plot_setup(width=latex_text_width, aspect=1)
+    cbaxes = f.add_axes([0.1, 0.95, 0.85, 0.03])
+    gs = gridspec.GridSpec(N_rows, N_cols)  #, left=0.2, bottom=0.15, right=0.98, wspace=0., hspace=0.)
+    ax00, ax10, ax20, ax30 = plt.subplot(gs[0,0]), plt.subplot(gs[1,0]), plt.subplot(gs[2,0]), plt.subplot(gs[3,0])
+    ax01, ax11, ax21, ax31 = plt.subplot(gs[0,1]), plt.subplot(gs[1,1]), plt.subplot(gs[2,1]), plt.subplot(gs[3,1])
+    ax02, ax12, ax22, ax32 = plt.subplot(gs[0,2]), plt.subplot(gs[1,2]), plt.subplot(gs[2,2]), plt.subplot(gs[3,2])
+    ax03, ax13, ax23, ax33 = plt.subplot(gs[0,3]), plt.subplot(gs[1,3]), plt.subplot(gs[2,3]), plt.subplot(gs[3,3])
     ax__R = [[ax10, ax20, ax30], [ax11, ax21, ax31], [ax12, ax22, ax32], [ax13, ax23, ax33]]
+    fs = 6
 
     extent = [-1.5, 0.7, -1.2, 1.2]
 
     ax = ax00
-    ax.set_title(r'%d galaxies - %d zones' % (len(gals), N_zone), fontsize=18, y=1.02)
+    ax.set_title(r'%d galaxies - %d zones' % (len(gals), N_zone), fontsize=fs+2, y=1.02)
     m_aux = sel_sample__gz
     xm, ym, zm = ma_mask_xyz(x=N2Ha__gz, y=O3Hb__gz, z=z, mask=~m_aux)
-    scater_kwargs = dict(c=zm, s=3, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
+    scater_kwargs = dict(rasterized=True, c=zm, s=1, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
     sc = ax.scatter(xm, ym, **scater_kwargs)
-    cbaxes = f.add_axes([0.1, 0.95, 0.8, 0.03])
     cb = plt.colorbar(sc, cax=cbaxes, orientation='horizontal')  #, ticks=[0, 1, 2, 3])
-    cb.set_label(r'W${}_{H\alpha}$ [$\AA$]', fontsize=16)
-    ax.xaxis.set_minor_locator(minorLocator)
-    ax.yaxis.set_minor_locator(minorLocator)
+    cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=fs+4, labelpad=-28)
     ax.set_xlim(extent[0:2])
     ax.set_ylim(extent[2:4])
-    # ax.grid()
-    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='on', right='off', labelbottom='off', labeltop='off', labelleft='on', labelright='off')
-    ax.xaxis.set_major_locator(MaxNLocator(5, prune='upper'))
 
     ax = ax01
-    ax.set_title(r'R $\leq$ 0.5 HLR', fontsize=18, y=1.02)
+    ax.set_title(r'$R\ \leq$ 0.5 HLR', fontsize=fs+2, y=1.02)
     m_aux = sel_gals_sample_Rin__gz
     xm, ym, zm = ma_mask_xyz(x=N2Ha__gz, y=O3Hb__gz, z=z, mask=~m_aux)
-    scater_kwargs = dict(c=zm, s=3, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
+    # plot_text_ax(ax, '%d' % xm.count(), 0.95, 0.95, fs, 'top', 'right', 'k')
+    scater_kwargs = dict(rasterized=True, c=zm, s=1, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
     sc = ax.scatter(xm, ym, **scater_kwargs)
-    ax.xaxis.set_minor_locator(minorLocator)
-    ax.yaxis.set_minor_locator(minorLocator)
     ax.set_xlim(extent[0:2])
     ax.set_ylim(extent[2:4])
-    # ax.grid()
-    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-    ax.xaxis.set_major_locator(MaxNLocator(5, prune='upper'))
 
     ax = ax02
-    ax.set_title(r'0.5 $<$ R $\leq$ 1 HLR', fontsize=18, y=1.02)
+    ax.set_title(r'0.5 $<\ R\ \leq$ 1 HLR', fontsize=fs+2, y=1.02)
     m_aux = sel_gals_sample_Rmid__gz
     xm, ym, zm = ma_mask_xyz(x=N2Ha__gz, y=O3Hb__gz, z=z, mask=~m_aux)
-    scater_kwargs = dict(c=zm, s=3, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
+    # plot_text_ax(ax, '%d' % xm.count(), 0.95, 0.95, fs, 'top', 'right', 'k')
+    scater_kwargs = dict(rasterized=True, c=zm, s=1, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
     sc = ax.scatter(xm, ym, **scater_kwargs)
-    ax.xaxis.set_minor_locator(minorLocator)
-    ax.yaxis.set_minor_locator(minorLocator)
     ax.set_xlim(extent[0:2])
     ax.set_ylim(extent[2:4])
-    # ax.grid()
-    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-    ax.xaxis.set_major_locator(MaxNLocator(5, prune='upper'))
 
     ax = ax03
-    ax.set_title(r'R $>$ 1 HLR', fontsize=18, y=1.02)
+    ax.set_title(r'$R\ >$ 1 HLR', fontsize=fs+2, y=1.02)
     m_aux = sel_gals_sample_Rout__gz
     xm, ym, zm = ma_mask_xyz(x=N2Ha__gz, y=O3Hb__gz, z=z, mask=~m_aux)
-    scater_kwargs = dict(c=zm, s=3, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
+    # plot_text_ax(ax, '%d' % xm.count(), 0.95, 0.95, fs, 'top', 'right', 'k')
+    scater_kwargs = dict(rasterized=True, c=zm, s=1, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
     sc = ax.scatter(xm, ym, **scater_kwargs)
-    ax.xaxis.set_minor_locator(minorLocator)
-    ax.yaxis.set_minor_locator(minorLocator)
     ax.set_xlim(extent[0:2])
     ax.set_ylim(extent[2:4])
-    # ax.grid()
-    ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-    # ax.set_xticks([-1, 0, 1, 2, 3])
-    ax.xaxis.set_major_locator(MaxNLocator(5))
 
     sels_R = [sel['gals_sample__z'], sel['gals_sample_Rin__z'], sel['gals_sample_Rmid__z'], sel['gals_sample_Rout__z']]
     for iR, sel_R in enumerate(sels_R):
@@ -2054,69 +2253,59 @@ def fig_BPT_per_R(args, gals):
         ax = axs[0]
         m_aux = sel_R & sel['WHa']['z']['hDIG']
         xm, ym, zm = ma_mask_xyz(x=N2Ha__gz, y=O3Hb__gz, z=z, mask=~m_aux)
-        scater_kwargs = dict(c=zm, s=3, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
+        # plot_text_ax(ax, '%d' % xm.count(), 0.95, 0.95, fs, 'top', 'right', 'k')
+        scater_kwargs = dict(rasterized=True, c=zm, s=1, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
         sc = ax.scatter(xm, ym, **scater_kwargs)
-        ax.xaxis.set_minor_locator(minorLocator)
-        ax.yaxis.set_minor_locator(minorLocator)
         ax.set_xlim(extent[0:2])
         ax.set_ylim(extent[2:4])
-        # ax.grid()
-        ax.xaxis.set_major_locator(MaxNLocator(5, prune='upper'))
 
         ax = axs[1]
         m_aux = sel_R & sel['WHa']['z']['mDIG']
         xm, ym, zm = ma_mask_xyz(x=N2Ha__gz, y=O3Hb__gz, z=z, mask=~m_aux)
-        scater_kwargs = dict(c=zm, s=3, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
+        # plot_text_ax(ax, '%d' % xm.count(), 0.95, 0.95, fs, 'top', 'right', 'k')
+        scater_kwargs = dict(rasterized=True, c=zm, s=1, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
         sc = ax.scatter(xm, ym, **scater_kwargs)
-        ax.xaxis.set_minor_locator(minorLocator)
-        ax.yaxis.set_minor_locator(minorLocator)
         ax.set_xlim(extent[0:2])
         ax.set_ylim(extent[2:4])
-        # ax.grid()
-        ax.xaxis.set_major_locator(MaxNLocator(5, prune='upper'))
 
         ax = axs[2]
         m_aux = sel_R & sel['WHa']['z']['SFc']
         xm, ym, zm = ma_mask_xyz(x=N2Ha__gz, y=O3Hb__gz, z=z, mask=~m_aux)
-        scater_kwargs = dict(c=zm, s=3, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
+        # plot_text_ax(ax, '%d' % xm.count(), 0.95, 0.95, fs, 'top', 'right', 'k')
+        scater_kwargs = dict(rasterized=True, c=zm, s=1, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
         sc = ax.scatter(xm, ym, **scater_kwargs)
-        ax.xaxis.set_minor_locator(minorLocator)
-        ax.yaxis.set_minor_locator(minorLocator)
         ax.set_xlim(extent[0:2])
         ax.set_ylim(extent[2:4])
-        # ax.grid()
-        # ax.set_xticks([-1, 0, 1, 2, 3])
-        ax.xaxis.set_major_locator(MaxNLocator(5))
-        if not iR:
-            axs[0].tick_params(axis='both', which='both', bottom='off', top='off', left='on', right='off', labelbottom='off', labeltop='off', labelleft='on', labelright='off')
-            axs[1].tick_params(axis='both', which='both', bottom='off', top='off', left='on', right='off', labelbottom='off', labeltop='off', labelleft='on', labelright='off')
-            axs[2].tick_params(axis='both', which='both', bottom='on', top='off', left='on', right='off', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
-        else:
-            axs[0].tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-            axs[1].tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off', labelbottom='off', labeltop='off', labelleft='off', labelright='off')
-            axs[2].tick_params(axis='both', which='both', bottom='on', top='off', left='off', right='off', labelbottom='on', labeltop='off', labelleft='off', labelright='off')
 
     L = Lines()
-    for ax in [ax00, ax01, ax02, ax03, ax10, ax11, ax12, ax13, ax20, ax21, ax22, ax23, ax30, ax31, ax32, ax33]:
+    for iax, ax in enumerate(f.axes[1:]):
         ax.plot(L.x['K01'], L.y['K01'], 'k-', label='K01')
         ax.plot(L.x['S06'], L.y['S06'], 'k-', label='S06')
         ax.plot(L.x['K03'], L.y['K03'], 'k-', label='K03')
+        ax.xaxis.set_major_locator(MaxNLocator(5, prune='both'))
+        ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+        ax.yaxis.set_minor_locator(AutoMinorLocator(5))
+        labelbottom = 'off'
+        labelleft = 'off'
+        if iax < 4:
+            labelleft = 'on'
+        if not ((iax + 1) % 4):
+            labelbottom = 'on'
+        ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom=labelbottom, labeltop='off', labelleft=labelleft, labelright='off')
 
-    # ax00.set_ylabel(r'$\log\ [OIII]/H\beta$')
-    plot_text_ax(ax00, 'S06', 0.32, 0.01, 20, 'bottom', 'left', 'k')
-    plot_text_ax(ax00, 'K03', 0.62, 0.01, 20, 'bottom', 'left', 'k')
-    plot_text_ax(ax00, 'K01', 0.99, 0.01, 20, 'bottom', 'right', 'k')
+    plot_text_ax(ax00, 'S06', 0.32, 0.03, fs, 'bottom', 'left', 'k')
+    plot_text_ax(ax00, 'K03', 0.62, 0.03, fs, 'bottom', 'left', 'k')
+    plot_text_ax(ax00, 'K01', 0.92, 0.03, fs, 'bottom', 'right', 'k')
+    plot_text_ax(ax10, 'hDIG', 0.05, 0.95, fs, 'top', 'left', 'k')
+    plot_text_ax(ax20, 'mDIG', 0.05, 0.95, fs, 'top', 'left', 'k')
+    plot_text_ax(ax30, 'SFc', 0.05, 0.95, fs, 'top', 'left', 'k')
 
-    f.subplots_adjust(left=0.06, right=0.95, bottom=0.10, top=0.88, hspace=0.0, wspace=0.0)
+    f.subplots_adjust(left=0.10, right=0.95, bottom=0.08, top=0.88, hspace=0.0, wspace=0.0)
+    f.text(0.5, 0.02, r'$\log\ [NII]/{\rm H}\alpha$', ha='center', fontsize=fs+4)
+    f.text(0.01, 0.5, r'$\log\ [OIII]/{\rm H}\beta$', va='center', rotation='vertical', fontsize=fs+4)
 
-    f.text(0.5, 0.02, r'$\log\ [NII]/H\alpha$', ha='center', fontsize=20)
-    f.text(0.01, 0.5, r'$\log\ [OIII]/H\beta$', va='center', rotation='vertical', fontsize=20)
+    f.savefig('fig_BPT_per_R.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
 
-    f.savefig('fig_BPT_per_R.png', dpi=_dpi_choice, transparent=_transp_choice)
-
-    print '######################################################'
-    print '# END ################################################'
-    print '######################################################'
     sel_BPT_S06SFc__gz = np.bitwise_and(sel['BPT']['z']['S06'], sel_sample__gz)
     N_SFc_WHa_S06BPT__gz = np.bitwise_and(sel_BPT_S06SFc__gz, sel['WHa']['z']['SFc']).astype('int').sum()
     N_hDIG_WHa_S06BPT_zones = np.bitwise_and(~sel_BPT_S06SFc__gz, sel['WHa']['z']['hDIG']).astype('int').sum()
@@ -2137,6 +2326,10 @@ def fig_BPT_per_R(args, gals):
     N_hDIG_WHa_K03BPT_pixels = np.bitwise_and(~sel_BPT_K03SFc__gyx, sel['WHa']['yx']['hDIG']).astype('int').sum()
     print 'pixels: N_SFc(K03 & WHa) = %d (%.2f%%)' % (N_SFc_WHa_K03BPT__gyx, 100.*N_SFc_WHa_K03BPT__gyx/sel['WHa']['yx']['SFc'].astype('int').sum())
     print 'pixels: N_hDIG(K03 & WHa) = %d (%.2f%%)' % (N_hDIG_WHa_K03BPT_pixels, 100.*N_hDIG_WHa_K03BPT_pixels/sel['WHa']['yx']['hDIG'].astype('int').sum())
+
+    print '######################################################'
+    print '# END ################################################'
+    print '######################################################'
 
 
 def fig_BPT_per_class(args, gals):
@@ -2188,7 +2381,7 @@ def fig_BPT_per_class(args, gals):
     sc = ax.scatter(xm, ym, **scater_kwargs)
     cbaxes = add_subplot_axes(ax0, [0.04, 0.92, 0.50, 0.05])
     cb = plt.colorbar(sc, cax=cbaxes, orientation='horizontal')  #, ticks=[0, 1, 2, 3])
-    cb.set_label(r'W${}_{H\alpha}$ [$\AA$]', fontsize=fs, labelpad=-0.5)
+    cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=fs, labelpad=-0.5)
     ax.set_xlim(extent[0:2])
     ax.set_ylim(extent[2:4])
     # ax.grid()
@@ -2223,7 +2416,7 @@ def fig_BPT_per_class(args, gals):
         ax.plot(L.x['S06'], L.y['S06'], 'k-', label='S06')
         ax.plot(L.x['K03'], L.y['K03'], 'k-', label='K03')
 
-    # ax00.set_ylabel(r'$\log\ [OIII]/H\beta$')
+    # ax00.set_ylabel(r'$\log\ [OIII]/{\rm H}\beta$')
     plot_text_ax(ax0, 'S06', 0.32, 0.01, fs+2, 'bottom', 'left', 'k')
     plot_text_ax(ax0, 'K03', 0.6, 0.01, fs+2, 'bottom', 'left', 'k')
     plot_text_ax(ax0, 'K01', 0.91, 0.01, fs+2, 'bottom', 'right', 'k')
@@ -2231,8 +2424,8 @@ def fig_BPT_per_class(args, gals):
     # f.subplots_adjust(left=0.06, right=0.95, bottom=0.15, top=0.90, hspace=0.0, wspace=0.0)
     # gs.update((left=0.06, right=0.95, bottom=0.15, top=0.90, hspace=0.0, wspace=0.0)
 
-    f.text(0.5, 0.02, r'$\log\ [NII]/H\alpha$', ha='center', fontsize=fs+4)
-    f.text(0.01, 0.5, r'$\log\ [OIII]/H\beta$', va='center', rotation='vertical', fontsize=fs+4)
+    f.text(0.5, 0.02, r'$\log\ [NII]/{\rm H}\alpha$', ha='center', fontsize=fs+4)
+    f.text(0.01, 0.5, r'$\log\ [OIII]/{\rm H}\beta$', va='center', rotation='vertical', fontsize=fs+4)
 
     f.savefig('fig_BPT_per_class.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
 
@@ -2294,11 +2487,11 @@ def fig_BPT_mixed(args, gals):
     N2Ha_2 = -0.0955  # -0.03  # -0.1
     O3Hb_2 = 0.1255  # 0.18  # 0.1
     _, N2Ha , O3Hb, _ = calcMixingLineOnBPT(-0.4, -0.7, 3.71, N2Ha_2, O3Hb_2, 2.86, 0.2)
-    # ax.plot(N2Ha,O3Hb,'ko-', mec='none', ms=3.)
+    ax.plot(N2Ha,O3Hb,'ko-', mec='none', ms=3.)
     _, N2Ha , O3Hb, _ = calcMixingLineOnBPT(-0.5, -0.3, 3.75, N2Ha_2, O3Hb_2, 2.86, 0.2)
-    # ax.plot(N2Ha,O3Hb,'ko-', mec='none', ms=3.)
+    ax.plot(N2Ha,O3Hb,'ko-', mec='none', ms=3.)
     _, N2Ha , O3Hb, _ = calcMixingLineOnBPT(-0.6, 0., 3.67, N2Ha_2, O3Hb_2, 2.86, 0.2)
-    # ax.plot(N2Ha,O3Hb,'ko-', mec='none', ms=3.)
+    ax.plot(N2Ha,O3Hb,'ko-', mec='none', ms=3.)
     ax.tick_params(axis='both', which='both', direction='in', bottom='on', top='on', left='on', right='on', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
     ax.xaxis.set_major_locator(MultipleLocator(0.5))
     ax.xaxis.set_minor_locator(MultipleLocator(0.1))
@@ -2311,12 +2504,88 @@ def fig_BPT_mixed(args, gals):
     plot_text_ax(ax, 'K01', 0.86, 0.01, fs+2, 'bottom', 'right', 'k')
     cbaxes = f.add_axes([0.69, 0.9, 0.25, 0.05])
     cb = plt.colorbar(sc, cax=cbaxes, orientation='horizontal')  #, ticks=[0, 1, 2, 3])
-    cb.set_label(r'W${}_{H\alpha}$ [$\AA$]', fontsize=fs+2)
+    cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=fs+2)
 
-    ax.set_xlabel(r'$\log\ [NII]/H\alpha$')
-    ax.set_ylabel(r'$\log\ [OIII]/H\beta$')
+    ax.set_xlabel(r'$\log\ [NII]/{\rm H}\alpha$')
+    ax.set_ylabel(r'$\log\ [OIII]/{\rm H}\beta$')
     f.tight_layout()
     f.savefig('fig_BPT_mixed.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
+
+
+def fig_BPT_3D(args, gals):
+    print '#################'
+    print '# fig_BPT_mixed #'
+    print '#################'
+    from mpl_toolkits.mplot3d import Axes3D
+
+
+    ALL, sel = args.ALL, args.sel
+
+    if gals is None:
+        _, ind = np.unique(ALL.califaID__z, return_index=True)
+        gals = ALL.califaID__z[sorted(ind)]
+
+    sel_sample__gz = sel['gals_sample__z'] & sel['SN_BPT3']['z']
+    sel_sample__gyx = sel['gals_sample__yx'] & sel['SN_BPT3']['yx']
+
+    N_zone = sel_sample__gz.astype('int').sum()
+    z = ALL.W6563__z
+
+    sel_gals_sample_Rin__gz = sel['gals_sample_Rin__z'] & sel['SN_BPT3']['z']
+    sel_gals_sample_Rmid__gz = sel['gals_sample_Rmid__z'] & sel['SN_BPT3']['z']
+    sel_gals_sample_Rout__gz = sel['gals_sample_Rout__z'] & sel['SN_BPT3']['z']
+    BPTLines = ['4861', '5007', '6563', '6583']
+    f__lgz = {'%s' % l: np.ma.masked_array(getattr(ALL, 'f%s__z' % l), mask=~sel_sample__gz) for l in BPTLines}
+    O3Hb__gz = np.ma.log10(f__lgz['5007']/f__lgz['4861'])
+    N2Ha__gz = np.ma.log10(f__lgz['6583']/f__lgz['6563'])
+
+    fs = 6
+    # f = plt.figure(figsize=(8, 8))
+    f = plt.figure()
+    ax = f.add_subplot(111, projection='3d')
+    # f = plot_setup(width=latex_column_width, aspect=1.)  #1./golden_mean)
+    # ax = f.gca()
+
+    extent = [-0.5, 0.7, -0.5, 1.2]
+
+    # m_aux = sel_gals_sample_Rout__gz & sel['WHa']['z']['mDIG']
+    m_aux = sel_gals_sample_Rin__gz & sel['BPT']['z']['aboK01'] & sel['SN_BPT3']['z']
+    xm, ym, zm = ma_mask_xyz(x=N2Ha__gz, y=O3Hb__gz, z=z, mask=~m_aux)
+    scater_kwargs = dict(c=zm, rasterized=True, s=10, vmax=14, vmin=3, cmap='Spectral', marker='o', edgecolor='none')
+    # scater_kwargs = dict(rasterized=True, s=1, marker='o', edgecolor='none')
+    sc = ax.scatter(xm, ym, zm, **scater_kwargs)
+    L = Lines()
+    ax.plot(L.x['K01'], L.y['K01'], np.zeros_like(L.x['K01']), 'k-', label='K01')
+    ax.plot(L.x['S06'], L.y['S06'], np.zeros_like(L.x['S06']), 'k-', label='S06')
+    ax.plot(L.x['K03'], L.y['K03'], np.zeros_like(L.x['K03']), 'k-', label='K03')
+    # N2Ha_2 = -0.0955  # -0.03  # -0.1
+    # O3Hb_2 = 0.1255  # 0.18  # 0.1
+    # _, N2Ha , O3Hb, _ = calcMixingLineOnBPT(-0.4, -0.7, 3.71, N2Ha_2, O3Hb_2, 2.86, 0.2)
+    # ax.plot(N2Ha,O3Hb,'ko-', mec='none', ms=3.)
+    # _, N2Ha , O3Hb, _ = calcMixingLineOnBPT(-0.5, -0.3, 3.75, N2Ha_2, O3Hb_2, 2.86, 0.2)
+    # ax.plot(N2Ha,O3Hb,'ko-', mec='none', ms=3.)
+    # _, N2Ha , O3Hb, _ = calcMixingLineOnBPT(-0.6, 0., 3.67, N2Ha_2, O3Hb_2, 2.86, 0.2)
+    # ax.plot(N2Ha,O3Hb,'ko-', mec='none', ms=3.)
+    ax.tick_params(axis='both', which='both', direction='in', bottom='on', top='on', left='on', right='on', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
+    ax.xaxis.set_major_locator(MultipleLocator(0.5))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.yaxis.set_major_locator(MultipleLocator(0.5))
+    ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.set_xlim(extent[0:2])
+    ax.set_ylim(extent[2:4])
+    ax.set_zlim(3, 14)
+    # plot_text_ax(ax, 'S06', 0.45, 0.01, fs+2, 'bottom', 'left', 'k')
+    # plot_text_ax(ax, 'K03', 0.60, 0.01, fs+2, 'bottom', 'left', 'k')
+    # plot_text_ax(ax, 'K01', 0.86, 0.01, fs+2, 'bottom', 'right', 'k')
+    # cbaxes = f.add_axes([0.69, 0.9, 0.25, 0.05])
+    # cb = plt.colorbar(sc, cax=cbaxes, orientation='horizontal')  #, ticks=[0, 1, 2, 3])
+    # cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=fs+2)
+
+    ax.set_xlabel(r'$\log\ [NII]/{\rm H}\alpha$')
+    ax.set_ylabel(r'$\log\ [OIII]/{\rm H}\beta$')
+    ax.set_zlabel(r'W${}_{{\rm H}\alpha}$ [$\AA$]')
+    f.tight_layout()
+    f.savefig('fig_BPT_3D.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
 
 
 def fig_cumul_fHaWHa_per_morftype_and_R_gals(args, gals):
@@ -2425,9 +2694,9 @@ def fig_cumul_fHaWHa_per_morftype_and_R_gals(args, gals):
             ax.set_xlim(-0.5, 2)
             ax.set_ylim(0, 1)
     f.subplots_adjust(left=0.06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=20)
     f.text(0.01, 0.5, r'H$\alpha$ flux fraction', va='center', rotation='vertical', fontsize=20)
-    f.savefig('fig_cumul_fHaWHa_per_morftype_and_R_gals.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_cumul_fHaWHa_per_morftype_and_R_gals.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
 
     print '######################################################'
@@ -2539,7 +2808,7 @@ def fig_integrated_BPT_color_Wfrac(args, gals, Wfrac=0.5):
         ax.yaxis.set_major_locator(MaxNLocator(6))
         ax.yaxis.set_minor_locator(AutoMinorLocator(5))
 
-    axArr[0].set_ylabel(r'$\log\ [OIII]/H\beta$')
+    axArr[0].set_ylabel(r'$\log\ [OIII]/{\rm H}\beta$')
     axArr[1].tick_params(axis='both', which='both', bottom='on', top='off', left='off', right='off', labelbottom='on', labeltop='off', labelleft='off', labelright='off')
 
     cbaxes = add_subplot_axes(axArr[1], [0.63, 0.98, 0.47, 0.06])
@@ -2549,9 +2818,9 @@ def fig_integrated_BPT_color_Wfrac(args, gals, Wfrac=0.5):
 
     f.subplots_adjust(left=0.1, right=0.95, bottom=0.15, top=0.92, wspace=0.0)
 
-    f.text(0.5, 0.04, r'$\log\ [NII]/H\alpha$', ha='center', fontsize=20)
+    f.text(0.5, 0.04, r'$\log\ [NII]/{\rm H}\alpha$', ha='center', fontsize=20)
 
-    f.savefig('fig_integrated_BPT_color_Wperc%.0f.png' % (Wfrac * 100), dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_integrated_BPT_color_Wperc%.0f.%s' % (Wfrac * 100, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
 
 
@@ -2694,7 +2963,7 @@ def fig_WHaSBHa_profile(args, gals=None, multi=False, size=None, suffix=''):
         y__r, npts = radialProfile(y__yx, args.R_bin__r, x0, y0, pa, ba, HLR_pix, None, 'median', True)
         ax1.scatter(x__z, y__z, c=10**y__z, cmap='Spectral', vmin=args.class_thresholds[0], vmax=args.class_thresholds[1], **dflt_kw_scatter)
         # ax1.set_xlabel(r'R [HLR]', fontsize=fs+4)
-        ax1.set_ylabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        ax1.set_ylabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
         ax1.grid()
         err_hDIG = np.median(melogW6563__z[mW6563__z <= args.class_thresholds[0]].compressed())
         err_SFc = np.median(melogW6563__z[mW6563__z > args.class_thresholds[1]].compressed())
@@ -2711,7 +2980,7 @@ def fig_WHaSBHa_profile(args, gals=None, multi=False, size=None, suffix=''):
         sc = ax2.scatter(x__z, y__z, rasterized=True, c=10**logW6563__z, cmap='Spectral', s=1, vmin=args.class_thresholds[0], vmax=args.class_thresholds[1], **dflt_kw_scatter)
         ax2.axhline(y=np.log10(SFc_Zhang_threshold), c='k', ls='--')
         # ax2.set_xlabel(r'R [HLR]')
-        ax2.set_ylabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
+        ax2.set_ylabel(r'$\log\ \Sigma_{{\rm H}\alpha}$ [L${}_\odot/$kpc${}^2$]')
         ax2.grid()
         err_hDIG = np.median(melogSB6563__z[mW6563__z <= args.class_thresholds[0]].compressed())
         err_SFc = np.median(melogSB6563__z[mW6563__z > args.class_thresholds[1]].compressed())
@@ -2720,8 +2989,8 @@ def fig_WHaSBHa_profile(args, gals=None, multi=False, size=None, suffix=''):
         # ax2.errorbar(0.25, 6, yerr=err_SFc, fmt='.', capsize=3, c='b')
 
         if row <= 0:
-            ax1.set_title(r'W${}_{H\alpha}$ profile', y=1.03)
-            ax2.set_title(r'$\Sigma_{H\alpha}$ profile', y=1.03)
+            ax1.set_title(r'W${}_{{\rm H}\alpha}$ profile', y=1.03)
+            ax2.set_title(r'$\Sigma_{{\rm H}\alpha}$ profile', y=1.03)
             # cbaxes = add_subplot_axes(ax1, [0.02, 1.19, 0.5, 0.09])
         ax1.set_xlim(0, 2.5)
         ax1.set_ylim(logWHa_range)
@@ -2742,7 +3011,7 @@ def fig_WHaSBHa_profile(args, gals=None, multi=False, size=None, suffix=''):
             ax2.tick_params(axis='both', which='both', direction='in', bottom='on', top='on', left='on', right='on', labelbottom='on', labeltop='off', labelleft='on', labelright='off')
             # cbaxes = f.add_axes([0.75, 0.30, 0.15, 0.02])
             # cb = plt.colorbar(sc, cax=cbaxes, ticks=[3.0, 8.5, 14.0], orientation='horizontal')
-            # cb.ax.set_xlabel(r'W${}_{H\alpha}$ [$\AA$]', fontsize=fs+2)
+            # cb.ax.set_xlabel(r'W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=fs+2)
         if multi:
             row += 1
         else:
@@ -2822,11 +3091,11 @@ def fig_cumul_fHaWHa_per_morftype(args, gals):
     ax.set_xlim(-1, 2.5)
     ax.set_ylim(0, 1)
     # f.subplots_adjust(left=0.06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    ax.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    ax.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
     ax.set_ylabel(r'H$\alpha$ flux fraction')
     # f.subplots_adjust(left=0.open06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    # f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
-    # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
+    # f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    # f.text(0.01, 0.5, r'$\sum\ F_{{\rm H}\alpha} (< $W${}_{{\rm H}\alpha})$', va='center', rotation='vertical', fontsize=20)
     f.set_tight_layout(True)
     f.savefig('fig_cumul_fHaWHa_per_morftype.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
@@ -2901,11 +3170,11 @@ def fig_cumul_line_flux_WHa_per_morftype(args, gals, line, line_label):
     ax.set_xlim(-1, 2.5)
     ax.set_ylim(0, 1)
     # f.subplots_adjust(left=0.06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    ax.set_xlabel(r'$\log$ W${H\alpha}$ [$\AA$]')
+    ax.set_xlabel(r'$\log$ W${{\rm H}\alpha}$ [$\AA$]')
     ax.set_ylabel(r'%s flux fraction' % line_label)
     # f.subplots_adjust(left=0.open06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    # f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
-    # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
+    # f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    # f.text(0.01, 0.5, r'$\sum\ F_{{\rm H}\alpha} (< $W${}_{{\rm H}\alpha})$', va='center', rotation='vertical', fontsize=20)
     f.set_tight_layout(True)
     f.savefig('fig_cumul_f%sWHa_per_morftype.%s' % (line, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
@@ -2981,8 +3250,8 @@ def fig_cumul_fHaWHa_per_morftype_and_R(args, gals):
     axArr[2].tick_params(axis='both', which='both', bottom='on', top='off', left='off', right='off', labelbottom='on', labeltop='off', labelleft='off', labelright='off')
     axArr[0].set_ylabel(r'H$\alpha$ flux fraction')
     f.subplots_adjust(left=0.06, right=0.95, bottom=0.15, top=0.9, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
-    f.savefig('fig_cumul_fHaWHa_per_morftype_and_R.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    f.savefig('fig_cumul_fHaWHa_per_morftype_and_R.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
 
     print '######################################################'
@@ -3141,8 +3410,8 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, gals):
             ax.set_xlim(logWHa_range)
 
     f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
-    f.savefig('fig_WHa_histograms_per_morftype_and_radius_cumulFHa.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    f.savefig('fig_WHa_histograms_per_morftype_and_radius_cumulFHa.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -3298,8 +3567,8 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulLHa(args, gals):
             ax.set_xlim(logWHa_range)
 
     f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
-    f.savefig('fig_WHa_histograms_per_morftype_and_radius_cumulFHa.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    f.savefig('fig_WHa_histograms_per_morftype_and_radius_cumulFHa.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -3334,7 +3603,7 @@ def maps_xi(args, gals):
         cb = plt.colorbar(im, cax=color_axis)
 
         # AXIS 2
-        ax2.set_title(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        ax2.set_title(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
         log_W6563__yx = np.ma.masked_array(np.ma.log10(ALL.get_gal_prop(califaID, ALL.W6563__yx).reshape(N_y, N_x)), mask=~gal_sample__yx)
         im = ax2.imshow(log_W6563__yx, origin='lower')
         the_divider = make_axes_locatable(ax2)
@@ -3342,7 +3611,7 @@ def maps_xi(args, gals):
         cb = plt.colorbar(im, cax=color_axis)
 
         # AXIS 2
-        ax3.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+        ax3.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
         ax3.set_ylabel(r'$\log\ \xi$')
         xm, ym, zm = ma_mask_xyz(log_W6563__yx, xi, )
         sc = ax3.scatter(log_W6563__yx, origin='lower')
@@ -3353,7 +3622,7 @@ def maps_xi(args, gals):
 
         f.tight_layout(rect=[0, 0.01, 1, 0.98])
         # f.subplots_adjust(left=0.05, right=0.96, bottom=0.05, top=0.95, hspace=0.08, wspace=0.3)
-        f.savefig('fig_map_xi-%s.png' % califaID, dpi=_dpi_choice, transparent=_transp_choice)
+        f.savefig('fig_map_xi-%s.%s' % (califaID, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
         plt.close(f)
 
 
@@ -3418,12 +3687,12 @@ def fig_cumul_fHaSBHa_per_morftype(args, gals):
     ax.set_xlim(2.5, 6.5)
     ax.set_ylim(0, 1)
     # f.subplots_adjust(left=0.06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    ax.set_xlabel(r'$\log\ \Sigma_{H\alpha}$ [L${}_\odot/$kpc${}^2$]')
+    ax.set_xlabel(r'$\log\ \Sigma_{{\rm H}\alpha}$ [L${}_\odot/$kpc${}^2$]')
     ax.set_ylabel(r'H$\alpha$ flux fraction')
     # f.subplots_adjust(left=0.open06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    # f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
-    # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
-    f.savefig('fig_cumul_fHaSBHa_per_morftype.png', dpi=_dpi_choice, transparent=_transp_choice)
+    # f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    # f.text(0.01, 0.5, r'$\sum\ F_{{\rm H}\alpha} (< $W${}_{{\rm H}\alpha})$', va='center', rotation='vertical', fontsize=20)
+    f.savefig('fig_cumul_fHaSBHa_per_morftype.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
 
     print '######################################################'
@@ -3789,7 +4058,7 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHamed(args, gals, gals_sel=
 
     # f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
     gs.update(left=0.05, right=0.95, bottom=0.14, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
     # f.set_tight_layout(True)
     f.savefig('fig_WHa_histo_mt_and_R_cumulFHa%s.%s' % (fname_suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
@@ -3924,12 +4193,12 @@ def fig_cumul_fHaWHa_per_morftype_group(args, gals):
     ax.set_xlim(-1, 2.5)
     ax.set_ylim(0, 1)
     # f.subplots_adjust(left=0.06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    ax.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    ax.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
     ax.set_ylabel(r'H$\alpha$ flux fraction')
     # f.subplots_adjust(left=0.open06, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
-    # f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=20)
-    # f.text(0.01, 0.5, r'$\sum\ F_{H\alpha} (< $W${}_{H\alpha})$', va='center', rotation='vertical', fontsize=20)
-    f.savefig('fig_cumul_fHaWHa_per_morftype_group.png', dpi=_dpi_choice, transparent=_transp_choice)
+    # f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=20)
+    # f.text(0.01, 0.5, r'$\sum\ F_{{\rm H}\alpha} (< $W${}_{{\rm H}\alpha})$', va='center', rotation='vertical', fontsize=20)
+    f.savefig('fig_cumul_fHaWHa_per_morftype_group.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     plt.close(f)
 
     print '######################################################'
@@ -4001,11 +4270,11 @@ def fig_BPT_mixed_xi(args, gals):
     plot_text_ax(ax, 'K01', 0.99, 0.01, fs+2, 'bottom', 'right', 'k')
     cbaxes = f.add_axes([0.69, 0.9, 0.25, 0.05])
     cb = plt.colorbar(sc, cax=cbaxes, orientation='horizontal')  #, ticks=[0, 1, 2, 3])
-    # cb.set_label(r'W${}_{H\alpha}$ [$\AA$]', fontsize=14)
-    cb.set_label(r'$\xi_{H\alpha}$ [$\AA$]', fontsize=fs+2)
+    # cb.set_label(r'W${}_{{\rm H}\alpha}$ [$\AA$]', fontsize=14)
+    cb.set_label(r'$\xi_{{\rm H}\alpha}$ [$\AA$]', fontsize=fs+2)
 
-    ax.set_xlabel(r'$\log\ [NII]/H\alpha$')
-    ax.set_ylabel(r'$\log\ [OIII]/H\beta$')
+    ax.set_xlabel(r'$\log\ [NII]/{\rm H}\alpha$')
+    ax.set_ylabel(r'$\log\ [OIII]/{\rm H}\beta$')
     f.set_tight_layout(True)
     f.savefig('fig_BPT_mixed_xi.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
 
@@ -4048,7 +4317,7 @@ def fig_SII_histogram(args, gals, minSNR=1):
     # ax1.errorbar(bin_center_muse, yMedian_muse, yerr=yerr, marker='o', ecolor='k', mew=0.7, mec='k', ms=2, mfc='w', capthick=0.7, capsize=0.7, ls='none')
     # ax1.grid()
     # ax1.set_title('MUSE - NGC6754')
-    # ax1.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    # ax1.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
     # ax1.set_ylabel(r'$6716/6731$')
     # ax1.xaxis.set_minor_locator(AutoMinorLocator(5))
     # f.set_tight_layout(True)
@@ -4119,7 +4388,7 @@ def fig_SII_histogram(args, gals, minSNR=1):
         ax.plot(bin_center, y_prc, 'k--', lw=0.7)
     ax.grid()
     # ax.set_title('CALIFA - %d zones' % xm.count())
-    ax.set_xlabel(r'$\log$ W${}_{H\alpha}$ [$\AA$]')
+    ax.set_xlabel(r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]')
     ax.set_ylabel(r'$6731/6717$')
     ax.xaxis.set_minor_locator(AutoMinorLocator(5))
     ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
@@ -4228,7 +4497,7 @@ def fig_data_histograms_per_morftype_and_radius(args, gals, data, data_range, da
 
     # logWHa = np.ma.log10(ALL.W6563__z)
     # logWHa_range = [-1, 2.5]
-    # xlabel = r'$\log$ W${}_{H\alpha}$ [$\AA$]'
+    # xlabel = r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]'
 
     ax = axes_cols[0][0]
     ax.set_title(r'All radii', fontsize=fs+4, y=1.02)
@@ -4323,7 +4592,7 @@ def fig_data_histograms_per_morftype_and_radius(args, gals, data, data_range, da
     # f.subplots_adjust(left=0.05, right=0.95, bottom=0.15, top=0.9, hspace=0.0, wspace=0.0)
     gs.update(left=0.05, right=0.95, bottom=0.14, top=0.9, hspace=0.0, wspace=0.0)
     f.text(0.5, 0.04, data_label, ha='center', fontsize=fs+4)
-    f.savefig('fig_histograms_per_morftype_and_radius_%s.png' % data_suffix, dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_histograms_per_morftype_and_radius_%s.%s' % (data_suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -4554,7 +4823,7 @@ def fig_tauVNeb_histo(args, gals, range=None, data_sel=None):
     # unit_converter = lambda x: np.log10(2.86 * np.exp(x * 0.34652))
     # ax1_top.set_xlim(unit_converter(mn), unit_converter(mx))
     # # ax1_top.set_xlim((1/0.34652) * np.log(10**(mn)/2.86), (1/0.34652) * np.log(10**(mx)/2.86))
-    # ax1_top.set_xlabel(r'$\log\ H\alpha/H\beta$')
+    # ax1_top.set_xlabel(r'$\log\ {\rm H}\alpha/{\rm H}\beta$')
     plot_text_ax(ax1, 'a)', 0.02, 0.98, fs+2, 'top', 'left', 'k')
 
     # AXIS 2
@@ -4579,7 +4848,7 @@ def fig_tauVNeb_histo(args, gals, range=None, data_sel=None):
 
     # f.tight_layout(h_pad=0.05)
     gs.update(left=0.15, right=0.95, bottom=0.1, top=0.95, hspace=0.25, wspace=0.0)
-    f.savefig('fig_tauVNeb_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_tauVNeb_histograms.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -4676,7 +4945,7 @@ def fig_SFRSD_300_histo(args, gals, data_sel=None):
     plot_text_ax(ax3, 'c)', 0.02, 0.98, fs+2, 'top', 'left', 'k')
 
     gs.update(left=0.15, right=0.95, bottom=0.1, top=0.95, hspace=0.25, wspace=0.0)
-    f.savefig('fig_SFRSD_300_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_SFRSD_300_histograms.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -4774,7 +5043,7 @@ def fig_SFRSD_32_histo(args, gals, data_sel=None):
     plot_text_ax(ax3, 'c)', 0.02, 0.98, fs+2, 'top', 'left', 'k')
 
     gs.update(left=0.15, right=0.95, bottom=0.1, top=0.95, hspace=0.25, wspace=0.0)
-    f.savefig('fig_SFRSD_32_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_SFRSD_32_histograms.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -4872,7 +5141,7 @@ def fig_alogZ_mass_histo(args, gals, range=None):
     plot_text_ax(ax3, 'c)', 0.02, 0.98, fs+2, 'top', 'left', 'k')
 
     gs.update(left=0.15, right=0.95, bottom=0.1, top=0.95, hspace=0.25, wspace=0.0)
-    f.savefig('fig_alogZmass_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_alogZmass_histograms.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -4970,7 +5239,7 @@ def fig_alogt_flux_histo(args, gals, range=None):
     plot_text_ax(ax3, 'c)', 0.02, 0.98, fs+2, 'top', 'left', 'k')
 
     gs.update(left=0.15, right=0.95, bottom=0.1, top=0.95, hspace=0.25, wspace=0.0)
-    f.savefig('fig_atflux_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_atflux_histograms.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -5069,7 +5338,7 @@ def fig_x_Y_32_histo(args, gals, range=None, step=0.02):
     plot_text_ax(ax3, 'c)', 0.02, 0.98, fs+2, 'top', 'left', 'k')
 
     gs.update(left=0.15, right=0.95, bottom=0.1, top=0.95, hspace=0.25, wspace=0.0)
-    f.savefig('fig_x_Y_32_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_x_Y_32_histograms.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -5168,7 +5437,7 @@ def fig_x_Y_300_histo(args, gals, range=None, step=0.02):
     plot_text_ax(ax3, 'c)', 0.02, 0.98, fs+2, 'top', 'left', 'k')
 
     gs.update(left=0.15, right=0.95, bottom=0.1, top=0.95, hspace=0.25, wspace=0.0)
-    f.savefig('fig_x_Y_300_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_x_Y_300_histograms.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -5267,7 +5536,7 @@ def fig_tau_V_histo(args, gals, range=None, step=0.02):
     plot_text_ax(ax3, 'c)', 0.02, 0.98, fs+2, 'top', 'left', 'k')
 
     gs.update(left=0.15, right=0.95, bottom=0.1, top=0.95, hspace=0.25, wspace=0.0)
-    f.savefig('fig_tau_V_histograms.png', dpi=_dpi_choice, transparent=_transp_choice)
+    f.savefig('fig_tau_V_histograms.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
     print '######################################################'
@@ -5555,7 +5824,7 @@ def fig_WHa_histograms_per_morftype_and_ba_cumulFHamed(args, gals):
 
     # f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
     gs.update(left=0.05, right=0.95, bottom=0.14, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
     # f.set_tight_layout(True)
     f.savefig('fig_WHa_histograms_per_morftype_and_ba_cumulFHa.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
@@ -5844,7 +6113,7 @@ def fig_WHa_histograms_per_morftype_and_mlba_cumulFHamed(args, gals):
 
     # f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
     gs.update(left=0.05, right=0.95, bottom=0.14, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
     # f.set_tight_layout(True)
     f.savefig('fig_WHa_histograms_per_morftype_and_mlba_cumulFHa.%s' % img_suffix, dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
@@ -6301,7 +6570,7 @@ def fig_WHa_histograms_per_morftype_norm_pix(args, gals, gals_sel=None, data_sel
 
     # f.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.9, hspace=0.0, wspace=0.0)
     gs.update(left=0.05, right=0.95, bottom=0.14, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
     # f.set_tight_layout(True)
     f.savefig('fig_WHa_histograms_per_morftype_norm_pix%s.%s' % (fname_suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
@@ -6412,7 +6681,7 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHamed_refreport(args, gals,
             ax.set_xlim(logWHa_range)
 
     gs.update(left=0.05, right=0.95, bottom=0.14, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
     f.savefig('fig_WHa_histo_mt_and_R_cumulFHa_refreport%s.%s' % (fname_suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
@@ -6522,7 +6791,7 @@ def fig_WHa_histograms_per_morftype_and_radius_cumulFHamed_refreport(args, gals,
             ax.set_xlim(logWHa_range)
 
     gs.update(left=0.05, right=0.95, bottom=0.14, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
     f.savefig('fig_WHa_histo_mt_and_R_cumulFHa_refreport%s.%s' % (fname_suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
@@ -6632,7 +6901,7 @@ def fig_alogZmass_histograms_per_morftype_and_radius(args, gals, gals_sel=None, 
             ax.set_xlim(logWHa_range)
 
     gs.update(left=0.05, right=0.95, bottom=0.14, top=0.9, hspace=0.0, wspace=0.0)
-    f.text(0.5, 0.04, r'$\log$ W${}_{H\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
+    f.text(0.5, 0.04, r'$\log$ W${}_{{\rm H}\alpha}$ [$\AA$]', ha='center', fontsize=fs+4)
     f.savefig('fig_WHa_histo_mt_and_R_cumulFHa_refreport%s.%s' % (fname_suffix, img_suffix), dpi=_dpi_choice, transparent=_transp_choice)
     print '######################################################'
     print '# END ################################################'
@@ -6640,7 +6909,7 @@ def fig_alogZmass_histograms_per_morftype_and_radius(args, gals, gals_sel=None, 
     return ALL
 
 
-def fig_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563, line_label=r'$H\alpha$'):
+def fig_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563, line_label=r'${\rm H}\alpha$'):
     print '############################'
     print '# fig_integrated_fractions #'
     print '############################'
@@ -6665,10 +6934,10 @@ def fig_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563
         'galDistance_Mpc' : dict(x=ALL.galDistance_Mpc, label='distance [Mpc]', lim=None),
         'CI_9050' : dict(x=ALL.CI_9050, label=r'${\rm CI}_{50}^{90}$', lim=None),
         'HLR_pc' : dict(x=ALL.HLR_pc/1e3, label='HLR [kpc]', lim=None),
-        'integrated_W6563' : dict(x=ALL.integrated_W6563, label=r'$W_{H\alpha}$ [$\AA$]', lim=None),
-        'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/$H\alpha$', lim=[-1.5, 0.7]),
-        'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/$H\beta$', lim=[-1, 1]),
-        'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{H\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
+        'integrated_W6563' : dict(x=ALL.integrated_W6563, label=r'$W_{{\rm H}\alpha}$ [$\AA$]', lim=None),
+        'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/${\rm H}\alpha$', lim=[-1.5, 0.7]),
+        'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/${\rm H}\beta$', lim=[-1, 1]),
+        'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{{\rm H}\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
         'integrated_at_flux' : dict(x=ALL.integrated_at_flux, label=r'$\langle \log\ t_{\star} \rangle_L$ [yr]', lim=None),
         'integrated_alogZ_mass' : dict(x=ALL.integrated_alogZ_mass, label=r'$\langle \log\ Z_{\star} \rangle_L$ [${\rm Z}_\odot$]', lim=None),
         'integrated_Dn4000' : dict(x=ALL.integrated_Dn4000, label=r'${\rm D}_n 4000$', lim=[1,2]),
@@ -6734,7 +7003,7 @@ def fig_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563
     return ALL
 
 
-def fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563, line_label=r'$H\alpha$', suffix='', int_props_keys=None):
+def fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563, line_label=r'${\rm H}\alpha$', suffix='', int_props_keys=None):
     print '##############################################'
     print '# fig_correl_devfDIGWHa_integrated_fractions #'
     print '##############################################'
@@ -6768,9 +7037,9 @@ def fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=None, data_s
             'galDistance_Mpc' : dict(x=ALL.galDistance_Mpc, label='distance [Mpc]', lim=None),
             'CI_9050' : dict(x=ALL.CI_9050, label=r'${\rm CI}_{50}^{90}$', lim=None),
             'HLR_pc' : dict(x=ALL.HLR_pc/1e3, label='HLR [kpc]', lim=None),
-            'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/$H\alpha$', lim=[-1.5, 0.7]),
-            'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/$H\beta$', lim=[-1, 1]),
-            'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{H\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
+            'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/${\rm H}\alpha$', lim=[-1.5, 0.7]),
+            'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/${\rm H}\beta$', lim=[-1, 1]),
+            'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{{\rm H}\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
             'integrated_at_flux' : dict(x=ALL.integrated_at_flux, label=r'$\langle \log\ t_{\star} \rangle_L$ [yr]', lim=None),
             'integrated_alogZ_mass' : dict(x=ALL.integrated_alogZ_mass, label=r'$\langle \log\ Z_{\star} \rangle_L$ [${\rm Z}_\odot$]', lim=None),
             'integrated_Dn4000' : dict(x=ALL.integrated_Dn4000, label=r'${\rm D}_n 4000$', lim=[1,2]),
@@ -6811,7 +7080,7 @@ def fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=None, data_s
         # axSFc.set_ylabel(r'$f_{SFc}$')
         int_W6563 = np.array([ALL.get_gal_prop_unique(g, 'integrated_W6563') for g in gals])
         int_W6563_bins = np.linspace(int_W6563.min(), int_W6563.max(), 30)
-        for ax, y, label in zip([axhDIG, axmDIG, axDIG, axSFc], [yhDIG, ymDIG, yDIG, ySFc], [r'$\Delta(f_{hDIG})_{W_{H\alpha}}$', r'$\Delta(f_{mDIG})_{W_{H\alpha}}$', r'$\Delta(f_{DIG})_{W_{H\alpha}}$', r'$\Delta(f_{SFc})_{W_{H\alpha}}$']):
+        for ax, y, label in zip([axhDIG, axmDIG, axDIG, axSFc], [yhDIG, ymDIG, yDIG, ySFc], [r'$\Delta(f_{hDIG})_{W_{{\rm H}\alpha}}$', r'$\Delta(f_{mDIG})_{W_{{\rm H}\alpha}}$', r'$\Delta(f_{DIG})_{W_{{\rm H}\alpha}}$', r'$\Delta(f_{SFc})_{W_{{\rm H}\alpha}}$']):
             ax.yaxis.grid(which='both')
             ax.set_ylim(-1, 1)
             xm, ym = ma_mask_xyz(int_W6563, y)
@@ -6851,7 +7120,7 @@ def fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=None, data_s
 #     return special.erf(u)
 
 
-def fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563, line_label=r'$H\alpha$', suffix='', int_props_keys=None):
+def fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=None, data_sel=None, line=6563, line_label=r'${\rm H}\alpha$', suffix='', int_props_keys=None):
     print '#####################################################'
     print '# fig_correl_devfDIGWHa_fiterf_integrated_fractions #'
     print '#####################################################'
@@ -6885,9 +7154,9 @@ def fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=None,
             'galDistance_Mpc' : dict(x=ALL.galDistance_Mpc, label='distance [Mpc]', lim=None),
             'CI_9050' : dict(x=ALL.CI_9050, label=r'${\rm CI}_{50}^{90}$', lim=None),
             'HLR_pc' : dict(x=ALL.HLR_pc/1e3, label='HLR [kpc]', lim=None),
-            'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/$H\alpha$', lim=[-1.5, 0.7]),
-            'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/$H\beta$', lim=[-1, 1]),
-            'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{H\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
+            'logN2Ha' : dict(x=np.ma.log10(ALL.integrated_f6583 / ALL.integrated_f6563), label=r'[NII]/${\rm H}\alpha$', lim=[-1.5, 0.7]),
+            'logO3Hb' : dict(x=np.ma.log10(ALL.integrated_f5007 / ALL.integrated_f4861), label=r'[OIII]/${\rm H}\beta$', lim=[-1, 1]),
+            'integrated_SB6563' : dict(x=np.ma.log10(ALL.integrated_SB6563), label=r'$\log \Sigma_{{\rm H}\alpha}^{gal}$ [L${}_\odot/$kpc${}^2$]', lim=None),
             'integrated_at_flux' : dict(x=ALL.integrated_at_flux, label=r'$\langle \log\ t_{\star} \rangle_L$ [yr]', lim=None),
             'integrated_alogZ_mass' : dict(x=ALL.integrated_alogZ_mass, label=r'$\langle \log\ Z_{\star} \rangle_L$ [${\rm Z}_\odot$]', lim=None),
             'integrated_Dn4000' : dict(x=ALL.integrated_Dn4000, label=r'${\rm D}_n 4000$', lim=[1,2]),
@@ -6944,7 +7213,7 @@ def fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=None,
         yfit = f_fit(x, *p0)
         y_fit.append(yfit)
         ax.tick_params(axis='both', which='both', direction='in', bottom=True, top=True, left=True, right=True, labelbottom='on', labeltop='off', labelleft='on', labelright='off')
-        ax.set_xlabel(r'$\log\ W_{H\alpha}$ [$\AA$]')
+        ax.set_xlabel(r'$\log\ W_{{\rm H}\alpha}$ [$\AA$]')
         ax.set_ylabel(label)
         ax.scatter(x, y, s=3, c=c, **dflt_kw_scatter)
         iS = np.argsort(x)
@@ -6979,12 +7248,12 @@ def fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=None,
                   axSFc,
                   axDIG,
                   axmDIGSFc]
-        lab_arr = [r'$\Delta f_{hDIG} (W_{H\alpha})$',
-                   r'$\Delta f_{mDIG} (W_{H\alpha})$',
-                   r'$\Delta f_{mDIG} (W_{H\alpha})$',
-                   r'$\Delta f_{SFc} (W_{H\alpha})$',
-                   r'$\Delta [f_{hDIG}\ +\ f_{mDIG}] (W_{H\alpha})$',
-                   r'$\Delta [f_{mDIG}\ +\ f_{SFc}] (W_{H\alpha})$']
+        lab_arr = [r'$\Delta f_{hDIG} (W_{{\rm H}\alpha})$',
+                   r'$\Delta f_{mDIG} (W_{{\rm H}\alpha})$',
+                   r'$\Delta f_{mDIG} (W_{{\rm H}\alpha})$',
+                   r'$\Delta f_{SFc} (W_{{\rm H}\alpha})$',
+                   r'$\Delta [f_{hDIG}\ +\ f_{mDIG}] (W_{{\rm H}\alpha})$',
+                   r'$\Delta [f_{mDIG}\ +\ f_{SFc}] (W_{{\rm H}\alpha})$']
         for ax, y, label, yfit in zip(ax_arr, y_arr, lab_arr, y_fit):
             ax.yaxis.grid(which='both')
             ax.set_ylim(-1, 1)
@@ -7049,8 +7318,8 @@ def compare_integrated_WHa(args, gals, gals_sel=None, data_sel=None):
     x = np.array([ALL.get_gal_prop_unique(g, ALL.integrated_W6563) for g in gals])
     y = resolved_WHa__g
     ax = f.gca()
-    ax.set_xlabel(r'$W_{H\alpha}$ (integrated) [$\AA$]')
-    ax.set_ylabel(r'$W_{H\alpha}$ (resolved) [$\AA$]')
+    ax.set_xlabel(r'$W_{{\rm H}\alpha}$ (integrated) [$\AA$]')
+    ax.set_ylabel(r'$W_{{\rm H}\alpha}$ (resolved) [$\AA$]')
     ax.scatter(x, y, s=5, c='b', **dflt_kw_scatter)
     ax.plot(ax.get_xlim(), ax.get_xlim(), ls='--', c='k')
     f.tight_layout(rect=[0, 0.01, 1, 0.98])
@@ -7093,8 +7362,8 @@ def compare_integrated_WHb(args, gals, gals_sel=None, data_sel=None):
     x = np.array([ALL.get_gal_prop_unique(g, ALL.integrated_W4861) for g in gals])
     y = resolved_WHb__g
     ax = f.gca()
-    ax.set_xlabel(r'$W_{H\beta}$ (integrated) [$\AA$]')
-    ax.set_ylabel(r'$W_{H\beta}$ (resolved) [$\AA$]')
+    ax.set_xlabel(r'$W_{{\rm H}\beta}$ (integrated) [$\AA$]')
+    ax.set_ylabel(r'$W_{{\rm H}\beta}$ (resolved) [$\AA$]')
     ax.scatter(x, y, s=5, c='b', **dflt_kw_scatter)
     ax.plot(ax.get_xlim(), ax.get_xlim(), ls='--', c='k')
     f.tight_layout(rect=[0, 0.01, 1, 0.98])
@@ -7137,9 +7406,9 @@ if __name__ == '__main__':
     args.sel = sel
     args.sample_choice = sample_choice
 
-    t_init = time.time()
-    create_fHa_cumul_per_WHa_bins(args)
-    print 'create_fHa_cumul_per_WHa_bins() time: %.2f' % (time.time() - t_init)
+    # t_init = time.time()
+    # create_fHa_cumul_per_WHa_bins(args)
+    # print 'create_fHa_cumul_per_WHa_bins() time: %.2f' % (time.time() - t_init)
 
     if args.summary: summary(args, ALL, sel, gals, 'SEL %s' % sample_choice)
 
@@ -7149,6 +7418,9 @@ if __name__ == '__main__':
     # fig_cumul_fHaWHa_per_morftype_and_R_gals(args, args.gals)
     # fig2(args)
     # fig_model_WHa_bimodal_distrib(args)
+    # fig_distances_distrib(args)
+    # fig_sample_tese(args, args.gals)
+    # fig_sample_tese2(args, args.gals)
     # fig3(args, args.gals)
     # fig_BPT_per_morftype_and_R(args, args.gals)
     # fig_SBHaWHa_scatter_per_morftype_and_ba(args, args.gals)
@@ -7164,6 +7436,7 @@ if __name__ == '__main__':
     # fig_maps(args, gals=['K0857', 'K0151', 'K0274', 'K0867'], multi=True, suffix='_edgeon_paper', drawHLR=False)
     # maps_xi(args, args.gals)
     # fig_BPT_mixed(args, args.gals)
+    # fig_BPT_3D(args, args.gals)
     # fig_WHa_histograms_per_morftype_and_radius_cumulFHa(args, args.gals)
     # fig_maps_xi(args, gals=['K0072', 'K0886', 'K0010', 'K0073', 'K0813', 'K0353'], multi=True, suffix='_faceon_paper', xi=True)
     # fig_logxi_logWHa_histograms(args)
@@ -7238,16 +7511,16 @@ if __name__ == '__main__':
     #
 
     # for l, l_label in zip(['6563'], [r'{\rm H}\alpha']):
-    for l, l_label in zip(main_lines, lines_labels):
-        f__gz = getattr(ALL, 'f%s__z' % l)
-        ef__gz = getattr(ALL, 'ef%s__z' % l)
-        SN__gz = f__gz/ef__gz
-        data_sel = ((SN__gz).filled(0.) >= 1)
-        int_f = getattr(ALL, 'integrated_f%s' % l)
-        gals_sel = (int_f > 0)
-        fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=gals_sel, data_sel=data_sel, line=l, line_label=l_label)
-        gals_sel = (int_f > 0) & (ALL.mt >= 0)
-        fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=gals_sel, data_sel=data_sel, line=l, line_label=l_label, suffix='_noElipt')
+    # for l, l_label in zip(main_lines, lines_labels):
+    #     f__gz = getattr(ALL, 'f%s__z' % l)
+    #     ef__gz = getattr(ALL, 'ef%s__z' % l)
+    #     SN__gz = f__gz/ef__gz
+    #     data_sel = ((SN__gz).filled(0.) >= 1)
+    #     int_f = getattr(ALL, 'integrated_f%s' % l)
+    #     gals_sel = (int_f > 0)
+    #     fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=gals_sel, data_sel=data_sel, line=l, line_label=l_label)
+    #     gals_sel = (int_f > 0) & (ALL.mt >= 0)
+    #     fig_correl_devfDIGWHa_fiterf_integrated_fractions(args, gals, gals_sel=gals_sel, data_sel=data_sel, line=l, line_label=l_label, suffix='_noElipt')
         # fig_correl_devfDIGWHa_integrated_fractions(args, gals, gals_sel=(ALL.mt >= 0), data_sel=data_sel, line=l, line_label=l_label, suffix='_noElipt',
                                                    # int_props_keys=dict(x=ALL.ba, label=r'b/a', lim=None))
 

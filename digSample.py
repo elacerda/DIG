@@ -91,7 +91,7 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         'zones_map', 'califaID__g', 'califaID__z', 'califaID__yx', 'pixels_map',
         'x0', 'y0', 'N_x', 'N_y', 'N_zone', 'ml_ba', 'ba', 'pa',
         'mt', 'mto', 'HLR_pix', 'HLR_pc',
-        'galDistance_Mpc', 'zoneArea_pc2', 'zoneArea_pix',
+        'galDistance_Mpc', 'zoneArea_pc2', 'zoneArea_pix', 'redshift',
         'pixelDistance__yx', 'pixelDistance_HLR__yx',
         'zoneDistance_pc', 'zoneDistance_HLR', 'zoneDistance_pix',
         'lines', 'CI', 'CI_9050', 'Mtot',
@@ -169,6 +169,7 @@ def gather_needed_data(g, mto, mt, dump=True, output_filename='ALL_HaHb.pkl'):
         ALL.append1d('califaID__yx', califaID__yx)
         pixels_map__yx = np.array(list(range(K.N_y * K.N_x)), dtype='int')
         # mto = get_morfologia(K.califaID)[0]
+        ALL.append1d('redshift', K.redshift)
         ALL.append1d('califaID__g', califaID)
         ALL.append1d('mto', mto[i_gal])
         ALL.append1d('mt', mt[i_gal])
